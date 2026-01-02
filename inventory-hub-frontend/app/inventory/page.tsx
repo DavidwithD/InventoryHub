@@ -19,11 +19,15 @@ import {
   FormControl,
   Alert,
   SelectChangeEvent,
+  TableSortLabel,
+  InputLabel,
 } from '@mui/material';
 import DeleteIcon from '@mui/icons-material/Delete';
 import AddIcon from '@mui/icons-material/Add';
 import api from '@/lib/api';
 import { Inventory, Product, Purchase, CreateInventory, InventoryRow } from '@/types';
+
+type OrderByType = 'productName' | 'purchaseNo' | 'stockQuantity' | 'unitCost' | 'purchaseAmount';
 
 export default function InventoryPage() {
   const [inventories, setInventories] = useState<Inventory[]>([]);
@@ -35,9 +39,17 @@ export default function InventoryPage() {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
 
+  // 排序和筛选状态
+  const [orderBy, setOrderBy] = useState<OrderByType>('productName');
+  const [order, setOrder] = useState<'asc' | 'desc'>('asc');
+  const [searchProductName, setSearchProductName] = useState('');
+  const [filterCategory, setFilterCategory] = useState<number>(0);
+  const [lowStockOnly, setLowStockOnly] = useState(false);
+
   useEffect(() => {
     loadProducts();
     loadPurchases();
+    loadAllInventories(); // 加载所有库存
   }, []);
 
   useEffect(() => {
@@ -45,7 +57,8 @@ export default function InventoryPage() {
       loadInventories();
       loadExpectedTotal();
     } else {
-      setInventories([]);
+      // 未选择进货单时，显示所有库存
+      loadAllInventories();
       setRows([]);
       setExpectedTotalJpy(0);
     }
@@ -66,6 +79,15 @@ export default function InventoryPage() {
       setPurchases(response.data);
     } catch (err) {
       setError('加载进货记录失败');
+    }
+  };
+
+  const loadAllInventories = async () => {
+    try {
+      const response = await api.get<Inventory[]>('/inventory');
+      setInventories(response.data);
+    } catch (err) {
+      setError('加载库存记录失败');
     }
   };
 
@@ -212,6 +234,7 @@ export default function InventoryPage() {
       await api.post('/inventory/batch', { items: createData });
       setSuccess('库存记录保存成功');
       loadInventories();
+      loadAllInventories(); // 刷新全部库存
     } catch (err: any) {
       // 处理后端返回的错误对象或字符串
       const errorMessage = typeof err.response?.data === 'string' 
@@ -219,6 +242,86 @@ export default function InventoryPage() {
         : err.response?.data?.title || err.response?.data?.errors || err.message || '保存失败';
       setError(typeof errorMessage === 'string' ? errorMessage : JSON.stringify(errorMessage));
     }
+  };
+
+  // 排序函数
+  const handleRequestSort = (property: OrderByType) => {
+    const isAsc = orderBy === property && order === 'asc';
+    setOrder(isAsc ? 'desc' : 'asc');
+    setOrderBy(property);
+  };
+
+  // 筛选和排序库存
+  const getFilteredAndSortedInventories = () => {
+    let filtered = [...inventories];
+
+    // 商品名搜索
+    if (searchProductName.trim()) {
+      filtered = filtered.filter(inv => 
+        inv.productName?.toLowerCase().includes(searchProductName.toLowerCase())
+      );
+    }
+
+    // 分类筛选
+    if (filterCategory > 0) {
+      const categoryProducts = products.filter(p => p.categoryId === filterCategory).map(p => p.id);
+      filtered = filtered.filter(inv => categoryProducts.includes(inv.productId));
+    }
+
+    // 低库存筛选
+    if (lowStockOnly) {
+      filtered = filtered.filter(inv => inv.stockQuantity > 0 && inv.stockQuantity < 5);
+    }
+
+    // 排序
+    filtered.sort((a, b) => {
+      let aValue: any;
+      let bValue: any;
+
+      switch (orderBy) {
+        case 'productName':
+          aValue = a.productName || '';
+          bValue = b.productName || '';
+          return order === 'asc' 
+            ? aValue.localeCompare(bValue)
+            : bValue.localeCompare(aValue);
+        case 'purchaseNo':
+          aValue = purchases.find(p => p.id === a.purchaseId)?.purchaseNo || '';
+          bValue = purchases.find(p => p.id === b.purchaseId)?.purchaseNo || '';
+          return order === 'asc' 
+            ? aValue.localeCompare(bValue)
+            : bValue.localeCompare(aValue);
+        case 'stockQuantity':
+          aValue = a.stockQuantity;
+          bValue = b.stockQuantity;
+          break;
+        case 'unitCost':
+          aValue = a.unitCost;
+          bValue = b.unitCost;
+          break;
+        case 'purchaseAmount':
+          aValue = a.purchaseAmount;
+          bValue = b.purchaseAmount;
+          break;
+        default:
+          return 0;
+      }
+
+      return order === 'asc' ? aValue - bValue : bValue - aValue;
+    });
+
+    return filtered;
+  };
+
+  // 获取唯一的分类列表
+  const getCategories = () => {
+    const categoryMap = new Map<number, string>();
+    products.forEach(p => {
+      if (p.categoryId && p.categoryName) {
+        categoryMap.set(p.categoryId, p.categoryName);
+      }
+    });
+    return Array.from(categoryMap.entries()).map(([id, name]) => ({ id, name }));
   };
 
   const selectedPurchase = purchases.find(p => p.id === selectedPurchaseId);
@@ -233,13 +336,13 @@ export default function InventoryPage() {
 
       <Paper sx={{ p: 3, mb: 3 }}>
         <FormControl fullWidth sx={{ mb: 2 }}>
-          <Typography variant="body2" sx={{ mb: 1 }}>选择进货单</Typography>
+          <Typography variant="body2" sx={{ mb: 1 }}>选择进货单（可选）</Typography>
           <Select
             value={selectedPurchaseId}
             onChange={(e: SelectChangeEvent<number>) => setSelectedPurchaseId(Number(e.target.value))}
             displayEmpty
           >
-            <MenuItem value={0}>请选择进货单</MenuItem>
+            <MenuItem value={0}>查看所有库存</MenuItem>
             {purchases.map((purchase) => (
               <MenuItem key={purchase.id} value={purchase.id}>
                 {purchase.purchaseNo} - {purchase.supplierName} - ¥{purchase.totalAmount.toFixed(2)} CNY (汇率: {purchase.exchangeRate})
@@ -262,6 +365,160 @@ export default function InventoryPage() {
           </Box>
         )}
       </Paper>
+
+      {/* 查看所有库存 */}
+      {selectedPurchaseId === 0 && (
+        <Paper sx={{ p: 3 }}>
+          <Typography variant="h6" sx={{ mb: 2 }}>所有库存</Typography>
+
+          {/* 筛选区域 */}
+          <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 2, mb: 3 }}>
+            <TextField
+              label="搜索商品名"
+              value={searchProductName}
+              onChange={(e) => setSearchProductName(e.target.value)}
+              placeholder="输入商品名搜索"
+              sx={{ minWidth: 200, flex: 1 }}
+            />
+            <FormControl sx={{ minWidth: 150 }}>
+              <InputLabel>分类筛选</InputLabel>
+              <Select
+                value={filterCategory}
+                label="分类筛选"
+                onChange={(e) => setFilterCategory(Number(e.target.value))}
+              >
+                <MenuItem value={0}>全部分类</MenuItem>
+                {getCategories().map((cat) => (
+                  <MenuItem key={cat.id} value={cat.id}>
+                    {cat.name}
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+            <FormControl sx={{ minWidth: 150 }}>
+              <InputLabel>库存状态</InputLabel>
+              <Select
+                value={lowStockOnly ? 'low' : 'all'}
+                label="库存状态"
+                onChange={(e) => setLowStockOnly(e.target.value === 'low')}
+              >
+                <MenuItem value="all">全部</MenuItem>
+                <MenuItem value="low">低库存 (&lt; 5)</MenuItem>
+              </Select>
+            </FormControl>
+            <Button
+              variant="text"
+              onClick={() => {
+                setSearchProductName('');
+                setFilterCategory(0);
+                setLowStockOnly(false);
+              }}
+            >
+              清除筛选
+            </Button>
+          </Box>
+
+          <TableContainer>
+            <Table>
+              <TableHead>
+                <TableRow>
+                  <TableCell>
+                    <TableSortLabel
+                      active={orderBy === 'productName'}
+                      direction={orderBy === 'productName' ? order : 'asc'}
+                      onClick={() => handleRequestSort('productName')}
+                    >
+                      商品名
+                    </TableSortLabel>
+                  </TableCell>
+                  <TableCell>
+                    <TableSortLabel
+                      active={orderBy === 'purchaseNo'}
+                      direction={orderBy === 'purchaseNo' ? order : 'asc'}
+                      onClick={() => handleRequestSort('purchaseNo')}
+                    >
+                      进货单号
+                    </TableSortLabel>
+                  </TableCell>
+                  <TableCell align="right">
+                    <TableSortLabel
+                      active={orderBy === 'purchaseAmount'}
+                      direction={orderBy === 'purchaseAmount' ? order : 'asc'}
+                      onClick={() => handleRequestSort('purchaseAmount')}
+                    >
+                      进货金额（¥）
+                    </TableSortLabel>
+                  </TableCell>
+                  <TableCell align="right">进货数量</TableCell>
+                  <TableCell align="right">
+                    <TableSortLabel
+                      active={orderBy === 'unitCost'}
+                      direction={orderBy === 'unitCost' ? order : 'asc'}
+                      onClick={() => handleRequestSort('unitCost')}
+                    >
+                      单位成本（¥）
+                    </TableSortLabel>
+                  </TableCell>
+                  <TableCell align="right">
+                    <TableSortLabel
+                      active={orderBy === 'stockQuantity'}
+                      direction={orderBy === 'stockQuantity' ? order : 'asc'}
+                      onClick={() => handleRequestSort('stockQuantity')}
+                    >
+                      库存数量
+                    </TableSortLabel>
+                  </TableCell>
+                </TableRow>
+              </TableHead>
+              <TableBody>
+                {getFilteredAndSortedInventories().map((inv) => {
+                  const purchase = purchases.find(p => p.id === inv.purchaseId);
+                  return (
+                    <TableRow 
+                      key={inv.id}
+                      sx={{
+                        bgcolor: inv.stockQuantity === 0 ? 'action.hover' : 'inherit',
+                      }}
+                    >
+                      <TableCell>{inv.productName}</TableCell>
+                      <TableCell>{purchase?.purchaseNo || '-'}</TableCell>
+                      <TableCell align="right">¥{inv.purchaseAmount.toFixed(2)}</TableCell>
+                      <TableCell align="right">{inv.purchaseQuantity}</TableCell>
+                      <TableCell align="right">¥{inv.unitCost.toFixed(2)}</TableCell>
+                      <TableCell 
+                        align="right"
+                        sx={{
+                          color: inv.stockQuantity === 0 ? 'error.main' : 
+                                 inv.stockQuantity < 5 ? 'warning.main' : 'success.main',
+                          fontWeight: 'bold',
+                        }}
+                      >
+                        {inv.stockQuantity}
+                        {inv.stockQuantity === 0 && ' (售罄)'}
+                        {inv.stockQuantity > 0 && inv.stockQuantity < 5 && ' (低库存)'}
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
+                {getFilteredAndSortedInventories().length === 0 && (
+                  <TableRow>
+                    <TableCell colSpan={6} align="center">
+                      暂无库存数据
+                    </TableCell>
+                  </TableRow>
+                )}
+              </TableBody>
+            </Table>
+          </TableContainer>
+
+          <Box sx={{ mt: 2, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <Typography variant="body2" color="text.secondary">
+              共 {getFilteredAndSortedInventories().length} 条库存记录
+              {(searchProductName || filterCategory > 0 || lowStockOnly) && ` (已筛选，总共 ${inventories.length} 条)`}
+            </Typography>
+          </Box>
+        </Paper>
+      )}
 
       {selectedPurchaseId > 0 && (
         <Paper sx={{ p: 3 }}>
