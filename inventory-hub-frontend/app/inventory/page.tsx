@@ -227,12 +227,7 @@ export default function InventoryPage() {
   const differenceCny = getDifferenceCny();
 
   return (
-    <Box>
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
-        <Typography variant="h4">库存管理</Typography>
-        <Button variant="outlined" href="/">返回首页</Button>
-      </Box>
-
+    <>
       {error && <Alert severity="error" sx={{ mb: 2 }} onClose={() => setError('')}>{error}</Alert>}
       {success && <Alert severity="success" sx={{ mb: 2 }} onClose={() => setSuccess('')}>{success}</Alert>}
 
@@ -462,6 +457,6 @@ export default function InventoryPage() {
           </Box>
         </Paper>
       )}
-    </Box>
+    </>
   );
 }

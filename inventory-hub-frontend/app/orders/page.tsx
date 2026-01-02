@@ -590,33 +590,31 @@ export default function OrdersPage() {
   };
 
   return (
-    <Box sx={{ p: 3 }}>
-      <Paper sx={{ p: 3 }}>
-        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
-          <Typography variant="h5">订单管理</Typography>
-          <Box sx={{ display: 'flex', gap: 2 }}>
-            <Button
-              variant="outlined"
-              onClick={handleOpenImportDialog}
-            >
-              批量导入订单
-            </Button>
-            <Button
-              variant="contained"
-              startIcon={<AddIcon />}
-              onClick={() => handleOpenDialog()}
-            >
-              新建订单
-            </Button>
-          </Box>
+    <>
+      <Box sx={{ display: 'flex', justifyContent: 'flex-end', mb: 3 }}>
+        <Box sx={{ display: 'flex', gap: 2 }}>
+          <Button
+            variant="outlined"
+            onClick={handleOpenImportDialog}
+          >
+            批量导入订单
+          </Button>
+          <Button
+            variant="contained"
+            startIcon={<AddIcon />}
+            onClick={() => handleOpenDialog()}
+          >
+            新建订单
+          </Button>
         </Box>
+      </Box>
 
-        {error && <Alert severity="error" sx={{ mb: 2 }} onClose={() => setError('')}>{error}</Alert>}
-        {success && <Alert severity="success" sx={{ mb: 2 }} onClose={() => setSuccess('')}>{success}</Alert>}
+      {error && <Alert severity="error" sx={{ mb: 2 }} onClose={() => setError('')}>{error}</Alert>}
+      {success && <Alert severity="success" sx={{ mb: 2 }} onClose={() => setSuccess('')}>{success}</Alert>}
 
-        {/* 筛选区域 */}
-        <Paper sx={{ p: 2, mb: 3 }}>
-          <Typography variant="h6" sx={{ mb: 2 }}>筛选条件</Typography>
+      {/* 筛选区域 */}
+      <Paper sx={{ p: 2, mb: 3 }}>
+        <Typography variant="h6" sx={{ mb: 2 }}>筛选条件</Typography>
           <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 2, mb: 2 }}>
             <TextField
               label="订单号/订单名"
@@ -680,9 +678,10 @@ export default function OrdersPage() {
           </Box>
         </Paper>
 
-        <TableContainer>
-          <Table>
-            <TableHead>
+        <Paper>
+          <TableContainer>
+            <Table>
+              <TableHead>
               <TableRow>
                 <TableCell>图片</TableCell>
                 <TableCell>订单名</TableCell>
@@ -795,7 +794,7 @@ export default function OrdersPage() {
           </Table>
         </TableContainer>
         
-        <Box sx={{ mt: 2, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <Box sx={{ mt: 2, p: 2, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <Typography variant="body2" color="text.secondary">
             共 {getFilteredAndSortedOrders().length} 条订单
             {(searchOrderNo || costStatus !== 'all' || startDate || endDate) && ` (已筛选，总共 ${orders.length} 条)`}
@@ -1257,6 +1256,6 @@ export default function OrdersPage() {
           </Button>
         </DialogActions>
       </Dialog>
-    </Box>
+    </>
   );
 }
