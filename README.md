@@ -50,10 +50,11 @@
 | id            | id            | INT          | 主键           | AUTO_INCREMENT, PRIMARY KEY |
 | 分类 id       | category_id   | INT          | 外键关联分类表 | NOT NULL, FOREIGN KEY       |
 | 品名          | name          | VARCHAR(200) | 商品名称       | NOT NULL                    |
-| 照片          | image_url     | VARCHAR(500) | 图片 URL/路径  | NULL                        |
 | 创建时间      | created_at    | DATETIME     | 创建时间       | DEFAULT CURRENT_TIMESTAMP   |
 | 更新时间      | updated_at    | DATETIME     | 更新时间       | ON UPDATE CURRENT_TIMESTAMP |
 | 软删除标记    | is_deleted    | BOOLEAN      | 软删除标记     | DEFAULT FALSE               |
+
+**注意**: 商品不需要图片字段（已从设计中移除）
 
 **索引**:
 
@@ -124,6 +125,7 @@ unit_cost = (purchase_amount * purchases.exchange_rate) / purchase_quantity
 | ------------- | ---------------- | ------------- | ---------- | --------------------------- |
 | id            | id               | INT           | 主键       | AUTO_INCREMENT, PRIMARY KEY |
 | 订单编号      | order_no         | VARCHAR(100)  | 订单编号   | NOT NULL, UNIQUE            |
+| 订单名        | name             | VARCHAR(500)  | 商品名称   | NOT NULL                    |
 | 图片 url      | image_url        | VARCHAR(500)  | 订单图片   | NULL                        |
 | 收入金额      | revenue          | DECIMAL(15,2) | 订单收入   | NOT NULL                    |
 | 成本          | total_cost       | DECIMAL(15,2) | 订单总成本 | NULL                        |
@@ -199,7 +201,54 @@ orders.total_cost = SUM(subtotal_cost) WHERE order_id = ?
 - ✅ 筛选：按订单编号搜索、按交易时间范围筛选
 - ✅ 导出：批量导出为 Excel/CSV
 - ✅ 默认排序：成本为 NULL 的订单排在最前面
-- ✅ 点击成本列（数字或"未输入"）跳转到订单详细编辑页
+- ✅ 点击"查看详细"按钮查看订单详细（只读模式）
+- ✅ 在详细对话框中点击"编辑详细"可修改订单详细
+- ✅ **批量导入订单**：从 Mercari API 批量导入销售历史
+
+**批量导入功能**:
+
+通过粘贴 cURL 命令从 Mercari API 批量导入订单。
+
+**操作流程**:
+
+1. 点击"批量导入订单"按钮
+2. 粘贴从浏览器开发者工具复制的 cURL 命令
+3. 系统自动：
+   - 解析 cURL，提取 URL 和 headers
+   - 修改 `limit=100`，从 `offset=0` 开始分页调用
+   - 根据 `total_count` 循环获取所有数据
+   - 映射数据并创建订单（跳过已存在的订单号）
+4. 显示导入进度和结果统计
+
+**数据映射关系**:
+
+| Mercari API 字段              | 订单表字段         | 说明                            |
+| ----------------------------- | ------------------ | ------------------------------- |
+| `item.item_id`                | `order_no`         | 商品 ID 作为订单号              |
+| `item.photo_thumbnail_url`    | `image_url`        | 商品图片 URL                    |
+| `sales_profit`                | `revenue`          | 销售利润作为营业额              |
+| `transaction_finished_at`     | `transaction_time` | Unix 时间戳转换为 DateTime      |
+
+**去重策略**:
+
+- 根据 `order_no` 检查是否已存在
+- 已存在的订单自动跳过，不覆盖
+- 最终显示：成功导入 X 条，跳过 Y 条，失败 Z 条
+
+**技术实现**:
+
+- **前端**: 批量导入对话框，接收 cURL 字符串，显示进度和结果
+- **后端**: 
+  - cURL 解析器：提取 URL 和 headers
+  - Mercari API 代理：避免浏览器 CORS 限制
+  - 分页循环：根据 `total_count` 计算请求次数
+  - 批量创建：事务处理，失败回滚
+
+**安全说明**:
+
+- cURL 中的 `authorization` 和 `dpop` token 仅用于本次导入
+- 后端不存储任何敏感信息
+- 请求完成后立即丢弃 token
 
 **权限**:
 
@@ -579,22 +628,73 @@ const orderDetailSchema = z
 #### API 设计示例
 
 ```
-POST   /api/orders                  创建订单
-GET    /api/orders                  获取订单列表
-GET    /api/orders/:id              获取订单详情
-PUT    /api/orders/:id              更新订单
-DELETE /api/orders/:id              软删除订单
+POST   /api/orders                     创建订单
+GET    /api/orders                     获取订单列表
+GET    /api/orders/:id                 获取订单详情
+PUT    /api/orders/:id                 更新订单
+DELETE /api/orders/:id                 软删除订单
 
-POST   /api/orders/:id/details      批量保存订单详细
-GET    /api/orders/:id/details      获取订单详细列表
+POST   /api/orders/import-from-curl    批量导入订单（从 Mercari API）
+GET    /api/orders/:id/details         获取订单详细列表
+POST   /api/orders/details             创建订单详细
+PUT    /api/orders/details/:id         更新订单详细
+DELETE /api/orders/details/:id         删除订单详细
 
-GET    /api/inventory               获取在库列表
-POST   /api/inventory/batch         批量创建在库记录
-PUT    /api/inventory/:id           更新在库记录
+GET    /api/inventory                  获取在库列表
+POST   /api/inventory/batch            批量创建在库记录
+PUT    /api/inventory/:id              更新在库记录
 
-GET    /api/products                获取商品列表
-POST   /api/products                创建商品
+GET    /api/products                   获取商品列表
+POST   /api/products                   创建商品
 ...
+```
+
+#### 批量导入 API 详细设计
+
+**端点**: `POST /api/orders/import-from-curl`
+
+**请求体**:
+```json
+{
+  "curlCommand": "curl 'https://api.mercari.jp/...' -H '...'",
+  "skipExisting": true
+}
+```
+
+**响应**:
+```json
+{
+  "total": 98,
+  "success": 85,
+  "skipped": 13,
+  "failed": 0,
+  "errors": []
+}
+```
+
+**处理流程**:
+1. 解析 cURL 命令，提取 URL 和所有 headers
+2. 修改 URL 参数：`limit=100`
+3. 循环调用 Mercari API（offset: 0, 100, 200, ...）
+4. 解析响应，提取 `sold_histories` 数组
+5. 对每条记录：
+   - 检查 `order_no` 是否已存在
+   - 存在且 `skipExisting=true` → 跳过
+   - 不存在 → 创建订单
+6. 返回统计结果
+
+**cURL 解析逻辑**:
+```csharp
+// 提取 URL
+Regex.Match(curlCommand, @"curl\s+'([^']+)'")
+
+// 提取所有 headers
+Regex.Matches(curlCommand, @"-H\s+'([^:]+):\s*([^']+)'")
+
+// 构造 HttpClient 请求
+foreach (var header in headers) {
+    httpClient.DefaultRequestHeaders.Add(header.Key, header.Value);
+}
 ```
 
 #### 事务处理示例
@@ -747,10 +847,20 @@ ALTER TABLE order_details ADD CONSTRAINT chk_detail_quantity CHECK (数量 > 0);
 
 ---
 
+## 项目配置决策
+
+- ✅ **用户系统**: 单用户使用，无需登录和权限管理
+- ✅ **图片存储**: 
+  - 商品图片：不需要
+  - 订单图片：已存储在云端，数据库仅存储 URL
+- ✅ **汇率数据**: 通过 API 自动获取当天的 RMB 对 JPY 汇率
+- ✅ **开发顺序**: 按模块并行开发
+- ✅ **数据库**: MySQL 已安装，需创建项目数据库
+- ✅ **UI 组件库**: Material UI
+- ✅ **移动端**: 不需要适配
+- ✅ **上线时间**: 无固定期限
+
 ## 待明确事项
 
-- [ ] 图片上传的具体实现方案（本地存储/OSS/CDN）
-- [ ] 用户权限和角色管理（如果是多用户系统）
-- [ ] 汇率数据来源（手动输入/API 自动获取）
 - [ ] 数据备份策略
-- [ ] 报表和导出的具体格式要求
+- [x] 报表和导出的具体格式要求: JSON

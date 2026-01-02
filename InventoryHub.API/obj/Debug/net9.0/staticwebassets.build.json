@@ -1,0 +1,12 @@
+{
+  "Version": 1,
+  "Hash": "0kf6d1oDw/EiCXJ9usqLE9WdL9n3eqR1kmrOvvTXjJc=",
+  "Source": "InventoryHub.API",
+  "BasePath": "_content/InventoryHub.API",
+  "Mode": "Default",
+  "ManifestType": "Build",
+  "ReferencedProjectsConfiguration": [],
+  "DiscoveryPatterns": [],
+  "Assets": [],
+  "Endpoints": []
+}
