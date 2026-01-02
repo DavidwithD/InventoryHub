@@ -27,6 +27,7 @@ interface Props {
   products: Product[];
   selectedPurchase: Purchase;
   expectedTotalJpy: number;
+  isReadOnly: boolean;
   onAddRow: () => void;
   onDeleteRow: (tempId: string) => void;
   onUpdateRow: (tempId: string, field: keyof InventoryRow, value: any) => void;
@@ -38,6 +39,7 @@ export default function InventoryEditTable({
   products,
   selectedPurchase,
   expectedTotalJpy,
+  isReadOnly,
   onAddRow,
   onDeleteRow,
   onUpdateRow,
@@ -83,16 +85,27 @@ export default function InventoryEditTable({
           variant="outlined"
           startIcon={<AddIcon />}
           onClick={onAddRow}
+          disabled={isReadOnly}
         >
           添加行
         </Button>
       </Box>
 
-      <Alert severity="info" sx={{ mb: 2 }}>
-        <Typography variant="caption">
-          <strong>说明:</strong> 输入人民币金额，系统将自动转换为日元存储到数据库。单位成本为日元单价。
-        </Typography>
-      </Alert>
+      {isReadOnly && (
+        <Alert severity="info" sx={{ mb: 2 }}>
+          <Typography variant="body2">
+            <strong>只读模式：</strong>该进货单的库存明细已生成，不允许修改或删除。如需调整，请联系管理员。
+          </Typography>
+        </Alert>
+      )}
+
+      {!isReadOnly && (
+        <Alert severity="info" sx={{ mb: 2 }}>
+          <Typography variant="caption">
+            <strong>说明:</strong> 输入人民币金额，系统将自动转换为日元存储到数据库。单位成本为日元单价。
+          </Typography>
+        </Alert>
+      )}
 
       <TableContainer>
         <Table size="small">
@@ -130,6 +143,7 @@ export default function InventoryEditTable({
                     <Select
                       value={row.productId}
                       displayEmpty
+                      disabled={isReadOnly}
                       onChange={(e: SelectChangeEvent<number>) => {
                         onUpdateRow(row.tempId, 'productId', Number(e.target.value));
                       }}
@@ -157,6 +171,7 @@ export default function InventoryEditTable({
                     onChange={(e) => onUpdateRow(row.tempId, 'purchaseAmountCny', parseFloat(e.target.value) || 0)}
                     inputProps={{ step: 0.01, min: 0 }}
                     placeholder="输入人民币"
+                    disabled={isReadOnly}
                   />
                 </TableCell>
                 <TableCell>
@@ -178,6 +193,7 @@ export default function InventoryEditTable({
                     value={row.purchaseQuantity}
                     onChange={(e) => onUpdateRow(row.tempId, 'purchaseQuantity', parseInt(e.target.value) || 0)}
                     inputProps={{ step: 1, min: 0 }}
+                    disabled={isReadOnly}
                   />
                 </TableCell>
                 <TableCell>
@@ -200,7 +216,7 @@ export default function InventoryEditTable({
                   <IconButton
                     size="small"
                     onClick={() => onDeleteRow(row.tempId)}
-                    disabled={rows.length === 1}
+                    disabled={rows.length === 1 || isReadOnly}
                   >
                     <DeleteIcon />
                   </IconButton>
@@ -241,7 +257,7 @@ export default function InventoryEditTable({
         <Button
           variant="contained"
           onClick={onSave}
-          disabled={!isValidForSave()}
+          disabled={!isValidForSave() || isReadOnly}
           size="large"
         >
           批量保存

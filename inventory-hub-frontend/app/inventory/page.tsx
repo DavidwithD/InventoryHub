@@ -17,6 +17,7 @@ export default function InventoryPage() {
   
   const [selectedPurchaseId, setSelectedPurchaseId] = useState<number>(0);
   const [rows, setRows] = useState<InventoryRow[]>([]);
+  const [hasExistingInventories, setHasExistingInventories] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
 
@@ -33,8 +34,9 @@ export default function InventoryPage() {
           const selectedPurchase = purchases.find(p => p.id === selectedPurchaseId);
           if (!selectedPurchase) return;
 
-          // 转换为编辑行
+          // 检查是否已有库存明细
           if (data.length > 0) {
+            // 已有库存明细：转换为只读行
             const editRows: InventoryRow[] = data.map((inv, idx) => {
               const purchaseAmountCny = inv.purchaseAmount / selectedPurchase.exchangeRate;
               const purchaseAmountJpy = inv.purchaseAmount;
@@ -53,8 +55,11 @@ export default function InventoryPage() {
               };
             });
             setRows(editRows);
+            setHasExistingInventories(true); // 标记为只读模式
           } else {
+            // 没有库存明细：创建新的可编辑行
             setRows([createEmptyRow()]);
+            setHasExistingInventories(false); // 标记为编辑模式
           }
         })
         .catch(() => setError('加载库存记录失败'));
@@ -63,6 +68,7 @@ export default function InventoryPage() {
     } else {
       loadAllInventories().catch(() => setError('加载库存记录失败'));
       setRows([]);
+      setHasExistingInventories(false);
     }
   }, [selectedPurchaseId, loadInventoriesByPurchase, loadExpectedTotal, loadAllInventories, purchases]);
 
@@ -134,10 +140,11 @@ export default function InventoryPage() {
       await createBatch(createData);
       setSuccess('库存记录保存成功');
       
-      // 重新加载当前进货单的库存
+      // 保存成功后重新加载（会自动设置为只读模式）
       if (selectedPurchaseId > 0) {
         await loadInventoriesByPurchase(selectedPurchaseId);
       }
+      await loadAllInventories();
     } catch (err: any) {
       const errorMessage = typeof err.response?.data === 'string' 
         ? err.response.data 
@@ -173,6 +180,7 @@ export default function InventoryPage() {
             products={products}
             selectedPurchase={selectedPurchase}
             expectedTotalJpy={expectedTotalJpy}
+            isReadOnly={hasExistingInventories}
             onAddRow={addRow}
             onDeleteRow={deleteRow}
             onUpdateRow={updateRow}
