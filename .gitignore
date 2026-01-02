@@ -1,0 +1,3 @@
+# .NET build outputs (Debug/Release, any TFMs)
+**/bin/
+**/obj/
