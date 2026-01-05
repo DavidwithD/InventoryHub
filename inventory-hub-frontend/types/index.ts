@@ -38,7 +38,8 @@ export interface Purchase extends BaseEntity {
 export interface Inventory extends BaseEntity {
   productId: number;
   purchaseId: number;
-  purchaseAmount: number;
+  purchaseAmount: number; // 进货金额(日元)
+  purchaseAmountCny: number; // 进货金额(人民币)
   purchaseQuantity: number;
   unitCost: number;
   stockQuantity: number;

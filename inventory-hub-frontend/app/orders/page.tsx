@@ -3,9 +3,8 @@
 import { useState, useEffect } from 'react';
 import { Box, Button, Alert } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
-import { Order, Inventory } from '@/types';
+import { Order } from '@/types';
 import { useOrders } from './hooks/useOrders';
-import { useProducts } from '../products/hooks/useProducts';
 import { useInventory } from '../inventory/hooks/useInventory';
 import OrdersTable from './components/OrdersTable';
 import OrderFilters from './components/OrderFilters';
@@ -15,7 +14,6 @@ import ImportDialog from './components/ImportDialog';
 
 export default function OrdersPage() {
   const { orders, loadOrders, createOrder, updateOrder, deleteOrder, importFromCurl } = useOrders();
-  const { products, loadProducts } = useProducts();
   const { inventories, loadAllInventories } = useInventory();
   
   const [error, setError] = useState('');
@@ -34,9 +32,8 @@ export default function OrdersPage() {
 
   useEffect(() => {
     loadOrders().catch(() => setError('加载订单列表失败'));
-    loadProducts().catch(() => setError('加载商品列表失败'));
     loadAllInventories().catch(() => setError('加载库存列表失败'));
-  }, [loadOrders, loadProducts, loadAllInventories]);
+  }, [loadOrders, loadAllInventories]);
 
   const getFilteredOrders = () => {
     let filtered = [...orders];

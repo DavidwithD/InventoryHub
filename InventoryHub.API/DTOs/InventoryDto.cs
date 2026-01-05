@@ -7,7 +7,8 @@ public class InventoryDto
     public string ProductName { get; set; } = string.Empty;
     public int PurchaseId { get; set; }
     public string PurchaseNo { get; set; } = string.Empty;
-    public decimal PurchaseAmount { get; set; }
+    public decimal PurchaseAmount { get; set; } // 进货金额(日元)
+    public decimal PurchaseAmountCny { get; set; } // 进货金额(人民币)
     public int PurchaseQuantity { get; set; }
     public decimal UnitCost { get; set; }
     public int StockQuantity { get; set; }

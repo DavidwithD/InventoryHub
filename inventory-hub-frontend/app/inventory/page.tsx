@@ -19,6 +19,7 @@ export default function InventoryPage() {
   
   const [selectedPurchaseId, setSelectedPurchaseId] = useState<number>(0);
   const [rows, setRows] = useState<InventoryRow[]>([]);
+  const [originalRows, setOriginalRows] = useState<InventoryRow[]>([]); // 追踪原始数据
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
 
@@ -49,7 +50,7 @@ export default function InventoryPage() {
           if (data.length > 0) {
             // 已有库存明细：转换为编辑行，每行独立的 isReferenced 状态
             const editRows: InventoryRow[] = data.map((inv) => {
-              const purchaseAmountCny = inv.purchaseAmount / selectedPurchase.exchangeRate;
+              const purchaseAmountCny = inv.purchaseAmountCny; // 直接使用 API 返回的人民币金额
               const purchaseAmountJpy = inv.purchaseAmount;
               const unitCostJpy = inv.unitCost;
               
@@ -68,9 +69,12 @@ export default function InventoryPage() {
               };
             });
             setRows(editRows);
+            setOriginalRows(editRows); // 保存原始数据副本
           } else {
             // 没有库存明细：创建新的可编辑行
-            setRows([createEmptyRow()]);
+            const emptyRow = createEmptyRow();
+            setRows([emptyRow]);
+            setOriginalRows([]); // 新建模式无原始数据
           }
         })
         .catch(() => setError('加载库存记录失败'));
@@ -79,6 +83,7 @@ export default function InventoryPage() {
     } else {
       loadAllInventories().catch(() => setError('加载库存记录失败'));
       setRows([]);
+      setOriginalRows([]);
     }
   }, [selectedPurchaseId, loadInventoriesByPurchase, loadExpectedTotal, loadAllInventories, purchases]);
 
@@ -173,17 +178,28 @@ export default function InventoryPage() {
         await createBatch(createData);
       }
 
-      // 更新已存在的未引用的行
+      // 只更新真正被修改过的行
       for (const row of existingRows) {
         if (!row.isReferenced && row.id) {
-          const updateData: CreateInventory = {
-            productId: row.productId,
-            purchaseId: row.purchaseId,
-            purchaseAmountCny: row.purchaseAmountCny,
-            purchaseQuantity: row.purchaseQuantity,
-            stockQuantity: row.stockQuantity,
-          };
-          await updateInventory(row.id, updateData);
+          const originalRow = originalRows.find(orig => orig.id === row.id);
+          
+          // 检查是否有实质性修改
+          const hasChanges = !originalRow || 
+            originalRow.productId !== row.productId ||
+            originalRow.purchaseAmountCny !== row.purchaseAmountCny ||
+            originalRow.purchaseQuantity !== row.purchaseQuantity ||
+            originalRow.stockQuantity !== row.stockQuantity;
+
+          if (hasChanges) {
+            const updateData: CreateInventory = {
+              productId: row.productId,
+              purchaseId: row.purchaseId,
+              purchaseAmountCny: row.purchaseAmountCny,
+              purchaseQuantity: row.purchaseQuantity,
+              stockQuantity: row.stockQuantity,
+            };
+            await updateInventory(row.id, updateData);
+          }
         }
       }
 
@@ -203,6 +219,24 @@ export default function InventoryPage() {
   };
 
   const selectedPurchase = purchases.find(p => p.id === selectedPurchaseId);
+
+  // 计算是否有未保存的修改
+  const hasChanges = () => {
+    // 有新行（没有 id）
+    if (rows.some(row => !row.id)) return true;
+    
+    // 检查已存在的行是否被修改
+    return rows.some(row => {
+      if (!row.id) return false;
+      const originalRow = originalRows.find(orig => orig.id === row.id);
+      if (!originalRow) return true; // 找不到原始数据，视为有修改
+      
+      return originalRow.productId !== row.productId ||
+             originalRow.purchaseAmountCny !== row.purchaseAmountCny ||
+             originalRow.purchaseQuantity !== row.purchaseQuantity ||
+             originalRow.stockQuantity !== row.stockQuantity;
+    });
+  };
 
   return (
     <>
@@ -229,6 +263,7 @@ export default function InventoryPage() {
             products={products}
             selectedPurchase={selectedPurchase}
             expectedTotalJpy={expectedTotalJpy}
+            hasChanges={hasChanges()}
             onAddRow={addRow}
             onDeleteRow={deleteRow}
             onUpdateRow={updateRow}

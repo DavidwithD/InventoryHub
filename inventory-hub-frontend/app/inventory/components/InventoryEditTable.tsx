@@ -27,6 +27,7 @@ interface Props {
   products: Product[];
   selectedPurchase: Purchase;
   expectedTotalJpy: number;
+  hasChanges: boolean; // 是否有未保存的修改
   onAddRow: () => void;
   onDeleteRow: (tempId: string) => void;
   onUpdateRow: (tempId: string, field: keyof InventoryRow, value: any) => void;
@@ -38,6 +39,7 @@ export default function InventoryEditTable({
   products,
   selectedPurchase,
   expectedTotalJpy,
+  hasChanges,
   onAddRow,
   onDeleteRow,
   onUpdateRow,
@@ -268,7 +270,7 @@ export default function InventoryEditTable({
         <Button
           variant="contained"
           onClick={onSave}
-          disabled={!isValidForSave() || !hasAnyEditableRow()}
+          disabled={!isValidForSave() || !hasAnyEditableRow() || !hasChanges}
           size="large"
         >
           批量保存

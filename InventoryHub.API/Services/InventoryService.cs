@@ -50,6 +50,7 @@ public class InventoryService : IInventoryService
             PurchaseId = i.PurchaseId,
             PurchaseNo = i.Purchase?.PurchaseNo ?? "",
             PurchaseAmount = i.PurchaseAmount,
+            PurchaseAmountCny = i.PurchaseAmountCny,
             PurchaseQuantity = i.PurchaseQuantity,
             UnitCost = i.UnitCost,
             StockQuantity = i.StockQuantity,
@@ -80,6 +81,7 @@ public class InventoryService : IInventoryService
             PurchaseId = inventory.PurchaseId,
             PurchaseNo = inventory.Purchase?.PurchaseNo ?? "",
             PurchaseAmount = inventory.PurchaseAmount,
+            PurchaseAmountCny = inventory.PurchaseAmountCny,
             PurchaseQuantity = inventory.PurchaseQuantity,
             UnitCost = inventory.UnitCost,
             StockQuantity = inventory.StockQuantity,
@@ -124,6 +126,8 @@ public class InventoryService : IInventoryService
             PurchaseId = dto.PurchaseId,
             PurchaseQuantity = dto.PurchaseQuantity,
             StockQuantity = dto.StockQuantity,
+            // 保存原始人民币金额
+            PurchaseAmountCny = dto.PurchaseAmountCny,
             // 将人民币转换为日元：CNY × 汇率 = JPY
             PurchaseAmount = dto.PurchaseAmountCny * purchase.ExchangeRate,
             // 计算日元单位成本
@@ -198,6 +202,8 @@ public class InventoryService : IInventoryService
         inventory.PurchaseId = dto.PurchaseId;
         inventory.PurchaseQuantity = dto.PurchaseQuantity;
         inventory.StockQuantity = dto.StockQuantity;
+        // 保存原始人民币金额
+        inventory.PurchaseAmountCny = dto.PurchaseAmountCny;
         // 将人民币转换为日元
         inventory.PurchaseAmount = dto.PurchaseAmountCny * purchase.ExchangeRate;
         // 重新计算日元单位成本
