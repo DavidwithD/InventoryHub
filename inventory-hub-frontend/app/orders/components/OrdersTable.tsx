@@ -28,8 +28,8 @@ interface Props {
 }
 
 export default function OrdersTable({ orders, onEdit, onDelete, onViewDetails }: Props) {
-  const [orderBy, setOrderBy] = useState<OrderByType>('totalCost');
-  const [order, setOrder] = useState<'asc' | 'desc'>('asc');
+  const [orderBy, setOrderBy] = useState<OrderByType>('transactionTime');
+  const [order, setOrder] = useState<'asc' | 'desc'>('desc');
 
   const handleRequestSort = (property: OrderByType) => {
     const isAsc = orderBy === property && order === 'asc';

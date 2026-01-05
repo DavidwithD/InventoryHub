@@ -17,10 +17,14 @@ public class PurchasesController : ControllerBase
 
     [HttpGet]
     public async Task<ActionResult<IEnumerable<PurchaseDto>>> GetAll(
+        [FromQuery] string? purchaseNo = null,
+        [FromQuery] int? supplierId = null,
         [FromQuery] DateTime? startDate = null,
-        [FromQuery] DateTime? endDate = null)
+        [FromQuery] DateTime? endDate = null,
+        [FromQuery] string sortBy = "purchaseDate",
+        [FromQuery] string sortOrder = "desc")
     {
-        var purchases = await _purchaseService.GetAllAsync(startDate, endDate);
+        var purchases = await _purchaseService.GetAllAsync(purchaseNo, supplierId, startDate, endDate, sortBy, sortOrder);
         return Ok(purchases);
     }
 

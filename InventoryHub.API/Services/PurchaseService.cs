@@ -17,10 +17,28 @@ public class PurchaseService : IPurchaseService
         _mapper = mapper;
     }
 
-    public async Task<IEnumerable<PurchaseDto>> GetAllAsync(DateTime? startDate = null, DateTime? endDate = null)
+    public async Task<IEnumerable<PurchaseDto>> GetAllAsync(
+        string? purchaseNo = null,
+        int? supplierId = null,
+        DateTime? startDate = null,
+        DateTime? endDate = null,
+        string sortBy = "purchaseDate",
+        string sortOrder = "desc")
     {
         var query = _context.Purchases
             .Where(p => !p.IsDeleted);
+
+        // 单号模糊搜索
+        if (!string.IsNullOrWhiteSpace(purchaseNo))
+        {
+            query = query.Where(p => p.PurchaseNo.Contains(purchaseNo));
+        }
+
+        // 供应商筛选
+        if (supplierId.HasValue)
+        {
+            query = query.Where(p => p.SupplierId == supplierId.Value);
+        }
 
         // 日期范围筛选
         if (startDate.HasValue)
@@ -32,11 +50,23 @@ public class PurchaseService : IPurchaseService
             query = query.Where(p => p.PurchaseDate <= endDate.Value);
         }
 
-        var purchases = await query
-            .Include(p => p.Supplier)
-            .OrderByDescending(p => p.PurchaseDate)
-            .ThenByDescending(p => p.Id)
-            .ToListAsync();
+        // 动态排序
+        query = query.Include(p => p.Supplier);
+
+        query = sortBy.ToLower() switch
+        {
+            "purchaseno" => sortOrder.ToLower() == "asc"
+                ? query.OrderBy(p => p.PurchaseNo)
+                : query.OrderByDescending(p => p.PurchaseNo),
+            "totalamount" => sortOrder.ToLower() == "asc"
+                ? query.OrderBy(p => p.TotalAmount)
+                : query.OrderByDescending(p => p.TotalAmount),
+            _ => sortOrder.ToLower() == "asc"
+                ? query.OrderBy(p => p.PurchaseDate).ThenBy(p => p.Id)
+                : query.OrderByDescending(p => p.PurchaseDate).ThenByDescending(p => p.Id)
+        };
+
+        var purchases = await query.ToListAsync();
 
         return purchases.Select(p => new PurchaseDto
         {

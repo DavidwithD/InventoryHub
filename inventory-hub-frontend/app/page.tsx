@@ -76,7 +76,7 @@ export default function Home() {
 
       {/* 统计卡片 */}
       <Grid container spacing={3} sx={{ mb: 4 }}>
-        <Grid item xs={12} sm={6} md={3}>
+        <Grid size={{ xs: 12, sm: 6, md: 3 }}>
           <Paper sx={{ p: 3, bgcolor: '#e3f2fd', height: '100%' }}>
             <Box sx={{ display: 'flex', alignItems: 'center' }}>
               <InventoryIcon sx={{ fontSize: 40, color: '#1976d2', mr: 2 }} />
@@ -92,7 +92,7 @@ export default function Home() {
           </Paper>
         </Grid>
 
-        <Grid item xs={12} sm={6} md={3}>
+        <Grid size={{ xs: 12, sm: 6, md: 3 }}>
           <Paper sx={{ p: 3, bgcolor: '#e8f5e9', height: '100%' }}>
             <Box sx={{ display: 'flex', alignItems: 'center' }}>
               <TrendingUp sx={{ fontSize: 40, color: '#2e7d32', mr: 2 }} />
@@ -108,7 +108,7 @@ export default function Home() {
           </Paper>
         </Grid>
 
-        <Grid item xs={12} sm={6} md={3}>
+        <Grid size={{ xs: 12, sm: 6, md: 3 }}>
           <Paper sx={{ p: 3, bgcolor: '#fff3e0', height: '100%' }}>
             <Box sx={{ display: 'flex', alignItems: 'center' }}>
               <ShoppingCart sx={{ fontSize: 40, color: '#ed6c02', mr: 2 }} />
@@ -124,7 +124,7 @@ export default function Home() {
           </Paper>
         </Grid>
 
-        <Grid item xs={12} sm={6} md={3}>
+        <Grid size={{ xs: 12, sm: 6, md: 3 }}>
           <Paper sx={{ p: 3, bgcolor: '#ffebee', height: '100%' }}>
             <Box sx={{ display: 'flex', alignItems: 'center' }}>
               <Warning sx={{ fontSize: 40, color: '#d32f2f', mr: 2 }} />
@@ -149,7 +149,7 @@ export default function Home() {
         {navigationCards.map((card) => {
           const IconComponent = card.icon;
           return (
-            <Grid item xs={12} sm={6} md={4} lg={2} key={card.path}>
+            <Grid size={{ xs: 12, sm: 6, md: 4, lg: 2 }} key={card.path}>
               <Card>
                 <CardActionArea onClick={() => router.push(card.path)}>
                   <CardContent sx={{ textAlign: 'center', py: 3 }}>

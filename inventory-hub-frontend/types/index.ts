@@ -150,12 +150,3 @@ export interface OrderDetailRow {
   unitCost?: number;
   notes?: string;
 }
-  quantity: number;
-  packagingCost: number;
-  otherCost: number;
-  subtotalCost: number;
-  notes?: string;
-  order?: Order;
-  inventory?: Inventory;
-  product?: Product;
-}

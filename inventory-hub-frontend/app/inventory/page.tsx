@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { Paper, Alert } from '@mui/material';
 import { CreateInventory, InventoryRow } from '@/types';
 import { useInventory } from './hooks/useInventory';
@@ -11,6 +12,7 @@ import InventoryTable from './components/InventoryTable';
 import InventoryEditTable from './components/InventoryEditTable';
 
 export default function InventoryPage() {
+  const searchParams = useSearchParams();
   const { inventories, expectedTotalJpy, loadAllInventories, loadInventoriesByPurchase, loadExpectedTotal, createBatch, updateInventory, deleteInventory } = useInventory();
   const { products, loadProducts } = useProducts();
   const { purchases, loadPurchases } = usePurchases();
@@ -25,6 +27,17 @@ export default function InventoryPage() {
     loadPurchases().catch(() => setError('加载进货记录失败'));
     loadAllInventories().catch(() => setError('加载库存记录失败'));
   }, [loadProducts, loadPurchases, loadAllInventories]);
+
+  // 从 URL 读取 purchaseId 参数并自动选择
+  useEffect(() => {
+    const purchaseIdParam = searchParams.get('purchaseId');
+    if (purchaseIdParam) {
+      const id = parseInt(purchaseIdParam, 10);
+      if (!isNaN(id)) {
+        setSelectedPurchaseId(id);
+      }
+    }
+  }, [searchParams]);
 
   useEffect(() => {
     if (selectedPurchaseId > 0) {

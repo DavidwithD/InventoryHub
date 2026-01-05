@@ -26,10 +26,6 @@ export default function OrdersPage() {
   const [editingOrder, setEditingOrder] = useState<Order | null>(null);
   const [viewingOrderId, setViewingOrderId] = useState<number | null>(null);
 
-  // 排序状态
-  const [orderBy, setOrderBy] = useState<string>('transactionTime');
-  const [order, setOrder] = useState<'asc' | 'desc'>('desc');
-
   // 筛选状态
   const [searchOrderNo, setSearchOrderNo] = useState('');
   const [costStatus, setCostStatus] = useState<'all' | 'null' | 'hasValue'>('all');
@@ -150,30 +146,6 @@ export default function OrdersPage() {
     return result;
   };
 
-  const handleRequestSort = (property: string) => {
-    const isAsc = orderBy === property && order === 'asc';
-    setOrder(isAsc ? 'desc' : 'asc');
-    setOrderBy(property);
-  };
-
-  const getFilteredAndSortedOrders = () => {
-    const filtered = getFilteredOrders();
-    
-    return filtered.sort((a, b) => {
-      let aVal: any = a[orderBy as keyof Order];
-      let bVal: any = b[orderBy as keyof Order];
-      
-      if (orderBy === 'profit') {
-        aVal = a.revenue - (a.totalCost || 0);
-        bVal = b.revenue - (b.totalCost || 0);
-      }
-      
-      if (aVal < bVal) return order === 'asc' ? -1 : 1;
-      if (aVal > bVal) return order === 'asc' ? 1 : -1;
-      return 0;
-    });
-  };
-
   const handleCloseDialog = () => {
     setOpenDialog(false);
     setEditingOrder(null);
@@ -192,7 +164,7 @@ export default function OrdersPage() {
     setOpenImportDialog(false);
   };
 
-  const filteredOrders = getFilteredAndSortedOrders();
+  const filteredOrders = getFilteredOrders();
 
   return (
     <>

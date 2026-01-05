@@ -1,28 +1,65 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { useSearchParams, useRouter } from 'next/navigation';
 import { Purchase } from '@/types';
 import PurchasesTable from '@/app/purchases/components/PurchasesTable';
 import PurchasesToolbar from '@/app/purchases/components/PurchasesToolbar';
 import PurchaseDialog from '@/app/purchases/components/PurchaseDialog';
 import { usePurchases } from '@/app/purchases/hooks/usePurchases';
+import { useSuppliers } from '@/app/purchases/hooks/useSuppliers';
 import { Alert, Snackbar } from '@mui/material';
 
 const EXCHANGE_RATE_KEY = 'lastExchangeRate';
 
 export default function PurchasesPage() {
   const { purchases, loading, loadPurchases, deletePurchase, createPurchase, updatePurchase } = usePurchases();
+  const { suppliers, loadSuppliers } = useSuppliers();
+  const searchParams = useSearchParams();
+  const router = useRouter();
 
+  const [filters, setFilters] = useState({
+    purchaseNo: '',
+    supplierId: 0,
+    dateRange: 'all',
+    startDate: '',
+    endDate: '',
+    sortBy: 'purchaseDate',
+    sortOrder: 'desc',
+  });
   
   const [openDialog, setOpenDialog] = useState(false);
   const [editingPurchase, setEditingPurchase] = useState<Purchase | null>(null);
   const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'success' as 'success' | 'error' });
 
+  // 初始化：加载供应商和从 URL 读取筛选参数
   useEffect(() => {
-    // load purchases
-    loadPurchases().catch((e) => showSnackbar('加载进货列表失败', 'error'));
+    loadSuppliers().catch(() => showSnackbar('加载供应商列表失败', 'error'));
+    
+    const purchaseNoFromUrl = searchParams.get('purchaseNo');
+    if (purchaseNoFromUrl) {
+      setFilters(prev => ({ ...prev, purchaseNo: purchaseNoFromUrl }));
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // 筛选条件变化时重新加载数据
+  useEffect(() => {
+    const params: any = {};
+    if (filters.purchaseNo) params.purchaseNo = filters.purchaseNo;
+    if (filters.supplierId > 0) params.supplierId = filters.supplierId;
+    if (filters.startDate) params.startDate = filters.startDate;
+    if (filters.endDate) params.endDate = filters.endDate;
+    if (filters.sortBy) params.sortBy = filters.sortBy;
+    if (filters.sortOrder) params.sortOrder = filters.sortOrder;
+
+    loadPurchases(params).catch(() => showSnackbar('加载进货列表失败', 'error'));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [filters]);
+
+  const handleFilterChange = (key: string, value: any) => {
+    setFilters(prev => ({ ...prev, [key]: value }));
+  };
 
   const showSnackbar = (message: string, severity: 'success' | 'error' = 'success') => {
     setSnackbar({ open: true, message, severity });
@@ -79,7 +116,12 @@ export default function PurchasesPage() {
 
   return (
     <>
-      <PurchasesToolbar onAdd={handleAdd} />
+      <PurchasesToolbar 
+        onAdd={handleAdd} 
+        suppliers={suppliers}
+        filters={filters}
+        onFilterChange={handleFilterChange}
+      />
 
       <PurchasesTable purchases={purchases} loading={loading} onEdit={handleEdit} onDelete={handleDelete} />
 

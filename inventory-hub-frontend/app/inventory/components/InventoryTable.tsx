@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import Link from 'next/link';
 import {
   Box,
   Paper,
@@ -230,7 +231,20 @@ export default function InventoryTable({ inventories, products, purchases }: Pro
                   }}
                 >
                   <TableCell>{inv.productName}</TableCell>
-                  <TableCell>{purchase?.purchaseNo || '-'}</TableCell>
+                  <TableCell>
+                    {purchase?.purchaseNo ? (
+                      <Link 
+                        href={`/purchases?purchaseNo=${encodeURIComponent(purchase.purchaseNo)}`}
+                        style={{ 
+                          color: '#1976d2', 
+                          textDecoration: 'underline',
+                          cursor: 'pointer'
+                        }}
+                      >
+                        {purchase.purchaseNo}
+                      </Link>
+                    ) : '-'}
+                  </TableCell>
                   <TableCell align="right">¥{inv.purchaseAmount.toFixed(2)}</TableCell>
                   <TableCell align="right">{inv.purchaseQuantity}</TableCell>
                   <TableCell align="right">¥{inv.unitCost.toFixed(2)}</TableCell>

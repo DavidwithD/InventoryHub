@@ -8,10 +8,26 @@ export function usePurchases() {
   const [purchases, setPurchases] = useState<Purchase[]>([]);
   const [loading, setLoading] = useState(false);
 
-  const loadPurchases = useCallback(async () => {
+  const loadPurchases = useCallback(async (filters?: {
+    purchaseNo?: string;
+    supplierId?: number;
+    startDate?: string;
+    endDate?: string;
+    sortBy?: string;
+    sortOrder?: string;
+  }) => {
     setLoading(true);
     try {
-      const res = await api.get('/purchases');
+      const params = new URLSearchParams();
+      if (filters?.purchaseNo) params.append('purchaseNo', filters.purchaseNo);
+      if (filters?.supplierId) params.append('supplierId', filters.supplierId.toString());
+      if (filters?.startDate) params.append('startDate', filters.startDate);
+      if (filters?.endDate) params.append('endDate', filters.endDate);
+      if (filters?.sortBy) params.append('sortBy', filters.sortBy);
+      if (filters?.sortOrder) params.append('sortOrder', filters.sortOrder);
+      
+      const url = `/purchases${params.toString() ? `?${params.toString()}` : ''}`;
+      const res = await api.get(url);
       setPurchases(res.data || []);
       return res.data;
     } catch (err) {
