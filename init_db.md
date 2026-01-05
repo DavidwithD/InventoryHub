@@ -117,3 +117,8 @@ INDEX idx_inventory_id (inventory_id),
 INDEX idx_product_id (product_id),
 INDEX idx_order_details_order_inventory (order_id, inventory_id)
 );
+
+# 创建用户
+CREATE USER 'inventory_user'@'localhost' IDENTIFIED BY 'inventory_pass';
+GRANT ALL PRIVILEGES ON inventory_hub.* TO 'inventory_user'@'localhost';
+FLUSH PRIVILEGES;
