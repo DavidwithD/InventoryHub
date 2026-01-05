@@ -34,6 +34,14 @@ public class InventoryService : IInventoryService
             .OrderByDescending(i => i.CreatedAt)
             .ToListAsync();
 
+        // 获取所有被订单引用的库存 ID
+        var inventoryIds = inventories.Select(i => i.Id).ToList();
+        var referencedIds = await _context.OrderDetails
+            .Where(od => inventoryIds.Contains(od.InventoryId) && !od.IsDeleted)
+            .Select(od => od.InventoryId)
+            .Distinct()
+            .ToListAsync();
+
         return inventories.Select(i => new InventoryDto
         {
             Id = i.Id,
@@ -45,6 +53,7 @@ public class InventoryService : IInventoryService
             PurchaseQuantity = i.PurchaseQuantity,
             UnitCost = i.UnitCost,
             StockQuantity = i.StockQuantity,
+            IsReferenced = referencedIds.Contains(i.Id),
             CreatedAt = i.CreatedAt,
             UpdatedAt = i.UpdatedAt
         });
@@ -59,6 +68,10 @@ public class InventoryService : IInventoryService
 
         if (inventory == null) return null;
 
+        // 检查是否被订单引用
+        var isReferenced = await _context.OrderDetails
+            .AnyAsync(od => od.InventoryId == id && !od.IsDeleted);
+
         return new InventoryDto
         {
             Id = inventory.Id,
@@ -70,6 +83,7 @@ public class InventoryService : IInventoryService
             PurchaseQuantity = inventory.PurchaseQuantity,
             UnitCost = inventory.UnitCost,
             StockQuantity = inventory.StockQuantity,
+            IsReferenced = isReferenced,
             CreatedAt = inventory.CreatedAt,
             UpdatedAt = inventory.UpdatedAt
         };
@@ -144,6 +158,15 @@ public class InventoryService : IInventoryService
             return null;
         }
 
+        // 检查是否被订单引用
+        var isReferenced = await _context.OrderDetails
+            .AnyAsync(od => od.InventoryId == id && !od.IsDeleted);
+
+        if (isReferenced)
+        {
+            throw new InvalidOperationException("该库存已被订单引用，无法修改");
+        }
+
         // 验证商品是否存在
         var productExists = await _context.Products
             .AnyAsync(p => p.Id == dto.ProductId && !p.IsDeleted);
@@ -195,8 +218,15 @@ public class InventoryService : IInventoryService
             return false;
         }
 
-        // 检查是否有关联的订单记录（如果有 OrderDetails 关联）
-        // 这里暂时简化，直接允许删除
+        // 检查是否被订单引用
+        var isReferenced = await _context.OrderDetails
+            .AnyAsync(od => od.InventoryId == id && !od.IsDeleted);
+
+        if (isReferenced)
+        {
+            throw new InvalidOperationException("该库存已被订单引用，无法删除");
+        }
+
         inventory.IsDeleted = true;
         inventory.UpdatedAt = DateTime.UtcNow;
         await _context.SaveChangesAsync();

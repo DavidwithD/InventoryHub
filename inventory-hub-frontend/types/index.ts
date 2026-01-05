@@ -42,6 +42,7 @@ export interface Inventory extends BaseEntity {
   purchaseQuantity: number;
   unitCost: number;
   stockQuantity: number;
+  isReferenced: boolean;
   productName?: string;
   purchaseNo?: string;
   product?: Product;
@@ -58,6 +59,8 @@ export interface CreateInventory {
 
 export interface InventoryRow extends CreateInventory {
   tempId: string;
+  id?: number; // 已存在的库存记录有id
+  isReferenced?: boolean; // 是否被订单引用
   productName?: string;
   purchaseAmountJpy?: number; // 计算得到的日元金额
   unitCostJpy?: number; // 计算得到的日元单位成本

@@ -27,7 +27,6 @@ interface Props {
   products: Product[];
   selectedPurchase: Purchase;
   expectedTotalJpy: number;
-  isReadOnly: boolean;
   onAddRow: () => void;
   onDeleteRow: (tempId: string) => void;
   onUpdateRow: (tempId: string, field: keyof InventoryRow, value: any) => void;
@@ -39,7 +38,6 @@ export default function InventoryEditTable({
   products,
   selectedPurchase,
   expectedTotalJpy,
-  isReadOnly,
   onAddRow,
   onDeleteRow,
   onUpdateRow,
@@ -73,9 +71,16 @@ export default function InventoryEditTable({
     return currentTotalCny.toFixed(2) === selectedPurchase.totalAmount.toFixed(2);
   };
 
+  // 检查是否有任何可编辑的行
+  const hasAnyEditableRow = (): boolean => {
+    return rows.some(row => !row.isReferenced);
+  };
+
   const currentTotalCny = calculateCurrentTotalCny();
   const currentTotalJpy = calculateCurrentTotalJpy();
   const differenceCny = getDifferenceCny();
+  const hasReferencedRows = rows.some(row => row.isReferenced);
+  const canAddRows = hasAnyEditableRow() || rows.length === 0;
 
   return (
     <>
@@ -85,27 +90,25 @@ export default function InventoryEditTable({
           variant="outlined"
           startIcon={<AddIcon />}
           onClick={onAddRow}
-          disabled={isReadOnly}
+          disabled={!canAddRows}
         >
           添加行
         </Button>
       </Box>
 
-      {isReadOnly && (
+      {hasReferencedRows && (
         <Alert severity="info" sx={{ mb: 2 }}>
           <Typography variant="body2">
-            <strong>只读模式：</strong>该进货单的库存明细已生成，不允许修改或删除。如需调整，请联系管理员。
+            <strong>提示：</strong>灰色背景的行表示已被订单引用，无法修改或删除。白色背景的行可以正常编辑。
           </Typography>
         </Alert>
       )}
 
-      {!isReadOnly && (
-        <Alert severity="info" sx={{ mb: 2 }}>
-          <Typography variant="caption">
-            <strong>说明:</strong> 输入人民币金额，系统将自动转换为日元存储到数据库。单位成本为日元单价。
-          </Typography>
-        </Alert>
-      )}
+      <Alert severity="info" sx={{ mb: 2 }}>
+        <Typography variant="caption">
+          <strong>说明:</strong> 输入人民币金额，系统将自动转换为日元存储到数据库。单位成本为日元单价。
+        </Typography>
+      </Alert>
 
       <TableContainer>
         <Table size="small">
@@ -136,93 +139,101 @@ export default function InventoryEditTable({
             </TableRow>
           </TableHead>
           <TableBody>
-            {rows.map((row) => (
-              <TableRow key={row.tempId}>
-                <TableCell>
-                  <FormControl fullWidth size="small">
-                    <Select
-                      value={row.productId}
-                      displayEmpty
-                      disabled={isReadOnly}
-                      onChange={(e: SelectChangeEvent<number>) => {
-                        onUpdateRow(row.tempId, 'productId', Number(e.target.value));
-                      }}
-                      renderValue={(value) => {
-                        if (value === 0) return '请选择商品';
-                        const product = products.find(p => p.id === value);
-                        return product ? `${product.categoryName} - ${product.name}` : '请选择商品';
+            {rows.map((row) => {
+              const isRowLocked = row.isReferenced === true;
+              return (
+                <TableRow 
+                  key={row.tempId}
+                  sx={{
+                    bgcolor: isRowLocked ? 'action.hover' : 'background.paper',
+                  }}
+                >
+                  <TableCell>
+                    <FormControl fullWidth size="small">
+                      <Select
+                        value={row.productId}
+                        displayEmpty
+                        disabled={isRowLocked}
+                        onChange={(e: SelectChangeEvent<number>) => {
+                          onUpdateRow(row.tempId, 'productId', Number(e.target.value));
+                        }}
+                        renderValue={(value) => {
+                          if (value === 0) return '请选择商品';
+                          const product = products.find(p => p.id === value);
+                          return product ? `${product.categoryName} - ${product.name}` : '请选择商品';
+                        }}
+                      >
+                        <MenuItem value={0} disabled>请选择商品</MenuItem>
+                        {products.map((product) => (
+                          <MenuItem key={product.id} value={product.id}>
+                            {product.categoryName} - {product.name}
+                          </MenuItem>
+                        ))}
+                      </Select>
+                    </FormControl>
+                  </TableCell>
+                  <TableCell>
+                    <TextField
+                      fullWidth
+                      size="small"
+                      type="number"
+                      value={row.purchaseAmountCny}
+                      onChange={(e) => onUpdateRow(row.tempId, 'purchaseAmountCny', parseFloat(e.target.value) || 0)}
+                      inputProps={{ step: 0.01, min: 0 }}
+                      placeholder="输入人民币"
+                      disabled={isRowLocked}
+                    />
+                  </TableCell>
+                  <TableCell>
+                    <Typography 
+                      variant="body2" 
+                      sx={{ 
+                        color: row.purchaseAmountJpy ?? 0 > 0 ? 'primary.main' : 'text.secondary',
+                        fontWeight: row.purchaseAmountJpy ?? 0 > 0 ? 'bold' : 'normal'
                       }}
                     >
-                      <MenuItem value={0} disabled>请选择商品</MenuItem>
-                      {products.map((product) => (
-                        <MenuItem key={product.id} value={product.id}>
-                          {product.categoryName} - {product.name}
-                        </MenuItem>
-                      ))}
-                    </Select>
-                  </FormControl>
-                </TableCell>
-                <TableCell>
-                  <TextField
-                    fullWidth
-                    size="small"
-                    type="number"
-                    value={row.purchaseAmountCny}
-                    onChange={(e) => onUpdateRow(row.tempId, 'purchaseAmountCny', parseFloat(e.target.value) || 0)}
-                    inputProps={{ step: 0.01, min: 0 }}
-                    placeholder="输入人民币"
-                    disabled={isReadOnly}
-                  />
-                </TableCell>
-                <TableCell>
-                  <Typography 
-                    variant="body2" 
-                    sx={{ 
-                      color: row.purchaseAmountJpy ?? 0 > 0 ? 'primary.main' : 'text.secondary',
-                      fontWeight: row.purchaseAmountJpy ?? 0 > 0 ? 'bold' : 'normal'
-                    }}
-                  >
-                    ¥{(row.purchaseAmountJpy || 0).toFixed(2)}
-                  </Typography>
-                </TableCell>
-                <TableCell>
-                  <TextField
-                    fullWidth
-                    size="small"
-                    type="number"
-                    value={row.purchaseQuantity}
-                    onChange={(e) => onUpdateRow(row.tempId, 'purchaseQuantity', parseInt(e.target.value) || 0)}
-                    inputProps={{ step: 1, min: 0 }}
-                    disabled={isReadOnly}
-                  />
-                </TableCell>
-                <TableCell>
-                  <Typography 
-                    variant="body2" 
-                    sx={{ 
-                      color: row.unitCostJpy ?? 0 > 0 ? 'success.main' : 'text.secondary',
-                      fontWeight: row.unitCostJpy ?? 0 > 0 ? 'bold' : 'normal'
-                    }}
-                  >
-                    ¥{(row.unitCostJpy || 0).toFixed(2)}
-                  </Typography>
-                </TableCell>
-                <TableCell>
-                  <Typography variant="body2">
-                    {(row.stockQuantity || 0)}
-                  </Typography>
-                </TableCell>
-                <TableCell>
-                  <IconButton
-                    size="small"
-                    onClick={() => onDeleteRow(row.tempId)}
-                    disabled={rows.length === 1 || isReadOnly}
-                  >
-                    <DeleteIcon />
-                  </IconButton>
-                </TableCell>
-              </TableRow>
-            ))}
+                      ¥{(row.purchaseAmountJpy || 0).toFixed(2)}
+                    </Typography>
+                  </TableCell>
+                  <TableCell>
+                    <TextField
+                      fullWidth
+                      size="small"
+                      type="number"
+                      value={row.purchaseQuantity}
+                      onChange={(e) => onUpdateRow(row.tempId, 'purchaseQuantity', parseInt(e.target.value) || 0)}
+                      inputProps={{ step: 1, min: 0 }}
+                      disabled={isRowLocked}
+                    />
+                  </TableCell>
+                  <TableCell>
+                    <Typography 
+                      variant="body2" 
+                      sx={{ 
+                        color: row.unitCostJpy ?? 0 > 0 ? 'success.main' : 'text.secondary',
+                        fontWeight: row.unitCostJpy ?? 0 > 0 ? 'bold' : 'normal'
+                      }}
+                    >
+                      ¥{(row.unitCostJpy || 0).toFixed(2)}
+                    </Typography>
+                  </TableCell>
+                  <TableCell>
+                    <Typography variant="body2">
+                      {(row.stockQuantity || 0)}
+                    </Typography>
+                  </TableCell>
+                  <TableCell>
+                    <IconButton
+                      size="small"
+                      onClick={() => onDeleteRow(row.tempId)}
+                      disabled={rows.length === 1 || isRowLocked}
+                    >
+                      <DeleteIcon />
+                    </IconButton>
+                  </TableCell>
+                </TableRow>
+              );
+            })}
           </TableBody>
         </Table>
       </TableContainer>
@@ -257,7 +268,7 @@ export default function InventoryEditTable({
         <Button
           variant="contained"
           onClick={onSave}
-          disabled={!isValidForSave() || isReadOnly}
+          disabled={!isValidForSave() || !hasAnyEditableRow()}
           size="large"
         >
           批量保存

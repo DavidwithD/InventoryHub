@@ -11,13 +11,12 @@ import InventoryTable from './components/InventoryTable';
 import InventoryEditTable from './components/InventoryEditTable';
 
 export default function InventoryPage() {
-  const { inventories, expectedTotalJpy, loadAllInventories, loadInventoriesByPurchase, loadExpectedTotal, createBatch } = useInventory();
+  const { inventories, expectedTotalJpy, loadAllInventories, loadInventoriesByPurchase, loadExpectedTotal, createBatch, updateInventory, deleteInventory } = useInventory();
   const { products, loadProducts } = useProducts();
   const { purchases, loadPurchases } = usePurchases();
   
   const [selectedPurchaseId, setSelectedPurchaseId] = useState<number>(0);
   const [rows, setRows] = useState<InventoryRow[]>([]);
-  const [hasExistingInventories, setHasExistingInventories] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
 
@@ -34,16 +33,17 @@ export default function InventoryPage() {
           const selectedPurchase = purchases.find(p => p.id === selectedPurchaseId);
           if (!selectedPurchase) return;
 
-          // 检查是否已有库存明细
           if (data.length > 0) {
-            // 已有库存明细：转换为只读行
-            const editRows: InventoryRow[] = data.map((inv, idx) => {
+            // 已有库存明细：转换为编辑行，每行独立的 isReferenced 状态
+            const editRows: InventoryRow[] = data.map((inv) => {
               const purchaseAmountCny = inv.purchaseAmount / selectedPurchase.exchangeRate;
               const purchaseAmountJpy = inv.purchaseAmount;
               const unitCostJpy = inv.unitCost;
               
               return {
-                tempId: `existing-${idx}`,
+                tempId: `existing-${inv.id}`,
+                id: inv.id, // 保存数据库ID
+                isReferenced: inv.isReferenced, // 保存引用状态
                 productId: inv.productId,
                 purchaseId: inv.purchaseId,
                 purchaseAmountCny: purchaseAmountCny,
@@ -55,11 +55,9 @@ export default function InventoryPage() {
               };
             });
             setRows(editRows);
-            setHasExistingInventories(true); // 标记为只读模式
           } else {
             // 没有库存明细：创建新的可编辑行
             setRows([createEmptyRow()]);
-            setHasExistingInventories(false); // 标记为编辑模式
           }
         })
         .catch(() => setError('加载库存记录失败'));
@@ -68,7 +66,6 @@ export default function InventoryPage() {
     } else {
       loadAllInventories().catch(() => setError('加载库存记录失败'));
       setRows([]);
-      setHasExistingInventories(false);
     }
   }, [selectedPurchaseId, loadInventoriesByPurchase, loadExpectedTotal, loadAllInventories, purchases]);
 
@@ -88,7 +85,25 @@ export default function InventoryPage() {
   };
 
   const deleteRow = (tempId: string) => {
-    setRows(rows.filter(r => r.tempId !== tempId));
+    const rowToDelete = rows.find(r => r.tempId === tempId);
+    
+    // 如果是已存在的记录，调用API删除
+    if (rowToDelete?.id) {
+      deleteInventory(rowToDelete.id)
+        .then(() => {
+          setSuccess('库存记录删除成功');
+          setRows(rows.filter(r => r.tempId !== tempId));
+        })
+        .catch((err: any) => {
+          const errorMessage = typeof err.response?.data === 'string' 
+            ? err.response.data 
+            : err.response?.data?.title || err.response?.data?.errors || err.message || '删除失败';
+          setError(typeof errorMessage === 'string' ? errorMessage : JSON.stringify(errorMessage));
+        });
+    } else {
+      // 新行直接从本地删除
+      setRows(rows.filter(r => r.tempId !== tempId));
+    }
   };
 
   const updateRow = (tempId: string, field: keyof InventoryRow, value: any) => {
@@ -129,18 +144,39 @@ export default function InventoryPage() {
       setError('');
       setSuccess('');
 
-      const createData: CreateInventory[] = rows.map(row => ({
-        productId: row.productId,
-        purchaseId: row.purchaseId,
-        purchaseAmountCny: row.purchaseAmountCny,
-        purchaseQuantity: row.purchaseQuantity,
-        stockQuantity: row.stockQuantity,
-      }));
+      // 分离新行和已存在的行
+      const newRows = rows.filter(row => !row.id);
+      const existingRows = rows.filter(row => row.id);
 
-      await createBatch(createData);
+      // 批量创建新行
+      if (newRows.length > 0) {
+        const createData: CreateInventory[] = newRows.map(row => ({
+          productId: row.productId,
+          purchaseId: row.purchaseId,
+          purchaseAmountCny: row.purchaseAmountCny,
+          purchaseQuantity: row.purchaseQuantity,
+          stockQuantity: row.stockQuantity,
+        }));
+        await createBatch(createData);
+      }
+
+      // 更新已存在的未引用的行
+      for (const row of existingRows) {
+        if (!row.isReferenced && row.id) {
+          const updateData: CreateInventory = {
+            productId: row.productId,
+            purchaseId: row.purchaseId,
+            purchaseAmountCny: row.purchaseAmountCny,
+            purchaseQuantity: row.purchaseQuantity,
+            stockQuantity: row.stockQuantity,
+          };
+          await updateInventory(row.id, updateData);
+        }
+      }
+
       setSuccess('库存记录保存成功');
       
-      // 保存成功后重新加载（会自动设置为只读模式）
+      // 保存成功后重新加载
       if (selectedPurchaseId > 0) {
         await loadInventoriesByPurchase(selectedPurchaseId);
       }
@@ -180,7 +216,6 @@ export default function InventoryPage() {
             products={products}
             selectedPurchase={selectedPurchase}
             expectedTotalJpy={expectedTotalJpy}
-            isReadOnly={hasExistingInventories}
             onAddRow={addRow}
             onDeleteRow={deleteRow}
             onUpdateRow={updateRow}

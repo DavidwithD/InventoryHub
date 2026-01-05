@@ -54,6 +54,29 @@ export function useInventory() {
     }
   }, [loadAllInventories]);
 
+  const updateInventory = useCallback(async (id: number, data: CreateInventory) => {
+    try {
+      const res = await api.put(`/inventory/${id}`, data);
+      // refresh list after update
+      await loadAllInventories();
+      return res.data;
+    } catch (err) {
+      console.error('updateInventory error', err);
+      throw err;
+    }
+  }, [loadAllInventories]);
+
+  const deleteInventory = useCallback(async (id: number) => {
+    try {
+      await api.delete(`/inventory/${id}`);
+      // refresh list after deletion
+      await loadAllInventories();
+    } catch (err) {
+      console.error('deleteInventory error', err);
+      throw err;
+    }
+  }, [loadAllInventories]);
+
   return {
     inventories,
     expectedTotalJpy,
@@ -61,6 +84,8 @@ export function useInventory() {
     loadInventoriesByPurchase,
     loadExpectedTotal,
     createBatch,
+    updateInventory,
+    deleteInventory,
     setInventories,
   };
 }
