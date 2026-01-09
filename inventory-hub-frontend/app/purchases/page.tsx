@@ -13,7 +13,8 @@ import { Alert, Snackbar } from '@mui/material';
 const EXCHANGE_RATE_KEY = 'lastExchangeRate';
 
 export default function PurchasesPage() {
-  const { purchases, loading, loadPurchases, deletePurchase, createPurchase, updatePurchase } = usePurchases();
+  const { purchases, loading, loadPurchases, deletePurchase, createPurchase, updatePurchase } =
+    usePurchases();
   const { suppliers, loadSuppliers } = useSuppliers();
   const searchParams = useSearchParams();
   const router = useRouter();
@@ -24,21 +25,25 @@ export default function PurchasesPage() {
     dateRange: 'all',
     startDate: '',
     endDate: '',
-    sortBy: 'purchaseDate',
+    sortBy: 'id',
     sortOrder: 'desc',
   });
-  
+
   const [openDialog, setOpenDialog] = useState(false);
   const [editingPurchase, setEditingPurchase] = useState<Purchase | null>(null);
-  const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'success' as 'success' | 'error' });
+  const [snackbar, setSnackbar] = useState({
+    open: false,
+    message: '',
+    severity: 'success' as 'success' | 'error',
+  });
 
   // 初始化：加载供应商和从 URL 读取筛选参数
   useEffect(() => {
     loadSuppliers().catch(() => showSnackbar('加载供应商列表失败', 'error'));
-    
+
     const purchaseNoFromUrl = searchParams.get('purchaseNo');
     if (purchaseNoFromUrl) {
-      setFilters(prev => ({ ...prev, purchaseNo: purchaseNoFromUrl }));
+      setFilters((prev) => ({ ...prev, purchaseNo: purchaseNoFromUrl }));
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -58,7 +63,7 @@ export default function PurchasesPage() {
   }, [filters]);
 
   const handleFilterChange = (key: string, value: any) => {
-    setFilters(prev => ({ ...prev, [key]: value }));
+    setFilters((prev) => ({ ...prev, [key]: value }));
   };
 
   const showSnackbar = (message: string, severity: 'success' | 'error' = 'success') => {
@@ -116,14 +121,19 @@ export default function PurchasesPage() {
 
   return (
     <>
-      <PurchasesToolbar 
-        onAdd={handleAdd} 
+      <PurchasesToolbar
+        onAdd={handleAdd}
         suppliers={suppliers}
         filters={filters}
         onFilterChange={handleFilterChange}
       />
 
-      <PurchasesTable purchases={purchases} loading={loading} onEdit={handleEdit} onDelete={handleDelete} />
+      <PurchasesTable
+        purchases={purchases}
+        loading={loading}
+        onEdit={handleEdit}
+        onDelete={handleDelete}
+      />
 
       <PurchaseDialog
         open={openDialog}

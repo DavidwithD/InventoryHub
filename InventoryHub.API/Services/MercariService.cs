@@ -107,6 +107,7 @@ public class MercariService : IMercariService
                         Name = history.Item.Name,
                         ImageUrl = history.Item.Photo_Thumbnail_Url,
                         Revenue = history.Sales_Profit,
+                        ShippingFee = history.Seller_Shipping_Fee,
                         TransactionTime = DateTimeOffset.FromUnixTimeSeconds(history.Transaction_Finished_At).DateTime,
                         TotalCost = null // 初始没有成本
                     };

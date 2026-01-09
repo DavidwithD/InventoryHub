@@ -15,10 +15,20 @@ import {
   TableSortLabel,
   Typography,
 } from '@mui/material';
-import { Edit as EditIcon, Delete as DeleteIcon } from '@mui/icons-material';
+import {
+  Edit as EditIcon,
+  Delete as DeleteIcon,
+  Visibility as VisibilityIcon,
+} from '@mui/icons-material';
 import { Order } from '@/types';
 
-type OrderByType = 'orderNo' | 'revenue' | 'totalCost' | 'profit' | 'transactionTime';
+type OrderByType =
+  | 'orderNo'
+  | 'revenue'
+  | 'totalCost'
+  | 'shippingFee'
+  | 'profit'
+  | 'transactionTime';
 
 interface Props {
   orders: Order[];
@@ -39,7 +49,7 @@ export default function OrdersTable({ orders, onEdit, onDelete, onViewDetails }:
 
   const getSortedOrders = () => {
     const sorted = [...orders];
-    
+
     sorted.sort((a, b) => {
       let aValue: any;
       let bValue: any;
@@ -62,9 +72,7 @@ export default function OrdersTable({ orders, onEdit, onDelete, onViewDetails }:
       }
 
       if (typeof aValue === 'string' && typeof bValue === 'string') {
-        return order === 'asc' 
-          ? aValue.localeCompare(bValue)
-          : bValue.localeCompare(aValue);
+        return order === 'asc' ? aValue.localeCompare(bValue) : bValue.localeCompare(aValue);
       }
 
       if (orderBy === 'transactionTime') {
@@ -87,9 +95,9 @@ export default function OrdersTable({ orders, onEdit, onDelete, onViewDetails }:
         <Table>
           <TableHead>
             <TableRow>
-              <TableCell>图片</TableCell>
-              <TableCell>订单名</TableCell>
-              <TableCell>
+              <TableCell sx={{ width: 80 }}>图片</TableCell>
+              <TableCell sx={{ width: 250, maxWidth: 250 }}>订单名</TableCell>
+              <TableCell sx={{ width: 140 }}>
                 <TableSortLabel
                   active={orderBy === 'orderNo'}
                   direction={orderBy === 'orderNo' ? order : 'asc'}
@@ -98,7 +106,7 @@ export default function OrdersTable({ orders, onEdit, onDelete, onViewDetails }:
                   订单号
                 </TableSortLabel>
               </TableCell>
-              <TableCell>
+              <TableCell sx={{ width: 110 }}>
                 <TableSortLabel
                   active={orderBy === 'revenue'}
                   direction={orderBy === 'revenue' ? order : 'asc'}
@@ -107,7 +115,7 @@ export default function OrdersTable({ orders, onEdit, onDelete, onViewDetails }:
                   营业额（¥）
                 </TableSortLabel>
               </TableCell>
-              <TableCell>
+              <TableCell sx={{ width: 110 }}>
                 <TableSortLabel
                   active={orderBy === 'totalCost'}
                   direction={orderBy === 'totalCost' ? order : 'asc'}
@@ -116,7 +124,16 @@ export default function OrdersTable({ orders, onEdit, onDelete, onViewDetails }:
                   总成本（¥）
                 </TableSortLabel>
               </TableCell>
-              <TableCell>
+              <TableCell sx={{ width: 110 }}>
+                <TableSortLabel
+                  active={orderBy === 'shippingFee'}
+                  direction={orderBy === 'shippingFee' ? order : 'asc'}
+                  onClick={() => handleRequestSort('shippingFee')}
+                >
+                  运费（¥）
+                </TableSortLabel>
+              </TableCell>
+              <TableCell sx={{ width: 110 }}>
                 <TableSortLabel
                   active={orderBy === 'profit'}
                   direction={orderBy === 'profit' ? order : 'asc'}
@@ -125,7 +142,7 @@ export default function OrdersTable({ orders, onEdit, onDelete, onViewDetails }:
                   利润（¥）
                 </TableSortLabel>
               </TableCell>
-              <TableCell>
+              <TableCell sx={{ width: 120 }}>
                 <TableSortLabel
                   active={orderBy === 'transactionTime'}
                   direction={orderBy === 'transactionTime' ? order : 'asc'}
@@ -134,7 +151,9 @@ export default function OrdersTable({ orders, onEdit, onDelete, onViewDetails }:
                   交易时间
                 </TableSortLabel>
               </TableCell>
-              <TableCell align="center">操作</TableCell>
+              <TableCell align="center" sx={{ width: 140 }}>
+                操作
+              </TableCell>
             </TableRow>
           </TableHead>
           <TableBody>
@@ -142,46 +161,40 @@ export default function OrdersTable({ orders, onEdit, onDelete, onViewDetails }:
               <TableRow key={order.id}>
                 <TableCell>
                   {order.imageUrl ? (
-                    <img 
-                      src={order.imageUrl} 
-                      alt={order.name} 
-                      style={{ width: 60, height: 60, objectFit: 'cover', borderRadius: 4 }} 
+                    <img
+                      src={order.imageUrl}
+                      alt={order.name}
+                      style={{ width: 60, height: 60, objectFit: 'cover', borderRadius: 4 }}
                     />
                   ) : (
                     <Box sx={{ width: 60, height: 60, bgcolor: 'grey.200', borderRadius: 1 }} />
                   )}
                 </TableCell>
-                <TableCell>{order.name}</TableCell>
+                <TableCell
+                  sx={{
+                    maxWidth: 250,
+                    overflow: 'hidden',
+                    textOverflow: 'ellipsis',
+                    whiteSpace: 'nowrap',
+                  }}
+                  title={order.name}
+                >
+                  {order.name}
+                </TableCell>
                 <TableCell>{order.orderNo}</TableCell>
                 <TableCell>{order.revenue.toFixed(2)}</TableCell>
                 <TableCell>{order.totalCost?.toFixed(2) || '0.00'}</TableCell>
-                <TableCell>
-                  {((order.revenue - (order.totalCost || 0))).toFixed(2)}
-                </TableCell>
-                <TableCell>
-                  {new Date(order.transactionTime).toLocaleDateString('zh-CN')}
-                </TableCell>
+                <TableCell>{order.shippingFee.toFixed(2)}</TableCell>
+                <TableCell>{(order.revenue - (order.totalCost || 0)).toFixed(2)}</TableCell>
+                <TableCell>{new Date(order.transactionTime).toLocaleDateString('zh-CN')}</TableCell>
                 <TableCell align="center">
-                  <Button
-                    size="small"
-                    variant="outlined"
-                    onClick={() => onViewDetails(order.id)}
-                    sx={{ mr: 1 }}
-                  >
-                    查看详细
-                  </Button>
-                  <IconButton
-                    size="small"
-                    onClick={() => onEdit(order)}
-                    color="primary"
-                  >
+                  <IconButton size="small" onClick={() => onViewDetails(order.id)} color="info">
+                    <VisibilityIcon />
+                  </IconButton>
+                  <IconButton size="small" onClick={() => onEdit(order)} color="primary">
                     <EditIcon />
                   </IconButton>
-                  <IconButton
-                    size="small"
-                    onClick={() => onDelete(order.id)}
-                    color="error"
-                  >
+                  <IconButton size="small" onClick={() => onDelete(order.id)} color="error">
                     <DeleteIcon />
                   </IconButton>
                 </TableCell>
@@ -189,7 +202,7 @@ export default function OrdersTable({ orders, onEdit, onDelete, onViewDetails }:
             ))}
             {sortedOrders.length === 0 && (
               <TableRow>
-                <TableCell colSpan={8} align="center">
+                <TableCell colSpan={9} align="center">
                   暂无订单数据
                 </TableCell>
               </TableRow>
@@ -197,7 +210,7 @@ export default function OrdersTable({ orders, onEdit, onDelete, onViewDetails }:
           </TableBody>
         </Table>
       </TableContainer>
-      
+
       <Box sx={{ mt: 2, p: 2 }}>
         <Typography variant="body2" color="text.secondary">
           共 {sortedOrders.length} 条订单

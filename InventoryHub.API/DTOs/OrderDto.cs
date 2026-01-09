@@ -8,6 +8,7 @@ public class OrderDto
     public string? ImageUrl { get; set; }
     public decimal Revenue { get; set; }
     public decimal TotalCost { get; set; }
+    public decimal ShippingFee { get; set; }
     public DateTime TransactionTime { get; set; }
     public DateTime CreatedAt { get; set; }
     public DateTime UpdatedAt { get; set; }
@@ -28,6 +29,7 @@ public class UpdateOrderDto
     public string Name { get; set; } = string.Empty;
     public string? ImageUrl { get; set; }
     public decimal Revenue { get; set; }
+    public decimal ShippingFee { get; set; }
     public DateTime TransactionTime { get; set; }
 }
 

@@ -136,6 +136,7 @@ public class AppDbContext : DbContext
             entity.Property(e => e.ImageUrl).HasColumnName("image_url").HasMaxLength(500);
             entity.Property(e => e.Revenue).HasColumnName("revenue").HasColumnType("decimal(15,2)").IsRequired();
             entity.Property(e => e.TotalCost).HasColumnName("total_cost").HasColumnType("decimal(15,2)");
+            entity.Property(e => e.ShippingFee).HasColumnName("shipping_fee").HasColumnType("decimal(15,2)").HasDefaultValue(0);
             entity.Property(e => e.TransactionTime).HasColumnName("transaction_time").IsRequired();
             entity.Property(e => e.CreatedAt).HasColumnName("created_at").HasDefaultValueSql("CURRENT_TIMESTAMP");
             entity.Property(e => e.UpdatedAt).HasColumnName("updated_at").HasDefaultValueSql("CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP");

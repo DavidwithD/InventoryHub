@@ -76,6 +76,7 @@ export interface Order extends BaseEntity {
   imageUrl?: string;
   revenue: number;
   totalCost: number;
+  shippingFee: number;
   transactionTime: string;
 }
 
@@ -84,6 +85,7 @@ export interface CreateOrder {
   name: string;
   imageUrl?: string;
   revenue: number;
+  shippingFee: number;
   transactionTime: string;
 }
 
@@ -92,6 +94,7 @@ export interface UpdateOrder {
   name: string;
   imageUrl?: string;
   revenue: number;
+  shippingFee: number;
   transactionTime: string;
 }
 
