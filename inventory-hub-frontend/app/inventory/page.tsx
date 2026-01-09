@@ -2,8 +2,8 @@
 
 import { useState, useEffect } from 'react';
 import { useSearchParams } from 'next/navigation';
-import { Paper, Alert } from '@mui/material';
-import { CreateInventory, InventoryRow } from '@/types';
+import { Paper } from '@mui/material';
+import { Purchase } from '@/types';
 import { useInventory } from './hooks/useInventory';
 import { useProducts } from './hooks/useProducts';
 import { usePurchases } from './hooks/usePurchases';
@@ -13,20 +13,20 @@ import InventoryEditTable from './components/InventoryEditTable';
 
 export default function InventoryPage() {
   const searchParams = useSearchParams();
-  const { inventories, expectedTotalJpy, loadAllInventories, loadInventoriesByPurchase, loadExpectedTotal, createBatch, updateInventory, deleteInventory } = useInventory();
+  const { inventories, loadAllInventories } = useInventory();
   const { products, loadProducts } = useProducts();
   const { purchases, loadPurchases } = usePurchases();
-  
   const [selectedPurchaseId, setSelectedPurchaseId] = useState<number>(0);
-  const [rows, setRows] = useState<InventoryRow[]>([]);
-  const [originalRows, setOriginalRows] = useState<InventoryRow[]>([]); // 追踪原始数据
-  const [error, setError] = useState('');
-  const [success, setSuccess] = useState('');
+  const [selectedPurchase, setSelectedPurchase] = useState<Purchase | undefined>(undefined);
 
   useEffect(() => {
-    loadProducts().catch(() => setError('加载商品列表失败'));
-    loadPurchases().catch(() => setError('加载进货记录失败'));
-    loadAllInventories().catch(() => setError('加载库存记录失败'));
+    setSelectedPurchase(purchases.find((p) => p.id === selectedPurchaseId) || undefined);
+  }, [selectedPurchaseId, purchases]);
+
+  useEffect(() => {
+    loadProducts();
+    loadPurchases();
+    loadAllInventories();
   }, [loadProducts, loadPurchases, loadAllInventories]);
 
   // 从 URL 读取 purchaseId 参数并自动选择
@@ -41,236 +41,30 @@ export default function InventoryPage() {
   }, [searchParams]);
 
   useEffect(() => {
-    if (selectedPurchaseId > 0) {
-      loadInventoriesByPurchase(selectedPurchaseId)
-        .then((data) => {
-          const selectedPurchase = purchases.find(p => p.id === selectedPurchaseId);
-          if (!selectedPurchase) return;
-
-          if (data.length > 0) {
-            // 已有库存明细：转换为编辑行，每行独立的 isReferenced 状态
-            const editRows: InventoryRow[] = data.map((inv) => {
-              const purchaseAmountCny = inv.purchaseAmountCny; // 直接使用 API 返回的人民币金额
-              const purchaseAmountJpy = inv.purchaseAmount;
-              const unitCostJpy = inv.unitCost;
-              
-              return {
-                tempId: `existing-${inv.id}`,
-                id: inv.id, // 保存数据库ID
-                isReferenced: inv.isReferenced, // 保存引用状态
-                productId: inv.productId,
-                purchaseId: inv.purchaseId,
-                purchaseAmountCny: purchaseAmountCny,
-                purchaseQuantity: inv.purchaseQuantity,
-                stockQuantity: inv.stockQuantity,
-                productName: inv.productName,
-                purchaseAmountJpy: purchaseAmountJpy,
-                unitCostJpy: unitCostJpy,
-              };
-            });
-            setRows(editRows);
-            setOriginalRows(editRows); // 保存原始数据副本
-          } else {
-            // 没有库存明细：创建新的可编辑行
-            const emptyRow = createEmptyRow();
-            setRows([emptyRow]);
-            setOriginalRows([]); // 新建模式无原始数据
-          }
-        })
-        .catch(() => setError('加载库存记录失败'));
-      
-      loadExpectedTotal(selectedPurchaseId).catch(() => {});
-    } else {
-      loadAllInventories().catch(() => setError('加载库存记录失败'));
-      setRows([]);
-      setOriginalRows([]);
+    if (selectedPurchaseId === 0) {
+      loadAllInventories();
     }
-  }, [selectedPurchaseId, loadInventoriesByPurchase, loadExpectedTotal, loadAllInventories, purchases]);
-
-  const createEmptyRow = (): InventoryRow => ({
-    tempId: `new-${Date.now()}-${Math.random()}`,
-    productId: 0,
-    purchaseId: selectedPurchaseId,
-    purchaseAmountCny: 0,
-    purchaseQuantity: 0,
-    stockQuantity: 0,
-    purchaseAmountJpy: 0,
-    unitCostJpy: 0,
-  });
-
-  const addRow = () => {
-    setRows([...rows, createEmptyRow()]);
-  };
-
-  const deleteRow = (tempId: string) => {
-    const rowToDelete = rows.find(r => r.tempId === tempId);
-    
-    // 如果是已存在的记录，调用API删除
-    if (rowToDelete?.id) {
-      deleteInventory(rowToDelete.id)
-        .then(() => {
-          setSuccess('库存记录删除成功');
-          setRows(rows.filter(r => r.tempId !== tempId));
-        })
-        .catch((err: any) => {
-          const errorMessage = typeof err.response?.data === 'string' 
-            ? err.response.data 
-            : err.response?.data?.title || err.response?.data?.errors || err.message || '删除失败';
-          setError(typeof errorMessage === 'string' ? errorMessage : JSON.stringify(errorMessage));
-        });
-    } else {
-      // 新行直接从本地删除
-      setRows(rows.filter(r => r.tempId !== tempId));
-    }
-  };
-
-  const updateRow = (tempId: string, field: keyof InventoryRow, value: any) => {
-    setRows(rows.map(r => {
-      if (r.tempId === tempId) {
-        const updatedRow = { ...r, [field]: value };
-        
-        // 如果更新productId，同时更新productName
-        if (field === 'productId') {
-          const product = products.find(p => p.id === value);
-          updatedRow.productName = product?.name;
-        }
-        
-        // 如果更新了人民币金额或数量，自动计算日元金额
-        if (field === 'purchaseAmountCny' || field === 'purchaseQuantity') {
-          const selectedPurchase = purchases.find(p => p.id === selectedPurchaseId);
-          if (selectedPurchase) {
-            const cnyAmount = field === 'purchaseAmountCny' ? value : updatedRow.purchaseAmountCny;
-            const quantity = field === 'purchaseQuantity' ? value : updatedRow.purchaseQuantity;
-
-            updatedRow.purchaseAmountJpy = cnyAmount * selectedPurchase.exchangeRate;
-            updatedRow.unitCostJpy = quantity > 0 ? updatedRow.purchaseAmountJpy / quantity : 0;
-            
-            if (field === 'purchaseQuantity') {
-              updatedRow.stockQuantity = quantity;
-            }
-          }
-        }
-        
-        return updatedRow;
-      }
-      return r;
-    }));
-  };
-
-  const handleSave = async () => {
-    try {
-      setError('');
-      setSuccess('');
-
-      // 分离新行和已存在的行
-      const newRows = rows.filter(row => !row.id);
-      const existingRows = rows.filter(row => row.id);
-
-      // 批量创建新行
-      if (newRows.length > 0) {
-        const createData: CreateInventory[] = newRows.map(row => ({
-          productId: row.productId,
-          purchaseId: row.purchaseId,
-          purchaseAmountCny: row.purchaseAmountCny,
-          purchaseQuantity: row.purchaseQuantity,
-          stockQuantity: row.stockQuantity,
-        }));
-        await createBatch(createData);
-      }
-
-      // 只更新真正被修改过的行
-      for (const row of existingRows) {
-        if (!row.isReferenced && row.id) {
-          const originalRow = originalRows.find(orig => orig.id === row.id);
-          
-          // 检查是否有实质性修改
-          const hasChanges = !originalRow || 
-            originalRow.productId !== row.productId ||
-            originalRow.purchaseAmountCny !== row.purchaseAmountCny ||
-            originalRow.purchaseQuantity !== row.purchaseQuantity ||
-            originalRow.stockQuantity !== row.stockQuantity;
-
-          if (hasChanges) {
-            const updateData: CreateInventory = {
-              productId: row.productId,
-              purchaseId: row.purchaseId,
-              purchaseAmountCny: row.purchaseAmountCny,
-              purchaseQuantity: row.purchaseQuantity,
-              stockQuantity: row.stockQuantity,
-            };
-            await updateInventory(row.id, updateData);
-          }
-        }
-      }
-
-      setSuccess('库存记录保存成功');
-      
-      // 保存成功后重新加载
-      if (selectedPurchaseId > 0) {
-        await loadInventoriesByPurchase(selectedPurchaseId);
-      }
-      await loadAllInventories();
-    } catch (err: any) {
-      const errorMessage = typeof err.response?.data === 'string' 
-        ? err.response.data 
-        : err.response?.data?.title || err.response?.data?.errors || err.message || '保存失败';
-      setError(typeof errorMessage === 'string' ? errorMessage : JSON.stringify(errorMessage));
-    }
-  };
-
-  const selectedPurchase = purchases.find(p => p.id === selectedPurchaseId);
-
-  // 计算是否有未保存的修改
-  const hasChanges = () => {
-    // 有新行（没有 id）
-    if (rows.some(row => !row.id)) return true;
-    
-    // 检查已存在的行是否被修改
-    return rows.some(row => {
-      if (!row.id) return false;
-      const originalRow = originalRows.find(orig => orig.id === row.id);
-      if (!originalRow) return true; // 找不到原始数据，视为有修改
-      
-      return originalRow.productId !== row.productId ||
-             originalRow.purchaseAmountCny !== row.purchaseAmountCny ||
-             originalRow.purchaseQuantity !== row.purchaseQuantity ||
-             originalRow.stockQuantity !== row.stockQuantity;
-    });
-  };
+  }, [selectedPurchaseId, loadAllInventories]);
 
   return (
     <>
-      {error && <Alert severity="error" sx={{ mb: 2 }} onClose={() => setError('')}>{error}</Alert>}
-      {success && <Alert severity="success" sx={{ mb: 2 }} onClose={() => setSuccess('')}>{success}</Alert>}
-
       <InventoryToolbar
         purchases={purchases}
         selectedPurchaseId={selectedPurchaseId}
         onSelectPurchase={setSelectedPurchaseId}
-        expectedTotalJpy={expectedTotalJpy}
       />
 
-      {selectedPurchaseId === 0 ? (
-        <InventoryTable
-          inventories={inventories}
-          products={products}
-          purchases={purchases}
-        />
-      ) : selectedPurchase ? (
+      {selectedPurchase ? (
         <Paper sx={{ p: 3 }}>
           <InventoryEditTable
-            rows={rows}
+            selectedPurchaseId={selectedPurchaseId}
             products={products}
             selectedPurchase={selectedPurchase}
-            expectedTotalJpy={expectedTotalJpy}
-            hasChanges={hasChanges()}
-            onAddRow={addRow}
-            onDeleteRow={deleteRow}
-            onUpdateRow={updateRow}
-            onSave={handleSave}
           />
         </Paper>
-      ) : null}
+      ) : (
+        <InventoryTable inventories={inventories} products={products} purchases={purchases} />
+      )}
     </>
   );
 }

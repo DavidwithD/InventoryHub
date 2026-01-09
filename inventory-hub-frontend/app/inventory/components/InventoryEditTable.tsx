@@ -1,5 +1,6 @@
 'use client';
 
+import { useState, useEffect } from 'react';
 import {
   Box,
   Typography,
@@ -20,31 +21,279 @@ import {
 } from '@mui/material';
 import DeleteIcon from '@mui/icons-material/Delete';
 import AddIcon from '@mui/icons-material/Add';
-import { Product, Purchase, InventoryRow } from '@/types';
+import { Product, Purchase, InventoryRow, CreateInventory, Inventory } from '@/types';
+import { useInventory } from '../hooks/useInventory';
 
 interface Props {
-  rows: InventoryRow[];
+  selectedPurchaseId: number;
   products: Product[];
   selectedPurchase: Purchase;
-  expectedTotalJpy: number;
-  hasChanges: boolean; // 是否有未保存的修改
-  onAddRow: () => void;
-  onDeleteRow: (tempId: string) => void;
-  onUpdateRow: (tempId: string, field: keyof InventoryRow, value: any) => void;
-  onSave: () => void;
 }
 
 export default function InventoryEditTable({
-  rows,
+  selectedPurchaseId,
   products,
   selectedPurchase,
-  expectedTotalJpy,
-  hasChanges,
-  onAddRow,
-  onDeleteRow,
-  onUpdateRow,
-  onSave,
 }: Props) {
+  const {
+    loadInventoriesByPurchase,
+    loadExpectedTotal,
+    loadAllInventories,
+    createBatch,
+    updateInventory,
+    deleteInventory,
+  } = useInventory();
+  const [rows, setRows] = useState<InventoryRow[]>([]);
+  const [originalRows, setOriginalRows] = useState<InventoryRow[]>([]);
+  const [expectedTotalJpy, setExpectedTotalJpy] = useState<number>(0);
+  const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
+
+  // 加载库存数据
+  useEffect(() => {
+    if (selectedPurchaseId > 0) {
+      loadInventoriesByPurchase(selectedPurchaseId)
+        .then((inventories) => {
+          if (inventories.length > 0) {
+            // 已有库存明细：转换为编辑行
+            const editRows: InventoryRow[] = inventories.map((inv) => ({
+              tempId: `existing-${inv.id}`,
+              id: inv.id,
+              isReferenced: inv.isReferenced,
+              productId: inv.productId,
+              purchaseId: inv.purchaseId,
+              purchaseAmountCny: inv.purchaseAmountCny,
+              purchaseQuantity: inv.purchaseQuantity,
+              stockQuantity: inv.stockQuantity,
+              productName: inv.productName,
+              purchaseAmountJpy: inv.purchaseAmount,
+              unitCostJpy: inv.unitCost,
+            }));
+            setRows(editRows);
+            setOriginalRows(editRows);
+          } else {
+            // 没有库存明细：创建空行并自动填充
+            const emptyRow: InventoryRow = {
+              tempId: `new-${Date.now()}`,
+              productId: 0,
+              purchaseId: selectedPurchase.id,
+              purchaseAmountCny:
+                selectedPurchase.currencyType === 'CNY' ? selectedPurchase.totalAmount : 0,
+              purchaseQuantity: 0,
+              stockQuantity: 0,
+              purchaseAmountJpy:
+                selectedPurchase.currencyType === 'CNY'
+                  ? selectedPurchase.totalAmount * selectedPurchase.exchangeRate
+                  : selectedPurchase.totalAmount,
+              unitCostJpy: 0,
+            };
+            setRows([emptyRow]);
+            setOriginalRows([]);
+          }
+        })
+        .catch((err) => {
+          console.error('加载库存记录失败', err);
+        });
+
+      loadExpectedTotal(selectedPurchaseId)
+        .then((total) => setExpectedTotalJpy(total))
+        .catch(() => {});
+    }
+  }, [selectedPurchaseId, selectedPurchase, loadInventoriesByPurchase, loadExpectedTotal]);
+
+  // 创建空行
+  const createEmptyRow = (): InventoryRow => ({
+    tempId: `new-${Date.now()}-${Math.random()}`,
+    productId: 0,
+    purchaseId: selectedPurchase.id,
+    purchaseAmountCny: 0,
+    purchaseQuantity: 0,
+    stockQuantity: 0,
+    purchaseAmountJpy: 0,
+    unitCostJpy: 0,
+  });
+
+  // 添加新行
+  const addRow = () => {
+    setRows([...rows, createEmptyRow()]);
+  };
+
+  // 删除行
+  const deleteRow = async (tempId: string) => {
+    const rowToDelete = rows.find((r) => r.tempId === tempId);
+
+    // 如果是已存在的记录，调用API删除
+    if (rowToDelete?.id) {
+      try {
+        await deleteInventory(rowToDelete.id);
+        setSuccess('库存记录删除成功');
+      } catch (err: any) {
+        const errorMessage =
+          typeof err.response?.data === 'string'
+            ? err.response.data
+            : err.response?.data?.title || err.response?.data?.errors || err.message || '删除失败';
+        setError(typeof errorMessage === 'string' ? errorMessage : JSON.stringify(errorMessage));
+        return;
+      }
+    }
+
+    // 从本地删除
+    setRows(rows.filter((r) => r.tempId !== tempId));
+  };
+
+  // 更新行
+  const updateRow = (tempId: string, field: keyof InventoryRow, value: any) => {
+    setRows(
+      rows.map((r) => {
+        if (r.tempId === tempId) {
+          const updatedRow = { ...r, [field]: value };
+
+          // 如果更新productId，同时更新productName
+          if (field === 'productId') {
+            const product = products.find((p) => p.id === value);
+            updatedRow.productName = product?.name;
+          }
+
+          // 场景A：人民币进货
+          if (selectedPurchase.currencyType === 'CNY') {
+            if (field === 'purchaseAmountCny' || field === 'purchaseQuantity') {
+              const cnyAmount =
+                field === 'purchaseAmountCny' ? value : updatedRow.purchaseAmountCny || 0;
+              const quantity = field === 'purchaseQuantity' ? value : updatedRow.purchaseQuantity;
+
+              updatedRow.purchaseAmountJpy = cnyAmount * selectedPurchase.exchangeRate;
+              updatedRow.unitCostJpy = quantity > 0 ? updatedRow.purchaseAmountJpy / quantity : 0;
+
+              if (field === 'purchaseQuantity') {
+                updatedRow.stockQuantity = quantity;
+              }
+            }
+          }
+          // 场景B：日元进货
+          else {
+            if (field === 'purchaseAmountJpy' || field === 'purchaseQuantity') {
+              const jpyAmount =
+                field === 'purchaseAmountJpy' ? value : updatedRow.purchaseAmountJpy || 0;
+              const quantity = field === 'purchaseQuantity' ? value : updatedRow.purchaseQuantity;
+
+              updatedRow.unitCostJpy = quantity > 0 ? jpyAmount / quantity : 0;
+              updatedRow.purchaseAmountCny = 0; // 日元进货不填人民币
+
+              if (field === 'purchaseQuantity') {
+                updatedRow.stockQuantity = quantity;
+              }
+            }
+          }
+
+          return updatedRow;
+        }
+        return r;
+      })
+    );
+  };
+
+  // 保存处理
+  const handleSave = async () => {
+    try {
+      setError('');
+      setSuccess('');
+
+      const newRows = rows.filter((row) => !row.id);
+      const existingRows = rows.filter((row) => row.id);
+
+      // 批量创建新行
+      if (newRows.length > 0) {
+        const createData = newRows.map((row) => ({
+          productId: row.productId,
+          purchaseId: row.purchaseId,
+          purchaseAmountCny: selectedPurchase.currencyType === 'CNY' ? row.purchaseAmountCny : 0,
+          purchaseAmountJpy: row.purchaseAmountJpy,
+          purchaseQuantity: row.purchaseQuantity,
+          stockQuantity: row.stockQuantity,
+        }));
+        await createBatch(createData);
+      }
+
+      // 更新修改的行
+      for (const row of existingRows) {
+        if (!row.isReferenced && row.id) {
+          const originalRow = originalRows.find((orig) => orig.id === row.id);
+
+          const hasChanges =
+            !originalRow ||
+            originalRow.productId !== row.productId ||
+            originalRow.purchaseAmountCny !== row.purchaseAmountCny ||
+            originalRow.purchaseQuantity !== row.purchaseQuantity ||
+            originalRow.stockQuantity !== row.stockQuantity;
+
+          if (hasChanges) {
+            const updateData = {
+              productId: row.productId,
+              purchaseId: row.purchaseId,
+              purchaseAmountJpy: row.purchaseAmountJpy,
+              purchaseAmountCny:
+                selectedPurchase.currencyType === 'CNY' ? row.purchaseAmountCny : 0,
+              purchaseQuantity: row.purchaseQuantity,
+              stockQuantity: row.stockQuantity,
+            };
+            await updateInventory(row.id, updateData);
+          }
+        }
+      }
+
+      setSuccess('库存记录保存成功');
+
+      // 重新加载数据
+      await loadAllInventories();
+      const inventories = await loadInventoriesByPurchase(selectedPurchaseId);
+
+      // 更新本地状态
+      if (inventories.length > 0) {
+        const editRows: InventoryRow[] = inventories.map((inv) => ({
+          tempId: `existing-${inv.id}`,
+          id: inv.id,
+          isReferenced: inv.isReferenced,
+          productId: inv.productId,
+          purchaseId: inv.purchaseId,
+          purchaseAmountCny: inv.purchaseAmountCny,
+          purchaseQuantity: inv.purchaseQuantity,
+          stockQuantity: inv.stockQuantity,
+          productName: inv.productName,
+          purchaseAmountJpy: inv.purchaseAmount,
+          unitCostJpy: inv.unitCost,
+        }));
+        setRows(editRows);
+        setOriginalRows(editRows);
+      }
+    } catch (err: any) {
+      const errorMessage =
+        typeof err.response?.data === 'string'
+          ? err.response.data
+          : err.response?.data?.title || err.response?.data?.errors || err.message || '保存失败';
+      setError(typeof errorMessage === 'string' ? errorMessage : JSON.stringify(errorMessage));
+    }
+  };
+
+  // 计算是否有未保存的修改
+  const hasChanges = () => {
+    // 有新行（没有 id）
+    if (rows.some((row) => !row.id)) return true;
+
+    // 检查已存在的行是否被修改
+    return rows.some((row) => {
+      if (!row.id) return false;
+      const originalRow = originalRows.find((orig) => orig.id === row.id);
+      if (!originalRow) return true; // 找不到原始数据，视为有修改
+
+      return (
+        originalRow.productId !== row.productId ||
+        originalRow.purchaseAmountCny !== row.purchaseAmountCny ||
+        originalRow.purchaseQuantity !== row.purchaseQuantity ||
+        originalRow.stockQuantity !== row.stockQuantity
+      );
+    });
+  };
+
   const calculateCurrentTotalCny = (): number => {
     return rows.reduce((sum, row) => sum + (row.purchaseAmountCny || 0), 0);
   };
@@ -59,7 +308,9 @@ export default function InventoryEditTable({
 
   const isValidForSave = (): boolean => {
     if (rows.length === 0) return false;
-    
+
+    const isCnyPurchase = selectedPurchase.currencyType === 'CNY';
+
     // 检查所有行是否有效
     for (const row of rows) {
       if (row.productId === 0) return false;
@@ -68,32 +319,43 @@ export default function InventoryEditTable({
       if (row.stockQuantity < 0) return false;
     }
 
-    // 检查总金额是否匹配（人民币）
-    const currentTotalCny = calculateCurrentTotalCny();
-    return currentTotalCny.toFixed(2) === selectedPurchase.totalAmount.toFixed(2);
+    // 检查总金额是否匹配
+    if (isCnyPurchase) {
+      const currentTotalCny = calculateCurrentTotalCny();
+      return currentTotalCny.toFixed(2) === selectedPurchase.totalAmount.toFixed(2);
+    } else {
+      const currentTotalJpy = calculateCurrentTotalJpy();
+      return currentTotalJpy.toFixed(2) === selectedPurchase.totalAmount.toFixed(2);
+    }
   };
 
   // 检查是否有任何可编辑的行
   const hasAnyEditableRow = (): boolean => {
-    return rows.some(row => !row.isReferenced);
+    return rows.some((row) => !row.isReferenced);
   };
 
   const currentTotalCny = calculateCurrentTotalCny();
   const currentTotalJpy = calculateCurrentTotalJpy();
   const differenceCny = getDifferenceCny();
-  const hasReferencedRows = rows.some(row => row.isReferenced);
+  const hasReferencedRows = rows.some((row) => row.isReferenced);
   const canAddRows = hasAnyEditableRow() || rows.length === 0;
 
   return (
     <>
+      {error && (
+        <Alert severity="error" sx={{ mb: 2 }} onClose={() => setError('')}>
+          {error}
+        </Alert>
+      )}
+      {success && (
+        <Alert severity="success" sx={{ mb: 2 }} onClose={() => setSuccess('')}>
+          {success}
+        </Alert>
+      )}
+
       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
         <Typography variant="h6">库存明细</Typography>
-        <Button
-          variant="outlined"
-          startIcon={<AddIcon />}
-          onClick={onAddRow}
-          disabled={!canAddRows}
-        >
+        <Button variant="outlined" startIcon={<AddIcon />} onClick={addRow} disabled={!canAddRows}>
           添加行
         </Button>
       </Box>
@@ -101,14 +363,19 @@ export default function InventoryEditTable({
       {hasReferencedRows && (
         <Alert severity="info" sx={{ mb: 2 }}>
           <Typography variant="body2">
-            <strong>提示：</strong>灰色背景的行表示已被订单引用，无法修改或删除。白色背景的行可以正常编辑。
+            <strong>提示：</strong>
+            灰色背景的行表示已被订单引用，无法修改或删除。白色背景的行可以正常编辑。
           </Typography>
         </Alert>
       )}
 
       <Alert severity="info" sx={{ mb: 2 }}>
         <Typography variant="caption">
-          <strong>说明:</strong> 输入人民币金额，系统将自动转换为日元存储到数据库。单位成本为日元单价。
+          <strong>说明:</strong>{' '}
+          {selectedPurchase.currencyType === 'CNY'
+            ? '输入人民币金额，系统将自动转换为日元存储到数据库。'
+            : '直接输入日元金额。'}{' '}
+          单位成本为日元单价。
         </Typography>
       </Alert>
 
@@ -144,7 +411,7 @@ export default function InventoryEditTable({
             {rows.map((row) => {
               const isRowLocked = row.isReferenced === true;
               return (
-                <TableRow 
+                <TableRow
                   key={row.tempId}
                   sx={{
                     bgcolor: isRowLocked ? 'action.hover' : 'background.paper',
@@ -157,15 +424,19 @@ export default function InventoryEditTable({
                         displayEmpty
                         disabled={isRowLocked}
                         onChange={(e: SelectChangeEvent<number>) => {
-                          onUpdateRow(row.tempId, 'productId', Number(e.target.value));
+                          updateRow(row.tempId, 'productId', Number(e.target.value));
                         }}
                         renderValue={(value) => {
                           if (value === 0) return '请选择商品';
-                          const product = products.find(p => p.id === value);
-                          return product ? `${product.categoryName} - ${product.name}` : '请选择商品';
+                          const product = products.find((p) => p.id === value);
+                          return product
+                            ? `${product.categoryName} - ${product.name}`
+                            : '请选择商品';
                         }}
                       >
-                        <MenuItem value={0} disabled>请选择商品</MenuItem>
+                        <MenuItem value={0} disabled>
+                          请选择商品
+                        </MenuItem>
                         {products.map((product) => (
                           <MenuItem key={product.id} value={product.id}>
                             {product.categoryName} - {product.name}
@@ -180,18 +451,20 @@ export default function InventoryEditTable({
                       size="small"
                       type="number"
                       value={row.purchaseAmountCny}
-                      onChange={(e) => onUpdateRow(row.tempId, 'purchaseAmountCny', parseFloat(e.target.value) || 0)}
+                      onChange={(e) =>
+                        updateRow(row.tempId, 'purchaseAmountCny', parseFloat(e.target.value) || 0)
+                      }
                       inputProps={{ step: 0.01, min: 0 }}
                       placeholder="输入人民币"
                       disabled={isRowLocked}
                     />
                   </TableCell>
                   <TableCell>
-                    <Typography 
-                      variant="body2" 
-                      sx={{ 
-                        color: row.purchaseAmountJpy ?? 0 > 0 ? 'primary.main' : 'text.secondary',
-                        fontWeight: row.purchaseAmountJpy ?? 0 > 0 ? 'bold' : 'normal'
+                    <Typography
+                      variant="body2"
+                      sx={{
+                        color: (row.purchaseAmountJpy ?? 0 > 0) ? 'primary.main' : 'text.secondary',
+                        fontWeight: (row.purchaseAmountJpy ?? 0 > 0) ? 'bold' : 'normal',
                       }}
                     >
                       ¥{(row.purchaseAmountJpy || 0).toFixed(2)}
@@ -203,31 +476,31 @@ export default function InventoryEditTable({
                       size="small"
                       type="number"
                       value={row.purchaseQuantity}
-                      onChange={(e) => onUpdateRow(row.tempId, 'purchaseQuantity', parseInt(e.target.value) || 0)}
+                      onChange={(e) =>
+                        updateRow(row.tempId, 'purchaseQuantity', parseInt(e.target.value) || 0)
+                      }
                       inputProps={{ step: 1, min: 0 }}
                       disabled={isRowLocked}
                     />
                   </TableCell>
                   <TableCell>
-                    <Typography 
-                      variant="body2" 
-                      sx={{ 
-                        color: row.unitCostJpy ?? 0 > 0 ? 'success.main' : 'text.secondary',
-                        fontWeight: row.unitCostJpy ?? 0 > 0 ? 'bold' : 'normal'
+                    <Typography
+                      variant="body2"
+                      sx={{
+                        color: (row.unitCostJpy ?? 0 > 0) ? 'success.main' : 'text.secondary',
+                        fontWeight: (row.unitCostJpy ?? 0 > 0) ? 'bold' : 'normal',
                       }}
                     >
                       ¥{(row.unitCostJpy || 0).toFixed(2)}
                     </Typography>
                   </TableCell>
                   <TableCell>
-                    <Typography variant="body2">
-                      {(row.stockQuantity || 0)}
-                    </Typography>
+                    <Typography variant="body2">{row.stockQuantity || 0}</Typography>
                   </TableCell>
                   <TableCell>
                     <IconButton
                       size="small"
-                      onClick={() => onDeleteRow(row.tempId)}
+                      onClick={() => deleteRow(row.tempId)}
                       disabled={rows.length === 1 || isRowLocked}
                     >
                       <DeleteIcon />
@@ -242,24 +515,61 @@ export default function InventoryEditTable({
 
       <Box sx={{ mt: 3, p: 2, bgcolor: 'background.default', borderRadius: 1 }}>
         <Typography variant="body1" sx={{ mb: 1 }}>
-          <strong>人民币汇总:</strong> ¥{currentTotalCny.toFixed(2)} CNY | 
-          <strong> 进货总额:</strong> ¥{selectedPurchase.totalAmount.toFixed(2)} CNY | 
-          <strong> 差额:</strong> <span style={{ 
-            color: currentTotalCny.toFixed(2) === selectedPurchase.totalAmount.toFixed(2) ? 'green' : 'red',
-            fontWeight: 'bold'
-          }}>
-            ¥{differenceCny.toFixed(2)} CNY
-          </span>
+          {selectedPurchase.currencyType === 'CNY' ? (
+            <>
+              <strong>人民币汇总:</strong> ¥{currentTotalCny.toFixed(2)} CNY |
+              <strong> 进货总额:</strong> ¥{selectedPurchase.totalAmount.toFixed(2)} CNY |
+              <strong> 差额:</strong>{' '}
+              <span
+                style={{
+                  color:
+                    currentTotalCny.toFixed(2) === selectedPurchase.totalAmount.toFixed(2)
+                      ? 'green'
+                      : 'red',
+                  fontWeight: 'bold',
+                }}
+              >
+                ¥{differenceCny.toFixed(2)} CNY
+              </span>
+            </>
+          ) : (
+            <>
+              <strong>日元汇总:</strong> ¥{currentTotalJpy.toFixed(2)} JPY |
+              <strong> 进货总额:</strong> ¥{selectedPurchase.totalAmount.toFixed(2)} JPY |
+              <strong> 差额:</strong>{' '}
+              <span
+                style={{
+                  color:
+                    currentTotalJpy.toFixed(2) === selectedPurchase.totalAmount.toFixed(2)
+                      ? 'green'
+                      : 'red',
+                  fontWeight: 'bold',
+                }}
+              >
+                ¥{(currentTotalJpy - selectedPurchase.totalAmount).toFixed(2)} JPY
+              </span>
+            </>
+          )}
         </Typography>
         <Typography variant="body2" color="text.secondary">
-          参考：日元汇总 ¥{currentTotalJpy.toFixed(2)} JPY（期望 ¥{expectedTotalJpy.toFixed(2)} JPY）
+          参考：日元汇总 ¥{currentTotalJpy.toFixed(2)} JPY（期望 ¥{expectedTotalJpy.toFixed(2)}{' '}
+          JPY）
         </Typography>
-        {currentTotalCny.toFixed(2) !== selectedPurchase.totalAmount.toFixed(2) && (
+        {((selectedPurchase.currencyType === 'CNY' &&
+          currentTotalCny.toFixed(2) !== selectedPurchase.totalAmount.toFixed(2)) ||
+          (selectedPurchase.currencyType === 'JPY' &&
+            currentTotalJpy.toFixed(2) !== selectedPurchase.totalAmount.toFixed(2))) && (
           <Alert severity="warning" sx={{ mt: 2 }}>
-            注意：人民币总额必须等于进货总额才能保存
+            注意：{selectedPurchase.currencyType === 'CNY' ? '人民币' : '日元'}
+            总额必须等于进货总额才能保存
           </Alert>
         )}
-        {currentTotalCny.toFixed(2) === selectedPurchase.totalAmount.toFixed(2) && currentTotalCny > 0 && (
+        {((selectedPurchase.currencyType === 'CNY' &&
+          currentTotalCny.toFixed(2) === selectedPurchase.totalAmount.toFixed(2) &&
+          currentTotalCny > 0) ||
+          (selectedPurchase.currencyType === 'JPY' &&
+            currentTotalJpy.toFixed(2) === selectedPurchase.totalAmount.toFixed(2) &&
+            currentTotalJpy > 0)) && (
           <Alert severity="success" sx={{ mt: 2 }}>
             ✓ 总额验证通过，可以保存
           </Alert>
@@ -269,8 +579,8 @@ export default function InventoryEditTable({
       <Box sx={{ mt: 3, display: 'flex', justifyContent: 'flex-end' }}>
         <Button
           variant="contained"
-          onClick={onSave}
-          disabled={!isValidForSave() || !hasAnyEditableRow() || !hasChanges}
+          onClick={handleSave}
+          disabled={!isValidForSave() || !hasAnyEditableRow() || !hasChanges()}
           size="large"
         >
           批量保存

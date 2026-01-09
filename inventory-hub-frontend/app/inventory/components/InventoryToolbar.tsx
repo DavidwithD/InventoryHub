@@ -7,11 +7,14 @@ interface Props {
   purchases: Purchase[];
   selectedPurchaseId: number;
   onSelectPurchase: (id: number) => void;
-  expectedTotalJpy: number;
 }
 
-export default function InventoryToolbar({ purchases, selectedPurchaseId, onSelectPurchase, expectedTotalJpy }: Props) {
-  const selectedPurchase = purchases.find(p => p.id === selectedPurchaseId);
+export default function InventoryToolbar({
+  purchases,
+  selectedPurchaseId,
+  onSelectPurchase,
+}: Props) {
+  const selectedPurchase = purchases.find((p) => p.id === selectedPurchaseId);
 
   return (
     <Paper sx={{ p: 3, mb: 3 }}>
@@ -25,7 +28,9 @@ export default function InventoryToolbar({ purchases, selectedPurchaseId, onSele
           <MenuItem value={0}>查看所有库存</MenuItem>
           {purchases.map((purchase) => (
             <MenuItem key={purchase.id} value={purchase.id}>
-              {purchase.purchaseNo} - {purchase.supplierName} - ¥{purchase.totalAmount.toFixed(2)} CNY (汇率: {purchase.exchangeRate})
+              {purchase.purchaseNo} - {purchase.supplierName} - ¥{purchase.totalAmount.toFixed(2)}{' '}
+              {purchase.currencyType}
+              {purchase.currencyType === 'CNY' ? ` (汇率: ${purchase.exchangeRate})` : ''}
             </MenuItem>
           ))}
         </Select>
@@ -34,13 +39,21 @@ export default function InventoryToolbar({ purchases, selectedPurchaseId, onSele
       {selectedPurchase && (
         <Box sx={{ p: 2, bgcolor: 'background.default', borderRadius: 1 }}>
           <Typography variant="body2">
-            <strong>进货单号:</strong> {selectedPurchase.purchaseNo} | 
-            <strong> 供应商:</strong> {selectedPurchase.supplierName}
+            <strong>进货单号:</strong> {selectedPurchase.purchaseNo} |<strong> 供应商:</strong>{' '}
+            {selectedPurchase.supplierName}
           </Typography>
           <Typography variant="body2" sx={{ mt: 1 }}>
-            <strong>支出金额:</strong> ¥{selectedPurchase.totalAmount.toFixed(2)} CNY | 
-            <strong> 汇率:</strong> 1 CNY = {selectedPurchase.exchangeRate} JPY | 
-            <strong> 对应日元:</strong> ¥{expectedTotalJpy.toFixed(2)} JPY
+            {selectedPurchase.currencyType === 'CNY' ? (
+              <>
+                <strong>支出金额:</strong> ¥{selectedPurchase.totalAmount.toFixed(2)} CNY |
+                <strong> 汇率:</strong> {selectedPurchase.exchangeRate} |<strong> 对应日元:</strong>{' '}
+                ¥{(selectedPurchase.totalAmount * selectedPurchase.exchangeRate).toFixed(2)} JPY
+              </>
+            ) : (
+              <>
+                <strong>支出金额:</strong> ¥{selectedPurchase.totalAmount.toFixed(2)} JPY
+              </>
+            )}
           </Typography>
         </Box>
       )}
