@@ -176,8 +176,8 @@ export default function PurchaseDialog({ open, onClose, initialPurchase, onSave 
                 label="货币类型"
                 onChange={handleChangeCurrencyType}
               >
-                <MenuItem value="JPY">JPY (日元)</MenuItem>
                 <MenuItem value="CNY">CNY (人民币)</MenuItem>
+                <MenuItem value="JPY">JPY (日元)</MenuItem>
               </Select>
             </FormControl>
           </Grid>

@@ -9,7 +9,7 @@ export function usePurchaseForm(initial?: Partial<PurchaseFormData>) {
     purchaseDate: new Date().toISOString().split('T')[0],
     purchaseNo: '',
     totalAmount: '',
-    currencyType: 'JPY',
+    currencyType: 'CNY',
     exchangeRate: '',
     ...(initial || {}),
   });
@@ -20,7 +20,7 @@ export function usePurchaseForm(initial?: Partial<PurchaseFormData>) {
       purchaseDate: new Date().toISOString().split('T')[0],
       purchaseNo: '',
       totalAmount: '',
-      currencyType: 'JPY',
+      currencyType: 'CNY',
       exchangeRate: '',
       ...(overrides || {}),
     });
