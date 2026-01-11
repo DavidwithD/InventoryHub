@@ -56,7 +56,7 @@ export default function AppLayout({ children }: AppLayoutProps) {
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
 
   const handleDrawerToggle = () => {
-    setMobileOpen(!mobileOpen);
+    if(isMobile) setMobileOpen(!mobileOpen);
   };
 
   const handleNavigation = (path: string) => {
