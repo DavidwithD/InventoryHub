@@ -50,15 +50,7 @@ export default function PurchasesPage() {
 
   // 筛选条件变化时重新加载数据
   useEffect(() => {
-    const params: any = {};
-    if (filters.purchaseNo) params.purchaseNo = filters.purchaseNo;
-    if (filters.supplierId > 0) params.supplierId = filters.supplierId;
-    if (filters.startDate) params.startDate = filters.startDate;
-    if (filters.endDate) params.endDate = filters.endDate;
-    if (filters.sortBy) params.sortBy = filters.sortBy;
-    if (filters.sortOrder) params.sortOrder = filters.sortOrder;
-
-    loadPurchases(params).catch(() => showSnackbar('加载进货列表失败', 'error'));
+    loadPurchases(filters).catch(() => showSnackbar('加载进货列表失败', 'error'));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [filters]);
 

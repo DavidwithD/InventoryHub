@@ -54,8 +54,7 @@ export default function PurchaseDialog({ open, onClose, initialPurchase, onSave 
           exchangeRate: initialPurchase.exchangeRate.toString(),
         });
       } else {
-        const savedRate = localStorage.getItem('lastExchangeRate') || '';
-        reset({ exchangeRate: savedRate });
+        void getExchangeRate().then((savedRate) => reset({ exchangeRate: savedRate }));
       }
 
       // load suppliers when dialog opens
@@ -64,7 +63,7 @@ export default function PurchaseDialog({ open, onClose, initialPurchase, onSave 
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, initialPurchase]);
 
-  const f = async () => {
+  const getExchangeRate = async () => {
     const rate = await fetchExchangeRate();
     const rateStr = rate.toFixed(4);
     return rateStr;
@@ -76,9 +75,8 @@ export default function PurchaseDialog({ open, onClose, initialPurchase, onSave 
         setFormData({ ...formData, exchangeRate: '1' });
         return;
       }
-      const rateStr = await f();
+      const rateStr = await getExchangeRate();
       setFormData({ ...formData, exchangeRate: rateStr });
-      localStorage.setItem('lastExchangeRate', rateStr);
     } catch (err) {
       // caller can show notification
       console.error('fetch rate failed', err);
@@ -87,7 +85,7 @@ export default function PurchaseDialog({ open, onClose, initialPurchase, onSave 
 
   const handleChangeCurrencyType = async (event: SelectChangeEvent) => {
     const newCurrencyType = event.target.value as string;
-    const rateStr = newCurrencyType === 'JPY' ? '1' : await f();
+    const rateStr = newCurrencyType === 'JPY' ? '1' : await getExchangeRate();
     setFormData({ ...formData, currencyType: newCurrencyType, exchangeRate: rateStr });
   };
 

@@ -21,7 +21,7 @@ import {
 } from '@mui/material';
 import DeleteIcon from '@mui/icons-material/Delete';
 import AddIcon from '@mui/icons-material/Add';
-import { Product, Purchase, InventoryRow, CreateInventory, Inventory } from '@/types';
+import { Product, Purchase, InventoryRow } from '@/types';
 import { useInventory } from '../hooks/useInventory';
 
 interface Props {
@@ -315,7 +315,8 @@ export default function InventoryEditTable({
     for (const row of rows) {
       if (row.productId === 0) return false;
       if (row.purchaseQuantity <= 0) return false;
-      if (row.purchaseAmountCny <= 0) return false;
+      if (row.purchaseAmountCny < 0) return false;
+      if (row.purchaseAmountJpy < 0) return false;
       if (row.stockQuantity < 0) return false;
     }
 
