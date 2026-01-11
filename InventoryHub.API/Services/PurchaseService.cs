@@ -52,16 +52,19 @@ public class PurchaseService : IPurchaseService
 
         // 动态排序
         query = query.Include(p => p.Supplier);
-
+        bool ascending = sortOrder.ToLower().Equals("asc");
         query = sortBy.ToLower() switch
         {
-            "purchaseno" => sortOrder.ToLower() == "asc"
+            "id" => ascending
+                ? query.OrderBy(p => p.Id) :
+                query.OrderByDescending(p => p.Id),
+            "purchaseno" => ascending
                 ? query.OrderBy(p => p.PurchaseNo)
                 : query.OrderByDescending(p => p.PurchaseNo),
-            "totalamount" => sortOrder.ToLower() == "asc"
+            "totalamount" => ascending
                 ? query.OrderBy(p => p.TotalAmount)
                 : query.OrderByDescending(p => p.TotalAmount),
-            _ => sortOrder.ToLower() == "asc"
+            _ => ascending
                 ? query.OrderBy(p => p.PurchaseDate).ThenBy(p => p.Id)
                 : query.OrderByDescending(p => p.PurchaseDate).ThenByDescending(p => p.Id)
         };

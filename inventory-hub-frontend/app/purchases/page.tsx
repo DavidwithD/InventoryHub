@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { useSearchParams, useRouter } from 'next/navigation';
+import { useSearchParams } from 'next/navigation';
 import { Purchase } from '@/types';
 import PurchasesTable from '@/app/purchases/components/PurchasesTable';
 import PurchasesToolbar from '@/app/purchases/components/PurchasesToolbar';
@@ -17,7 +17,6 @@ export default function PurchasesPage() {
     usePurchases();
   const { suppliers, loadSuppliers } = useSuppliers();
   const searchParams = useSearchParams();
-  const router = useRouter();
 
   const [filters, setFilters] = useState({
     purchaseNo: '',

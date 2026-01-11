@@ -119,7 +119,7 @@ export default function PurchasesToolbar({ onAdd, suppliers, filters, onFilterCh
         <ToggleButtonGroup
           value={filters.dateRange}
           exclusive
-          onChange={(e, val) => val && handleDateRangeChange(val)}
+          onChange={(_e, val) => val && handleDateRangeChange(val)}
           size="small"
           sx={{ mb: 2 }}
         >

@@ -21,7 +21,7 @@ public class PurchasesController : ControllerBase
         [FromQuery] int? supplierId = null,
         [FromQuery] DateTime? startDate = null,
         [FromQuery] DateTime? endDate = null,
-        [FromQuery] string sortBy = "purchaseDate",
+        [FromQuery] string sortBy = "id",
         [FromQuery] string sortOrder = "desc")
     {
         var purchases = await _purchaseService.GetAllAsync(purchaseNo, supplierId, startDate, endDate, sortBy, sortOrder);
