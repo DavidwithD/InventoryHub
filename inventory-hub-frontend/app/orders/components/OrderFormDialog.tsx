@@ -13,18 +13,26 @@ import {
   Alert,
 } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
-import { Order, OrderDetailRow, Inventory, CreateOrderDetail } from '@/types';
+import { Order, OrderDetailRow, Inventory, CreateOrderDetail, Category } from '@/types';
 import OrderDetailRows from './OrderDetailRows';
 
 interface Props {
   open: boolean;
   order: Order | null;
   inventories: Inventory[];
+  categories: Category[];
   onClose: () => void;
   onSave: (data: any) => Promise<void>;
 }
 
-export default function OrderFormDialog({ open, order, inventories, onClose, onSave }: Props) {
+export default function OrderFormDialog({
+  open,
+  order,
+  inventories,
+  categories,
+  onClose,
+  onSave,
+}: Props) {
   const [orderNo, setOrderNo] = useState('');
   const [orderName, setOrderName] = useState('');
   const [imageUrl, setImageUrl] = useState('');
@@ -75,33 +83,35 @@ export default function OrderFormDialog({ open, order, inventories, onClose, onS
   };
 
   const removeDetailRow = (tempId: string) => {
-    setDetailRows(detailRows.filter(row => row.tempId !== tempId));
+    setDetailRows(detailRows.filter((row) => row.tempId !== tempId));
   };
 
   const updateDetailRow = (tempId: string, field: keyof OrderDetailRow, value: any) => {
-    setDetailRows(detailRows.map(row => {
-      if (row.tempId !== tempId) return row;
+    setDetailRows(
+      detailRows.map((row) => {
+        if (row.tempId !== tempId) return row;
 
-      const updated = { ...row, [field]: value };
+        const updated = { ...row, [field]: value };
 
-      if (field === 'inventoryId') {
-        const inventory = inventories.find(inv => inv.id === value);
-        if (inventory) {
-          updated.productId = inventory.productId;
-          updated.productName = inventory.productName;
-          updated.unitCost = inventory.unitCost;
-          updated.availableStock = inventory.stockQuantity;
-          updated.unitPrice = inventory.unitCost;
+        if (field === 'inventoryId') {
+          const inventory = inventories.find((inv) => inv.id === value);
+          if (inventory) {
+            updated.productId = inventory.productId;
+            updated.productName = inventory.productName;
+            updated.unitCost = inventory.unitCost;
+            updated.availableStock = inventory.stockQuantity;
+            updated.unitPrice = inventory.unitCost;
+          }
         }
-      }
 
-      return updated;
-    }));
+        return updated;
+      })
+    );
   };
 
   const calculateTotalCost = (): number => {
     return detailRows.reduce((sum, row) => {
-      return sum + (row.unitPrice * row.quantity) + row.packagingCost + row.otherCost;
+      return sum + row.unitPrice * row.quantity + row.packagingCost + row.otherCost;
     }, 0);
   };
 
@@ -167,7 +177,7 @@ export default function OrderFormDialog({ open, order, inventories, onClose, onS
         });
       } else {
         // 创建订单
-        const details: CreateOrderDetail[] = detailRows.map(row => ({
+        const details: CreateOrderDetail[] = detailRows.map((row) => ({
           orderId: 0,
           inventoryId: row.inventoryId,
           productId: row.productId,
@@ -215,7 +225,11 @@ export default function OrderFormDialog({ open, order, inventories, onClose, onS
       <DialogTitle>{order ? '编辑订单' : '新建订单'}</DialogTitle>
       <DialogContent>
         <Box sx={{ pt: 1 }}>
-          {error && <Alert severity="error" sx={{ mb: 2 }} onClose={() => setError('')}>{error}</Alert>}
+          {error && (
+            <Alert severity="error" sx={{ mb: 2 }} onClose={() => setError('')}>
+              {error}
+            </Alert>
+          )}
 
           <Box sx={{ display: 'flex', gap: 2, mb: 2 }}>
             <TextField
@@ -264,7 +278,9 @@ export default function OrderFormDialog({ open, order, inventories, onClose, onS
           </Box>
 
           <Box sx={{ mt: 3 }}>
-            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+            <Box
+              sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}
+            >
               <Typography variant="h6">订单详细</Typography>
               {!order && (
                 <Button
@@ -282,18 +298,15 @@ export default function OrderFormDialog({ open, order, inventories, onClose, onS
               <OrderDetailRows
                 rows={detailRows}
                 inventories={inventories}
+                categories={categories}
                 onUpdateRow={updateDetailRow}
                 onRemoveRow={removeDetailRow}
               />
             )}
 
             <Box sx={{ mt: 2, p: 2, bgcolor: 'grey.100', borderRadius: 1 }}>
-              <Typography variant="body2">
-                营业额：¥ {revenue.toFixed(2)}
-              </Typography>
-              <Typography variant="body2">
-                总成本：¥ {calculateTotalCost().toFixed(2)}
-              </Typography>
+              <Typography variant="body2">营业额：¥ {revenue.toFixed(2)}</Typography>
+              <Typography variant="body2">总成本：¥ {calculateTotalCost().toFixed(2)}</Typography>
               <Typography variant="body2" sx={{ fontWeight: 'bold' }}>
                 利润：¥ {calculateProfit().toFixed(2)}
               </Typography>

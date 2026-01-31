@@ -30,6 +30,7 @@ public class InventoryService : IInventoryService
 
         var inventories = await query
             .Include(i => i.Product)
+                .ThenInclude(p => p.Category)
             .Include(i => i.Purchase)
             .OrderByDescending(i => i.CreatedAt)
             .ToListAsync();
@@ -47,6 +48,8 @@ public class InventoryService : IInventoryService
             Id = i.Id,
             ProductId = i.ProductId,
             ProductName = i.Product?.Name ?? "",
+            CategoryId = i.Product?.CategoryId ?? 0,
+            CategoryName = i.Product?.Category?.Name ?? "",
             PurchaseId = i.PurchaseId,
             PurchaseNo = i.Purchase?.PurchaseNo ?? "",
             PurchaseAmount = i.PurchaseAmount,
@@ -64,6 +67,7 @@ public class InventoryService : IInventoryService
     {
         var inventory = await _context.Inventory
             .Include(i => i.Product)
+                .ThenInclude(p => p.Category)
             .Include(i => i.Purchase)
             .FirstOrDefaultAsync(i => i.Id == id && !i.IsDeleted);
 
@@ -78,6 +82,8 @@ public class InventoryService : IInventoryService
             Id = inventory.Id,
             ProductId = inventory.ProductId,
             ProductName = inventory.Product?.Name ?? "",
+            CategoryId = inventory.Product?.CategoryId ?? 0,
+            CategoryName = inventory.Product?.Category?.Name ?? "",
             PurchaseId = inventory.PurchaseId,
             PurchaseNo = inventory.Purchase?.PurchaseNo ?? "",
             PurchaseAmount = inventory.PurchaseAmount,

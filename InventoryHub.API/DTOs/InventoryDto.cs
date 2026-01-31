@@ -5,6 +5,8 @@ public class InventoryDto
     public int Id { get; set; }
     public int ProductId { get; set; }
     public string ProductName { get; set; } = string.Empty;
+    public int CategoryId { get; set; }
+    public string CategoryName { get; set; } = string.Empty;
     public int PurchaseId { get; set; }
     public string PurchaseNo { get; set; } = string.Empty;
     public decimal PurchaseAmount { get; set; } // 进货金额(日元)

@@ -19,18 +19,26 @@ import {
 } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
 import api from '@/lib/api';
-import { OrderDetailRow, Inventory } from '@/types';
+import { OrderDetailRow, Inventory, Category } from '@/types';
 import OrderDetailRows from './OrderDetailRows';
 
 interface Props {
   open: boolean;
   orderId: number | null;
   inventories: Inventory[];
+  categories: Category[];
   onClose: () => void;
   onSaved: () => void;
 }
 
-export default function OrderDetailsDialog({ open, orderId, inventories, onClose, onSaved }: Props) {
+export default function OrderDetailsDialog({
+  open,
+  orderId,
+  inventories,
+  categories,
+  onClose,
+  onSaved,
+}: Props) {
   const [orderDetails, setOrderDetails] = useState<any[]>([]);
   const [editingMode, setEditingMode] = useState(false);
   const [detailRows, setDetailRows] = useState<OrderDetailRow[]>([]);
@@ -102,28 +110,30 @@ export default function OrderDetailsDialog({ open, orderId, inventories, onClose
   };
 
   const removeDetailRow = (tempId: string) => {
-    setDetailRows(detailRows.filter(row => row.tempId !== tempId));
+    setDetailRows(detailRows.filter((row) => row.tempId !== tempId));
   };
 
   const updateDetailRow = (tempId: string, field: keyof OrderDetailRow, value: any) => {
-    setDetailRows(detailRows.map(row => {
-      if (row.tempId !== tempId) return row;
+    setDetailRows(
+      detailRows.map((row) => {
+        if (row.tempId !== tempId) return row;
 
-      const updated = { ...row, [field]: value };
+        const updated = { ...row, [field]: value };
 
-      if (field === 'inventoryId') {
-        const inventory = inventories.find(inv => inv.id === value);
-        if (inventory) {
-          updated.productId = inventory.productId;
-          updated.productName = inventory.productName;
-          updated.unitCost = inventory.unitCost;
-          updated.availableStock = inventory.stockQuantity;
-          updated.unitPrice = inventory.unitCost;
+        if (field === 'inventoryId') {
+          const inventory = inventories.find((inv) => inv.id === value);
+          if (inventory) {
+            updated.productId = inventory.productId;
+            updated.productName = inventory.productName;
+            updated.unitCost = inventory.unitCost;
+            updated.availableStock = inventory.stockQuantity;
+            updated.unitPrice = inventory.unitCost;
+          }
         }
-      }
 
-      return updated;
-    }));
+        return updated;
+      })
+    );
   };
 
   const validate = (): boolean => {
@@ -204,19 +214,18 @@ export default function OrderDetailsDialog({ open, orderId, inventories, onClose
       <DialogTitle>
         订单详细 - 订单#{orderId}
         {!editingMode && (
-          <Button
-            variant="outlined"
-            size="small"
-            onClick={handleEditDetails}
-            sx={{ ml: 2 }}
-          >
+          <Button variant="outlined" size="small" onClick={handleEditDetails} sx={{ ml: 2 }}>
             编辑详细
           </Button>
         )}
       </DialogTitle>
       <DialogContent>
         <Box sx={{ pt: 1 }}>
-          {error && <Alert severity="error" sx={{ mb: 2 }} onClose={() => setError('')}>{error}</Alert>}
+          {error && (
+            <Alert severity="error" sx={{ mb: 2 }} onClose={() => setError('')}>
+              {error}
+            </Alert>
+          )}
 
           {loading ? (
             <Typography>加载中...</Typography>
@@ -257,7 +266,14 @@ export default function OrderDetailsDialog({ open, orderId, inventories, onClose
             </>
           ) : (
             <>
-              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+              <Box
+                sx={{
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                  mb: 2,
+                }}
+              >
                 <Typography variant="h6">编辑订单详细</Typography>
                 <Button
                   variant="outlined"
@@ -273,6 +289,7 @@ export default function OrderDetailsDialog({ open, orderId, inventories, onClose
                 <OrderDetailRows
                   rows={detailRows}
                   inventories={inventories}
+                  categories={categories}
                   onUpdateRow={updateDetailRow}
                   onRemoveRow={removeDetailRow}
                 />

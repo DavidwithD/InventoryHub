@@ -45,6 +45,8 @@ export interface Inventory extends BaseEntity {
   stockQuantity: number;
   isReferenced: boolean;
   productName?: string;
+  categoryId?: number;
+  categoryName?: string;
   purchaseNo?: string;
   product?: Product;
   purchase?: Purchase;

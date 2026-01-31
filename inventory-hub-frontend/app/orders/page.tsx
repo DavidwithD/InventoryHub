@@ -6,6 +6,7 @@ import AddIcon from '@mui/icons-material/Add';
 import { Order } from '@/types';
 import { useOrders } from './hooks/useOrders';
 import { useInventory } from '../inventory/hooks/useInventory';
+import { useCategories } from '../categories/hooks/useCategories';
 import OrdersTable from './components/OrdersTable';
 import OrderFilters from './components/OrderFilters';
 import OrderFormDialog from './components/OrderFormDialog';
@@ -15,7 +16,8 @@ import ImportDialog from './components/ImportDialog';
 export default function OrdersPage() {
   const { orders, loadOrders, createOrder, updateOrder, deleteOrder, importFromCurl } = useOrders();
   const { inventories, loadAllInventories } = useInventory();
-  
+  const { categories, loadCategories } = useCategories();
+
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [openDialog, setOpenDialog] = useState(false);
@@ -33,22 +35,24 @@ export default function OrdersPage() {
   useEffect(() => {
     loadOrders().catch(() => setError('加载订单列表失败'));
     loadAllInventories().catch(() => setError('加载库存列表失败'));
-  }, [loadOrders, loadAllInventories]);
+    loadCategories().catch(() => setError('加载分类列表失败'));
+  }, [loadOrders, loadAllInventories, loadCategories]);
 
   const getFilteredOrders = () => {
     let filtered = [...orders];
 
     if (searchOrderNo.trim()) {
-      filtered = filtered.filter(order => 
-        order.orderNo.toLowerCase().includes(searchOrderNo.toLowerCase()) ||
-        order.name.toLowerCase().includes(searchOrderNo.toLowerCase())
+      filtered = filtered.filter(
+        (order) =>
+          order.orderNo.toLowerCase().includes(searchOrderNo.toLowerCase()) ||
+          order.name.toLowerCase().includes(searchOrderNo.toLowerCase())
       );
     }
 
     if (costStatus === 'null') {
-      filtered = filtered.filter(order => order.totalCost === null || order.totalCost === 0);
+      filtered = filtered.filter((order) => order.totalCost === null || order.totalCost === 0);
     } else if (costStatus === 'hasValue') {
-      filtered = filtered.filter(order => order.totalCost !== null && order.totalCost > 0);
+      filtered = filtered.filter((order) => order.totalCost !== null && order.totalCost > 0);
     }
 
     return filtered;
@@ -56,7 +60,7 @@ export default function OrdersPage() {
 
   const handleExportJSON = () => {
     const filtered = getFilteredOrders();
-    const exportData = filtered.map(order => ({
+    const exportData = filtered.map((order) => ({
       订单号: order.orderNo,
       订单名: order.name,
       图片URL: order.imageUrl || '',
@@ -167,24 +171,25 @@ export default function OrdersPage() {
     <>
       <Box sx={{ display: 'flex', justifyContent: 'flex-end', mb: 3 }}>
         <Box sx={{ display: 'flex', gap: 2 }}>
-          <Button
-            variant="outlined"
-            onClick={handleOpenImportDialog}
-          >
+          <Button variant="outlined" onClick={handleOpenImportDialog}>
             批量导入订单
           </Button>
-          <Button
-            variant="contained"
-            startIcon={<AddIcon />}
-            onClick={() => handleOpenDialog()}
-          >
+          <Button variant="contained" startIcon={<AddIcon />} onClick={() => handleOpenDialog()}>
             新建订单
           </Button>
         </Box>
       </Box>
 
-      {error && <Alert severity="error" sx={{ mb: 2 }} onClose={() => setError('')}>{error}</Alert>}
-      {success && <Alert severity="success" sx={{ mb: 2 }} onClose={() => setSuccess('')}>{success}</Alert>}
+      {error && (
+        <Alert severity="error" sx={{ mb: 2 }} onClose={() => setError('')}>
+          {error}
+        </Alert>
+      )}
+      {success && (
+        <Alert severity="success" sx={{ mb: 2 }} onClose={() => setSuccess('')}>
+          {success}
+        </Alert>
+      )}
 
       <OrderFilters
         searchOrderNo={searchOrderNo}
@@ -211,6 +216,7 @@ export default function OrdersPage() {
         open={openDialog}
         order={editingOrder}
         inventories={inventories}
+        categories={categories}
         onClose={handleCloseDialog}
         onSave={handleSaveOrder}
       />
@@ -219,6 +225,7 @@ export default function OrdersPage() {
         open={openDetailsDialog}
         orderId={viewingOrderId}
         inventories={inventories}
+        categories={categories}
         onClose={handleCloseDetailsDialog}
         onSaved={handleDetailsSaved}
       />
