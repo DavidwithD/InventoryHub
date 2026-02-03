@@ -1,7 +1,6 @@
 'use client';
 
 import { useState } from 'react';
-import Link from 'next/link';
 import {
   Box,
   Paper,
@@ -45,7 +44,7 @@ export default function InventoryTable({ inventories, products, purchases }: Pro
 
   const getCategories = () => {
     const categoryMap = new Map<number, string>();
-    products.forEach(p => {
+    products.forEach((p) => {
       if (p.categoryId && p.categoryName) {
         categoryMap.set(p.categoryId, p.categoryName);
       }
@@ -58,20 +57,22 @@ export default function InventoryTable({ inventories, products, purchases }: Pro
 
     // 商品名搜索
     if (searchProductName.trim()) {
-      filtered = filtered.filter(inv => 
+      filtered = filtered.filter((inv) =>
         inv.productName?.toLowerCase().includes(searchProductName.toLowerCase())
       );
     }
 
     // 分类筛选
     if (filterCategory > 0) {
-      const categoryProducts = products.filter(p => p.categoryId === filterCategory).map(p => p.id);
-      filtered = filtered.filter(inv => categoryProducts.includes(inv.productId));
+      const categoryProducts = products
+        .filter((p) => p.categoryId === filterCategory)
+        .map((p) => p.id);
+      filtered = filtered.filter((inv) => categoryProducts.includes(inv.productId));
     }
 
     // 低库存筛选
     if (lowStockOnly) {
-      filtered = filtered.filter(inv => inv.stockQuantity > 0 && inv.stockQuantity < 5);
+      filtered = filtered.filter((inv) => inv.stockQuantity > 0 && inv.stockQuantity < 5);
     }
 
     // 排序
@@ -83,15 +84,11 @@ export default function InventoryTable({ inventories, products, purchases }: Pro
         case 'productName':
           aValue = a.productName || '';
           bValue = b.productName || '';
-          return order === 'asc' 
-            ? aValue.localeCompare(bValue)
-            : bValue.localeCompare(aValue);
+          return order === 'asc' ? aValue.localeCompare(bValue) : bValue.localeCompare(aValue);
         case 'purchaseNo':
-          aValue = purchases.find(p => p.id === a.purchaseId)?.purchaseNo || '';
-          bValue = purchases.find(p => p.id === b.purchaseId)?.purchaseNo || '';
-          return order === 'asc' 
-            ? aValue.localeCompare(bValue)
-            : bValue.localeCompare(aValue);
+          aValue = purchases.find((p) => p.id === a.purchaseId)?.purchaseNo || '';
+          bValue = purchases.find((p) => p.id === b.purchaseId)?.purchaseNo || '';
+          return order === 'asc' ? aValue.localeCompare(bValue) : bValue.localeCompare(aValue);
         case 'stockQuantity':
           aValue = a.stockQuantity;
           bValue = b.stockQuantity;
@@ -101,8 +98,8 @@ export default function InventoryTable({ inventories, products, purchases }: Pro
           bValue = b.unitCost;
           break;
         case 'purchaseAmount':
-          aValue = a.purchaseAmount;
-          bValue = b.purchaseAmount;
+          aValue = a.purchaseAmountJpy;
+          bValue = b.purchaseAmountJpy;
           break;
         default:
           return 0;
@@ -119,7 +116,9 @@ export default function InventoryTable({ inventories, products, purchases }: Pro
 
   return (
     <Paper sx={{ p: 3 }}>
-      <Typography variant="h6" sx={{ mb: 2 }}>所有库存</Typography>
+      <Typography variant="h6" sx={{ mb: 2 }}>
+        所有库存
+      </Typography>
 
       {/* 筛选区域 */}
       <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 2, mb: 3 }}>
@@ -222,37 +221,28 @@ export default function InventoryTable({ inventories, products, purchases }: Pro
           </TableHead>
           <TableBody>
             {filteredData.map((inv) => {
-              const purchase = purchases.find(p => p.id === inv.purchaseId);
+              const purchase = purchases.find((p) => p.id === inv.purchaseId);
               return (
-                <TableRow 
+                <TableRow
                   key={inv.id}
                   sx={{
                     bgcolor: inv.stockQuantity === 0 ? 'action.hover' : 'inherit',
                   }}
                 >
                   <TableCell>{inv.productName}</TableCell>
-                  <TableCell>
-                    {purchase?.purchaseNo ? (
-                      <Link 
-                        href={`/purchases?purchaseNo=${encodeURIComponent(purchase.purchaseNo)}`}
-                        style={{ 
-                          color: '#1976d2', 
-                          textDecoration: 'underline',
-                          cursor: 'pointer'
-                        }}
-                      >
-                        {purchase.purchaseNo}
-                      </Link>
-                    ) : '-'}
-                  </TableCell>
-                  <TableCell align="right">¥{inv.purchaseAmount.toFixed(2)}</TableCell>
+                  <TableCell>{purchase?.purchaseNo || '-'}</TableCell>
+                  <TableCell align="right">¥{inv.purchaseAmountJpy.toFixed(2)}</TableCell>
                   <TableCell align="right">{inv.purchaseQuantity}</TableCell>
                   <TableCell align="right">¥{inv.unitCost.toFixed(2)}</TableCell>
-                  <TableCell 
+                  <TableCell
                     align="right"
                     sx={{
-                      color: inv.stockQuantity === 0 ? 'error.main' : 
-                             inv.stockQuantity < 5 ? 'warning.main' : 'success.main',
+                      color:
+                        inv.stockQuantity === 0
+                          ? 'error.main'
+                          : inv.stockQuantity < 5
+                            ? 'warning.main'
+                            : 'success.main',
                       fontWeight: 'bold',
                     }}
                   >

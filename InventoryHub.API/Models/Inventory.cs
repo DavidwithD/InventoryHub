@@ -4,7 +4,7 @@ public class Inventory : BaseEntity
 {
     public int ProductId { get; set; }
     public int PurchaseId { get; set; }
-    public decimal PurchaseAmount { get; set; } // 进货金额(日元)
+    public decimal PurchaseAmountJpy { get; set; } // 进货金额(日元)
     public decimal PurchaseAmountCny { get; set; } // 进货金额(人民币)
     public int PurchaseQuantity { get; set; }
     public decimal UnitCost { get; set; }

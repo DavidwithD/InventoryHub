@@ -48,7 +48,7 @@ export default function InventoryEditTable({
   const [expectedTotalJpy, setExpectedTotalJpy] = useState<number>(0);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
-
+  const isCny = selectedPurchase.currencyType === 'CNY';
   // 加载库存数据
   useEffect(() => {
     if (selectedPurchaseId > 0) {
@@ -66,8 +66,9 @@ export default function InventoryEditTable({
               purchaseQuantity: inv.purchaseQuantity,
               stockQuantity: inv.stockQuantity,
               productName: inv.productName,
-              purchaseAmountJpy: inv.purchaseAmount,
+              purchaseAmountJpy: inv.purchaseAmountJpy,
               unitCostJpy: inv.unitCost,
+              unitCost: inv.unitCost,
             }));
             setRows(editRows);
             setOriginalRows(editRows);
@@ -77,14 +78,12 @@ export default function InventoryEditTable({
               tempId: `new-${Date.now()}`,
               productId: 0,
               purchaseId: selectedPurchase.id,
-              purchaseAmountCny:
-                selectedPurchase.currencyType === 'CNY' ? selectedPurchase.totalAmount : 0,
+              purchaseAmountCny: isCny ? selectedPurchase.totalAmount : 0,
               purchaseQuantity: 0,
               stockQuantity: 0,
-              purchaseAmountJpy:
-                selectedPurchase.currencyType === 'CNY'
-                  ? selectedPurchase.totalAmount * selectedPurchase.exchangeRate
-                  : selectedPurchase.totalAmount,
+              purchaseAmountJpy: isCny
+                ? selectedPurchase.totalAmount * selectedPurchase.exchangeRate
+                : selectedPurchase.totalAmount,
               unitCostJpy: 0,
             };
             setRows([emptyRow]);
@@ -107,9 +106,9 @@ export default function InventoryEditTable({
     productId: 0,
     purchaseId: selectedPurchase.id,
     purchaseAmountCny: 0,
+    purchaseAmountJpy: 0,
     purchaseQuantity: 0,
     stockQuantity: 0,
-    purchaseAmountJpy: 0,
     unitCostJpy: 0,
   });
 
@@ -155,7 +154,7 @@ export default function InventoryEditTable({
           }
 
           // 场景A：人民币进货
-          if (selectedPurchase.currencyType === 'CNY') {
+          if (isCny) {
             if (field === 'purchaseAmountCny' || field === 'purchaseQuantity') {
               const cnyAmount =
                 field === 'purchaseAmountCny' ? value : updatedRow.purchaseAmountCny || 0;
@@ -206,11 +205,13 @@ export default function InventoryEditTable({
         const createData = newRows.map((row) => ({
           productId: row.productId,
           purchaseId: row.purchaseId,
-          purchaseAmountCny: selectedPurchase.currencyType === 'CNY' ? row.purchaseAmountCny : 0,
+          purchaseAmountCny: row.purchaseAmountCny, // isCny ? row.purchaseAmountCny : 0,
           purchaseAmountJpy: row.purchaseAmountJpy,
           purchaseQuantity: row.purchaseQuantity,
           stockQuantity: row.stockQuantity,
+          unitCostJpy: row.unitCostJpy,
         }));
+        console.log('update data', createData);
         await createBatch(createData);
       }
 
@@ -231,10 +232,10 @@ export default function InventoryEditTable({
               productId: row.productId,
               purchaseId: row.purchaseId,
               purchaseAmountJpy: row.purchaseAmountJpy,
-              purchaseAmountCny:
-                selectedPurchase.currencyType === 'CNY' ? row.purchaseAmountCny : 0,
+              purchaseAmountCny: isCny ? row.purchaseAmountCny : 0,
               purchaseQuantity: row.purchaseQuantity,
               stockQuantity: row.stockQuantity,
+              unitCostJpy: row.unitCostJpy,
             };
             await updateInventory(row.id, updateData);
           }
@@ -259,7 +260,7 @@ export default function InventoryEditTable({
           purchaseQuantity: inv.purchaseQuantity,
           stockQuantity: inv.stockQuantity,
           productName: inv.productName,
-          purchaseAmountJpy: inv.purchaseAmount,
+          purchaseAmountJpy: inv.purchaseAmountJpy,
           unitCostJpy: inv.unitCost,
         }));
         setRows(editRows);
@@ -309,8 +310,6 @@ export default function InventoryEditTable({
   const isValidForSave = (): boolean => {
     if (rows.length === 0) return false;
 
-    const isCnyPurchase = selectedPurchase.currencyType === 'CNY';
-
     // 检查所有行是否有效
     for (const row of rows) {
       if (row.productId === 0) return false;
@@ -321,7 +320,7 @@ export default function InventoryEditTable({
     }
 
     // 检查总金额是否匹配
-    if (isCnyPurchase) {
+    if (isCny) {
       const currentTotalCny = calculateCurrentTotalCny();
       return currentTotalCny.toFixed(2) === selectedPurchase.totalAmount.toFixed(2);
     } else {
@@ -340,7 +339,9 @@ export default function InventoryEditTable({
   const differenceCny = getDifferenceCny();
   const hasReferencedRows = rows.some((row) => row.isReferenced);
   const canAddRows = hasAnyEditableRow() || rows.length === 0;
-
+  const checkAmount = () =>
+    (isCny && currentTotalCny.toFixed(2) === selectedPurchase.totalAmount.toFixed(2)) ||
+    (!isCny && currentTotalJpy.toFixed(2) === selectedPurchase.totalAmount.toFixed(2));
   return (
     <>
       {error && (
@@ -373,9 +374,7 @@ export default function InventoryEditTable({
       <Alert severity="info" sx={{ mb: 2 }}>
         <Typography variant="caption">
           <strong>说明:</strong>{' '}
-          {selectedPurchase.currencyType === 'CNY'
-            ? '输入人民币金额，系统将自动转换为日元存储到数据库。'
-            : '直接输入日元金额。'}{' '}
+          {isCny ? '输入人民币金额，系统将自动转换为日元存储到数据库。' : '直接输入日元金额。'}{' '}
           单位成本为日元单价。
         </Typography>
       </Alert>
@@ -457,7 +456,7 @@ export default function InventoryEditTable({
                       }
                       inputProps={{ step: 0.01, min: 0 }}
                       placeholder="输入人民币"
-                      disabled={isRowLocked}
+                      disabled={isRowLocked || !isCny}
                     />
                   </TableCell>
                   <TableCell>
@@ -516,63 +515,23 @@ export default function InventoryEditTable({
 
       <Box sx={{ mt: 3, p: 2, bgcolor: 'background.default', borderRadius: 1 }}>
         <Typography variant="body1" sx={{ mb: 1 }}>
-          {selectedPurchase.currencyType === 'CNY' ? (
-            <>
-              <strong>人民币汇总:</strong> ¥{currentTotalCny.toFixed(2)} CNY |
-              <strong> 进货总额:</strong> ¥{selectedPurchase.totalAmount.toFixed(2)} CNY |
-              <strong> 差额:</strong>{' '}
-              <span
-                style={{
-                  color:
-                    currentTotalCny.toFixed(2) === selectedPurchase.totalAmount.toFixed(2)
-                      ? 'green'
-                      : 'red',
-                  fontWeight: 'bold',
-                }}
-              >
-                ¥{differenceCny.toFixed(2)} CNY
-              </span>
-            </>
-          ) : (
-            <>
-              <strong>日元汇总:</strong> ¥{currentTotalJpy.toFixed(2)} JPY |
-              <strong> 进货总额:</strong> ¥{selectedPurchase.totalAmount.toFixed(2)} JPY |
-              <strong> 差额:</strong>{' '}
-              <span
-                style={{
-                  color:
-                    currentTotalJpy.toFixed(2) === selectedPurchase.totalAmount.toFixed(2)
-                      ? 'green'
-                      : 'red',
-                  fontWeight: 'bold',
-                }}
-              >
-                ¥{(currentTotalJpy - selectedPurchase.totalAmount).toFixed(2)} JPY
-              </span>
-            </>
-          )}
+          <strong> 进货总额:</strong> ¥{selectedPurchase.totalAmount.toFixed(2)}{' '}
+          {selectedPurchase.currencyType}
         </Typography>
-        <Typography variant="body2" color="text.secondary">
-          参考：日元汇总 ¥{currentTotalJpy.toFixed(2)} JPY（期望 ¥{expectedTotalJpy.toFixed(2)}{' '}
-          JPY）
+        <Typography variant="body1" sx={{ mb: 1 }}>
+          <strong>人民币汇总:</strong> ¥{currentTotalCny.toFixed(2)} CNY
         </Typography>
-        {((selectedPurchase.currencyType === 'CNY' &&
-          currentTotalCny.toFixed(2) !== selectedPurchase.totalAmount.toFixed(2)) ||
-          (selectedPurchase.currencyType === 'JPY' &&
-            currentTotalJpy.toFixed(2) !== selectedPurchase.totalAmount.toFixed(2))) && (
-          <Alert severity="warning" sx={{ mt: 2 }}>
-            注意：{selectedPurchase.currencyType === 'CNY' ? '人民币' : '日元'}
-            总额必须等于进货总额才能保存
-          </Alert>
-        )}
-        {((selectedPurchase.currencyType === 'CNY' &&
-          currentTotalCny.toFixed(2) === selectedPurchase.totalAmount.toFixed(2) &&
-          currentTotalCny > 0) ||
-          (selectedPurchase.currencyType === 'JPY' &&
-            currentTotalJpy.toFixed(2) === selectedPurchase.totalAmount.toFixed(2) &&
-            currentTotalJpy > 0)) && (
+        <Typography variant="body1" sx={{ mb: 1 }}>
+          <strong>日元汇总:</strong> ¥{currentTotalJpy.toFixed(2)} JPY
+        </Typography>
+        {checkAmount() ? (
           <Alert severity="success" sx={{ mt: 2 }}>
             ✓ 总额验证通过，可以保存
+          </Alert>
+        ) : (
+          <Alert severity="warning" sx={{ mt: 2 }}>
+            注意：{isCny ? '人民币' : '日元'}
+            总额必须等于进货总额才能保存
           </Alert>
         )}
       </Box>

@@ -103,7 +103,7 @@ public class AppDbContext : DbContext
             entity.Property(e => e.Id).HasColumnName("id");
             entity.Property(e => e.ProductId).HasColumnName("product_id").IsRequired();
             entity.Property(e => e.PurchaseId).HasColumnName("purchase_id").IsRequired();
-            entity.Property(e => e.PurchaseAmount).HasColumnName("purchase_amount").HasColumnType("decimal(15,2)").IsRequired();
+            entity.Property(e => e.PurchaseAmountJpy).HasColumnName("purchase_amount").HasColumnType("decimal(15,2)").IsRequired();
             entity.Property(e => e.PurchaseAmountCny).HasColumnName("purchase_amount_cny").HasColumnType("decimal(15,2)").IsRequired();
             entity.Property(e => e.PurchaseQuantity).HasColumnName("purchase_quantity").IsRequired();
             entity.Property(e => e.UnitCost).HasColumnName("unit_cost").HasColumnType("decimal(15,2)").IsRequired();

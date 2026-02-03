@@ -9,7 +9,7 @@ public class InventoryDto
     public string CategoryName { get; set; } = string.Empty;
     public int PurchaseId { get; set; }
     public string PurchaseNo { get; set; } = string.Empty;
-    public decimal PurchaseAmount { get; set; } // 进货金额(日元)
+    public decimal PurchaseAmountJpy { get; set; } // 进货金额(日元)
     public decimal PurchaseAmountCny { get; set; } // 进货金额(人民币)
     public int PurchaseQuantity { get; set; }
     public decimal UnitCost { get; set; }
@@ -24,8 +24,10 @@ public class CreateInventoryDto
     public int ProductId { get; set; }
     public int PurchaseId { get; set; }
     public decimal PurchaseAmountCny { get; set; } // 用户输入的人民币金额
+    public decimal PurchaseAmountJpy { get; set; } // 用户输入的日元额
     public int PurchaseQuantity { get; set; }
     public int StockQuantity { get; set; }
+    public decimal UnitCostJpy { get; set; }
 }
 
 public class UpdateInventoryDto
@@ -33,8 +35,10 @@ public class UpdateInventoryDto
     public int ProductId { get; set; }
     public int PurchaseId { get; set; }
     public decimal PurchaseAmountCny { get; set; } // 用户输入的人民币金额
+    public decimal PurchaseAmountJpy { get; set; } // 用户输入的日元金额
     public int PurchaseQuantity { get; set; }
     public int StockQuantity { get; set; }
+    public decimal UnitCostJpy { get; set; }
 }
 
 public class BatchCreateInventoryDto

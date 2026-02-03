@@ -52,7 +52,7 @@ public class InventoryService : IInventoryService
             CategoryName = i.Product?.Category?.Name ?? "",
             PurchaseId = i.PurchaseId,
             PurchaseNo = i.Purchase?.PurchaseNo ?? "",
-            PurchaseAmount = i.PurchaseAmount,
+            PurchaseAmountJpy = i.PurchaseAmountJpy,
             PurchaseAmountCny = i.PurchaseAmountCny,
             PurchaseQuantity = i.PurchaseQuantity,
             UnitCost = i.UnitCost,
@@ -86,7 +86,7 @@ public class InventoryService : IInventoryService
             CategoryName = inventory.Product?.Category?.Name ?? "",
             PurchaseId = inventory.PurchaseId,
             PurchaseNo = inventory.Purchase?.PurchaseNo ?? "",
-            PurchaseAmount = inventory.PurchaseAmount,
+            PurchaseAmountJpy = inventory.PurchaseAmountJpy,
             PurchaseAmountCny = inventory.PurchaseAmountCny,
             PurchaseQuantity = inventory.PurchaseQuantity,
             UnitCost = inventory.UnitCost,
@@ -124,7 +124,7 @@ public class InventoryService : IInventoryService
         {
             throw new InvalidOperationException("库存数量不能为负数");
         }
-
+        Console.WriteLine($"purchase Amount Jpy {dto.PurchaseAmountJpy}");
         // 创建库存记录
         var inventory = new Inventory
         {
@@ -135,9 +135,9 @@ public class InventoryService : IInventoryService
             // 保存原始人民币金额
             PurchaseAmountCny = dto.PurchaseAmountCny,
             // 将人民币转换为日元：CNY × 汇率 = JPY
-            PurchaseAmount = dto.PurchaseAmountCny * purchase.ExchangeRate,
+            PurchaseAmountJpy = dto.PurchaseAmountJpy,
             // 计算日元单位成本
-            UnitCost = (dto.PurchaseAmountCny * purchase.ExchangeRate) / dto.PurchaseQuantity
+            UnitCost = dto.UnitCostJpy
         };
 
         _context.Inventory.Add(inventory);
@@ -211,9 +211,9 @@ public class InventoryService : IInventoryService
         // 保存原始人民币金额
         inventory.PurchaseAmountCny = dto.PurchaseAmountCny;
         // 将人民币转换为日元
-        inventory.PurchaseAmount = dto.PurchaseAmountCny * purchase.ExchangeRate;
+        inventory.PurchaseAmountJpy = dto.PurchaseAmountJpy;
         // 重新计算日元单位成本
-        inventory.UnitCost = inventory.PurchaseAmount / dto.PurchaseQuantity;
+        inventory.UnitCost = dto.UnitCostJpy;
         inventory.UpdatedAt = DateTime.UtcNow;
         await _context.SaveChangesAsync();
 
@@ -251,7 +251,7 @@ public class InventoryService : IInventoryService
         // 返回该进货单的日元总额（用于验证）
         var total = await _context.Inventory
             .Where(i => i.PurchaseId == purchaseId && !i.IsDeleted)
-            .SumAsync(i => i.PurchaseAmount);
+            .SumAsync(i => i.PurchaseAmountJpy);
         return total;
     }
 
