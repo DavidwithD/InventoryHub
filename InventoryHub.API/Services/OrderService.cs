@@ -295,7 +295,7 @@ public class OrderService : IOrderService
             var order = await _context.Orders.FindAsync(dto.OrderId);
             if (order != null)
             {
-                order.TotalCost += subtotalCost;
+                order.TotalCost ??= 0 + subtotalCost;
                 order.UpdatedAt = DateTime.UtcNow;
             }
 

@@ -188,15 +188,20 @@ export default function OrdersTable({ orders, onEdit, onDelete, onViewDetails }:
                 <TableCell>{(order.revenue - (order.totalCost || 0)).toFixed(2)}</TableCell>
                 <TableCell>{new Date(order.transactionTime).toLocaleDateString('zh-CN')}</TableCell>
                 <TableCell align="center">
-                  <IconButton size="small" onClick={() => onViewDetails(order.id)} color="info">
-                    <VisibilityIcon />
+                  <IconButton
+                    size="small"
+                    onClick={() => onViewDetails(order.id)}
+                    color="info"
+                    className=" font-normal"
+                  >
+                    编辑详细
                   </IconButton>
-                  <IconButton size="small" onClick={() => onEdit(order)} color="primary">
+                  {/* <IconButton size="small" onClick={() => onEdit(order)} color="primary">
                     <EditIcon />
                   </IconButton>
                   <IconButton size="small" onClick={() => onDelete(order.id)} color="error">
                     <DeleteIcon />
-                  </IconButton>
+                  </IconButton> */}
                 </TableCell>
               </TableRow>
             ))}

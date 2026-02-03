@@ -45,10 +45,10 @@ export default function InventoryEditTable({
   } = useInventory();
   const [rows, setRows] = useState<InventoryRow[]>([]);
   const [originalRows, setOriginalRows] = useState<InventoryRow[]>([]);
-  const [expectedTotalJpy, setExpectedTotalJpy] = useState<number>(0);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const isCny = selectedPurchase.currencyType === 'CNY';
+
   // 加载库存数据
   useEffect(() => {
     if (selectedPurchaseId > 0) {
@@ -93,12 +93,8 @@ export default function InventoryEditTable({
         .catch((err) => {
           console.error('加载库存记录失败', err);
         });
-
-      loadExpectedTotal(selectedPurchaseId)
-        .then((total) => setExpectedTotalJpy(total))
-        .catch(() => {});
     }
-  }, [selectedPurchaseId, selectedPurchase, loadInventoriesByPurchase, loadExpectedTotal]);
+  }, [selectedPurchaseId, selectedPurchase, loadInventoriesByPurchase]);
 
   // 创建空行
   const createEmptyRow = (): InventoryRow => ({
@@ -211,7 +207,6 @@ export default function InventoryEditTable({
           stockQuantity: row.stockQuantity,
           unitCostJpy: row.unitCostJpy,
         }));
-        console.log('update data', createData);
         await createBatch(createData);
       }
 
@@ -336,9 +331,9 @@ export default function InventoryEditTable({
 
   const currentTotalCny = calculateCurrentTotalCny();
   const currentTotalJpy = calculateCurrentTotalJpy();
-  const differenceCny = getDifferenceCny();
   const hasReferencedRows = rows.some((row) => row.isReferenced);
   const canAddRows = hasAnyEditableRow() || rows.length === 0;
+
   const checkAmount = () =>
     (isCny && currentTotalCny.toFixed(2) === selectedPurchase.totalAmount.toFixed(2)) ||
     (!isCny && currentTotalJpy.toFixed(2) === selectedPurchase.totalAmount.toFixed(2));
