@@ -2,7 +2,7 @@
 
 import { useState, useCallback } from 'react';
 import api from '@/lib/api';
-import { Order, CreateOrderDetail } from '@/types';
+import { Order, CreateOrderDetail, UpdateOrderDetail } from '@/types';
 
 interface CreateOrderData {
   orderNo: string;
@@ -99,6 +99,26 @@ export function useOrders() {
     }
   }, []);
 
+  const createOrderDetail = useCallback(async (data: CreateOrderDetail) => {
+    try {
+      const response = await api.post('/orders/details', data);
+      return response.data;
+    } catch (error) {
+      console.error('创建订单详细失败:', error);
+      throw error;
+    }
+  }, []);
+
+  const updateOrderDetail = useCallback(async (id: number, data: UpdateOrderDetail) => {
+    try {
+      const response = await api.put(`/orders/details/${id}`, data);
+      return response.data;
+    } catch (error) {
+      console.error('更新订单详细失败:', error);
+      throw error;
+    }
+  }, []);
+
   return {
     orders,
     loading,
@@ -108,5 +128,7 @@ export function useOrders() {
     deleteOrder,
     getOrderDetails,
     importFromCurl,
+    createOrderDetail,
+    updateOrderDetail,
   };
 }
