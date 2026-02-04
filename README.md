@@ -1,6 +1,23 @@
-# 库存管理系统
+# 库存管理系统 (InventoryHub)
 
 一个用于管理商品库存、进货、订单的综合管理系统。
+
+## Documentation
+
+For comprehensive English documentation, see the [docs/](docs/) folder:
+
+| Document | Description |
+|----------|-------------|
+| [Getting Started](docs/getting-started.md) | Installation and setup guide |
+| [Architecture](docs/architecture.md) | System architecture and design patterns |
+| [Database Schema](docs/database-schema.md) | Database tables and relationships |
+| [API Reference](docs/api-reference.md) | REST API documentation |
+| [Frontend Guide](docs/frontend-guide.md) | Frontend architecture and components |
+| [Backend Guide](docs/backend-guide.md) | Backend services and controllers |
+| [Features](docs/features.md) | Feature descriptions and usage |
+| [Development](docs/development.md) | Development guidelines |
+
+---
 
 ## 技术栈
 

@@ -1,0 +1,7 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(git -C \"c:\\\\Users\\\\l.kou\\\\Documents\\\\GitHub\\\\InventoryHub\" log --oneline -20)"
+    ]
+  }
+}
