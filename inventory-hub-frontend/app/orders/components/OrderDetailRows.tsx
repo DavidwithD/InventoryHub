@@ -91,10 +91,7 @@ export default function OrderDetailRows({
             <TableCell>单价（¥）</TableCell>
             <TableCell>数量</TableCell>
             <TableCell>可用库存</TableCell>
-            <TableCell>包装费（¥）</TableCell>
-            <TableCell>其他费用（¥）</TableCell>
             <TableCell>小计（¥）</TableCell>
-            <TableCell>备注</TableCell>
             <TableCell>操作</TableCell>
           </TableRow>
         </TableHead>
@@ -158,35 +155,7 @@ export default function OrderDetailRows({
                   />
                 </TableCell>
                 <TableCell>{row.availableStock || 0}</TableCell>
-                <TableCell>
-                  <TextField
-                    type="number"
-                    value={row.packagingCost}
-                    onChange={(e) =>
-                      onUpdateRow(row.tempId, 'packagingCost', Number(e.target.value))
-                    }
-                    size="small"
-                    sx={{ width: 100 }}
-                  />
-                </TableCell>
-                <TableCell>
-                  <TextField
-                    type="number"
-                    value={row.otherCost}
-                    onChange={(e) => onUpdateRow(row.tempId, 'otherCost', Number(e.target.value))}
-                    size="small"
-                    sx={{ width: 100 }}
-                  />
-                </TableCell>
                 <TableCell>{calculateSubtotal(row).toFixed(2)}</TableCell>
-                <TableCell>
-                  <TextField
-                    value={row.notes}
-                    onChange={(e) => onUpdateRow(row.tempId, 'notes', e.target.value)}
-                    size="small"
-                    sx={{ width: 120 }}
-                  />
-                </TableCell>
                 <TableCell>
                   <IconButton size="small" onClick={() => onRemoveRow(row.tempId)} color="error">
                     <DeleteIcon />

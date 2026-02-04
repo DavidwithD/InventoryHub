@@ -6,7 +6,6 @@ public class Order : BaseEntity
     public string Name { get; set; } = string.Empty;
     public string? ImageUrl { get; set; }
     public decimal Revenue { get; set; }
-    public decimal? TotalCost { get; set; }
     public decimal ShippingFee { get; set; } = 0;
     public DateTime TransactionTime { get; set; }
 

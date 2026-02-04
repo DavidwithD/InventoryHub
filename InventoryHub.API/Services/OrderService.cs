@@ -20,7 +20,9 @@ public class OrderService : IOrderService
     // 订单 CRUD
     public async Task<IEnumerable<OrderDto>> GetAllOrdersAsync(DateTime? startDate = null, DateTime? endDate = null)
     {
-        var query = _context.Orders.Where(o => !o.IsDeleted);
+        var query = _context.Orders
+            .Include(o => o.OrderDetails.Where(d => !d.IsDeleted))
+            .Where(o => !o.IsDeleted);
 
         if (startDate.HasValue)
         {
@@ -36,15 +38,42 @@ public class OrderService : IOrderService
             .OrderByDescending(o => o.TransactionTime)
             .ToListAsync();
 
-        return _mapper.Map<IEnumerable<OrderDto>>(orders);
+        return orders.Select(o => new OrderDto
+        {
+            Id = o.Id,
+            OrderNo = o.OrderNo,
+            Name = o.Name,
+            ImageUrl = o.ImageUrl,
+            Revenue = o.Revenue,
+            TotalCost = o.OrderDetails.Sum(d => d.SubtotalCost),
+            ShippingFee = o.ShippingFee,
+            TransactionTime = o.TransactionTime,
+            CreatedAt = o.CreatedAt,
+            UpdatedAt = o.UpdatedAt
+        });
     }
 
     public async Task<OrderDto?> GetOrderByIdAsync(int id)
     {
         var order = await _context.Orders
+            .Include(o => o.OrderDetails.Where(d => !d.IsDeleted))
             .FirstOrDefaultAsync(o => o.Id == id && !o.IsDeleted);
 
-        return order == null ? null : _mapper.Map<OrderDto>(order);
+        if (order == null) return null;
+
+        return new OrderDto
+        {
+            Id = order.Id,
+            OrderNo = order.OrderNo,
+            Name = order.Name,
+            ImageUrl = order.ImageUrl,
+            Revenue = order.Revenue,
+            TotalCost = order.OrderDetails.Sum(d => d.SubtotalCost),
+            ShippingFee = order.ShippingFee,
+            TransactionTime = order.TransactionTime,
+            CreatedAt = order.CreatedAt,
+            UpdatedAt = order.UpdatedAt
+        };
     }
 
     public async Task<OrderDto> CreateOrderWithDetailsAsync(CreateOrderWithDetailsDto dto)
@@ -58,14 +87,11 @@ public class OrderService : IOrderService
                 OrderNo = dto.OrderNo,
                 ImageUrl = dto.ImageUrl,
                 Revenue = dto.Revenue,
-                TransactionTime = dto.TransactionTime,
-                TotalCost = 0 // 先初始化为0，后面计算
+                TransactionTime = dto.TransactionTime
             };
 
             _context.Orders.Add(order);
             await _context.SaveChangesAsync();
-
-            decimal totalCost = 0;
 
             // 2. 创建订单详细并扣减库存
             foreach (var detailDto in dto.Details)
@@ -109,17 +135,13 @@ public class OrderService : IOrderService
                 // 扣减库存
                 inventory.StockQuantity -= detailDto.Quantity;
                 inventory.UpdatedAt = DateTime.UtcNow;
-
-                totalCost += subtotalCost;
             }
 
-            // 3. 更新订单总成本
-            order.TotalCost = totalCost;
             await _context.SaveChangesAsync();
-
             await transaction.CommitAsync();
 
-            return _mapper.Map<OrderDto>(order);
+            // Reload with OrderDetails to calculate TotalCost
+            return (await GetOrderByIdAsync(order.Id))!;
         }
         catch
         {
@@ -291,14 +313,6 @@ public class OrderService : IOrderService
             inventory.StockQuantity -= dto.Quantity;
             inventory.UpdatedAt = DateTime.UtcNow;
 
-            // 更新订单总成本
-            var order = await _context.Orders.FindAsync(dto.OrderId);
-            if (order != null)
-            {
-                order.TotalCost ??= 0 + subtotalCost;
-                order.UpdatedAt = DateTime.UtcNow;
-            }
-
             await _context.SaveChangesAsync();
             await transaction.CommitAsync();
 
@@ -350,23 +364,13 @@ public class OrderService : IOrderService
             newInventory.StockQuantity -= dto.Quantity;
             newInventory.UpdatedAt = DateTime.UtcNow;
 
-            // 更新订单总成本（减去旧的，加上新的）
-            var order = await _context.Orders.FindAsync(orderDetail.OrderId);
-            if (order != null)
-            {
-                order.TotalCost -= orderDetail.SubtotalCost;
-
-                var newSubtotalCost = (newInventory.UnitCost * dto.Quantity)
-                                    + dto.PackagingCost
-                                    + dto.OtherCost;
-
-                order.TotalCost += newSubtotalCost;
-                order.UpdatedAt = DateTime.UtcNow;
-
-                orderDetail.SubtotalCost = newSubtotalCost;
-            }
+            // 计算新的小计成本
+            var newSubtotalCost = (newInventory.UnitCost * dto.Quantity)
+                                + dto.PackagingCost
+                                + dto.OtherCost;
 
             // 更新订单详细
+            orderDetail.SubtotalCost = newSubtotalCost;
             orderDetail.InventoryId = dto.InventoryId;
             orderDetail.ProductId = dto.ProductId;
             orderDetail.UnitPrice = dto.UnitPrice;
@@ -409,14 +413,6 @@ public class OrderService : IOrderService
             {
                 inventory.StockQuantity += orderDetail.Quantity;
                 inventory.UpdatedAt = DateTime.UtcNow;
-            }
-
-            // 更新订单总成本
-            var order = await _context.Orders.FindAsync(orderDetail.OrderId);
-            if (order != null)
-            {
-                order.TotalCost -= orderDetail.SubtotalCost;
-                order.UpdatedAt = DateTime.UtcNow;
             }
 
             orderDetail.IsDeleted = true;

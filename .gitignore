@@ -4,3 +4,7 @@
 
 # Node.js dependencies
 node_modules/
+
+# Sensitive configuration files
+**/appsettings.json
+**/appsettings.Development.json

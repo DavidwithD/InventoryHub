@@ -5,7 +5,16 @@
       "Bash(npx tsc:*)",
       "Bash(npm install:*)",
       "Bash(npm run lint)",
-      "Bash(npm run build:*)"
+      "Bash(npm run build:*)",
+      "Bash(where:*)",
+      "Bash(dir /s /b \"C:\\\\Program Files\\\\MySQL\")",
+      "Bash(dir /s /b \"C:\\\\Program Files \\(x86\\)\\\\MySQL\")",
+      "Bash(reg query \"HKLM\\\\SOFTWARE\\\\MySQL AB\" /s)",
+      "Bash(findstr:*)",
+      "Bash(powershell:*)",
+      "Bash(dotnet ef migrations:*)",
+      "Bash(dotnet tool install:*)",
+      "Bash(dotnet ef database update:*)"
     ]
   }
 }

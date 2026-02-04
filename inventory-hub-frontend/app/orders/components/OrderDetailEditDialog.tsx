@@ -288,41 +288,6 @@ export default function OrderDetailEditDialog({
               />
             </Grid>
 
-            <Grid size={{ xs: 12, sm: 6 }}>
-              <TextField
-                fullWidth
-                size="small"
-                label="包装费（¥）"
-                type="number"
-                value={packagingCost}
-                onChange={(e) => setPackagingCost(Number(e.target.value))}
-                slotProps={{ htmlInput: { min: 0, step: 0.01 } }}
-              />
-            </Grid>
-
-            <Grid size={{ xs: 12, sm: 6 }}>
-              <TextField
-                fullWidth
-                size="small"
-                label="其他费用（¥）"
-                type="number"
-                value={otherCost}
-                onChange={(e) => setOtherCost(Number(e.target.value))}
-                slotProps={{ htmlInput: { min: 0, step: 0.01 } }}
-              />
-            </Grid>
-
-            <Grid size={12}>
-              <TextField
-                fullWidth
-                size="small"
-                label="备注"
-                value={notes}
-                onChange={(e) => setNotes(e.target.value)}
-                multiline
-                rows={2}
-              />
-            </Grid>
 
             <Grid size={12}>
               <Box sx={{ p: 2, bgcolor: 'grey.100', borderRadius: 1 }}>

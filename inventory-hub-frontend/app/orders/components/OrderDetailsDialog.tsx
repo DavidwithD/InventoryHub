@@ -20,6 +20,7 @@ import {
 } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
 import EditIcon from '@mui/icons-material/Edit';
+import DeleteIcon from '@mui/icons-material/Delete';
 import api from '@/lib/api';
 import { OrderDetail, Inventory, Category } from '@/types';
 import OrderDetailEditDialog from './OrderDetailEditDialog';
@@ -93,6 +94,25 @@ export default function OrderDetailsDialog({
     onSaved();
   };
 
+  const handleDeleteClick = async (detail: OrderDetail) => {
+    if (!confirm(`确定要删除商品 "${detail.productName}" 吗？`)) {
+      return;
+    }
+
+    try {
+      await api.delete(`/orders/details/${detail.id}`);
+      loadDetails();
+      onSaved();
+    } catch (err: any) {
+      if (err.response?.data) {
+        const errorData = err.response.data;
+        setError(typeof errorData === 'string' ? errorData : JSON.stringify(errorData));
+      } else {
+        setError('删除失败');
+      }
+    }
+  };
+
   const handleClose = () => {
     setOrderDetails([]);
     setError('');
@@ -159,6 +179,13 @@ export default function OrderDetailsDialog({
                             color="primary"
                           >
                             <EditIcon />
+                          </IconButton>
+                          <IconButton
+                            size="small"
+                            onClick={() => handleDeleteClick(detail)}
+                            color="error"
+                          >
+                            <DeleteIcon />
                           </IconButton>
                         </TableCell>
                       </TableRow>

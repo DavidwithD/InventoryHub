@@ -29,24 +29,26 @@ public class DashboardService : IDashboardService
             .Where(i => !i.IsDeleted)
             .SumAsync(i => i.StockQuantity * i.UnitCost);
 
-        // 本月订单
+        // 本月订单（包含订单详细以计算成本）
         var monthlyOrders = await _context.Orders
+            .Include(o => o.OrderDetails.Where(d => !d.IsDeleted))
             .Where(o => !o.IsDeleted && o.TransactionTime >= startOfMonth && o.TransactionTime < endOfMonth)
             .ToListAsync();
 
         // 本月利润 = 本月订单的 (营业额 - 成本) 总和
         var monthlyProfit = monthlyOrders
-            .Where(o => o.TotalCost.HasValue)
-            .Sum(o => o.Revenue - o.TotalCost.Value);
+            .Where(o => o.OrderDetails.Any())
+            .Sum(o => o.Revenue - o.OrderDetails.Sum(d => d.SubtotalCost));
 
         // 订单总数
         var totalOrders = await _context.Orders
             .Where(o => !o.IsDeleted)
             .CountAsync();
 
-        // 待补充成本的订单数
+        // 待补充成本的订单数（没有订单详细的订单）
         var ordersWithoutCost = await _context.Orders
-            .Where(o => !o.IsDeleted && o.TotalCost == null)
+            .Include(o => o.OrderDetails.Where(d => !d.IsDeleted))
+            .Where(o => !o.IsDeleted && !o.OrderDetails.Any())
             .CountAsync();
 
         // 低库存商品数量（库存 < 5）
