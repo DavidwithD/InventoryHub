@@ -20,6 +20,7 @@ import {
   TableSortLabel,
 } from '@mui/material';
 import { Inventory, Product, Purchase } from '@/types';
+import { useRouter } from 'next/navigation';
 
 type OrderByType = 'productName' | 'purchaseNo' | 'stockQuantity' | 'unitCost' | 'purchaseAmount';
 
@@ -35,7 +36,7 @@ export default function InventoryTable({ inventories, products, purchases }: Pro
   const [searchProductName, setSearchProductName] = useState('');
   const [filterCategory, setFilterCategory] = useState<number>(0);
   const [lowStockOnly, setLowStockOnly] = useState(false);
-
+  const router = useRouter();
   const handleRequestSort = (property: OrderByType) => {
     const isAsc = orderBy === property && order === 'asc';
     setOrder(isAsc ? 'desc' : 'asc');
@@ -114,6 +115,8 @@ export default function InventoryTable({ inventories, products, purchases }: Pro
   const filteredData = getFilteredAndSortedInventories();
   const hasFilters = searchProductName || filterCategory > 0 || lowStockOnly;
 
+  const navigateToPurchase = (purchaseNo: string | undefined) => () =>
+    router.push(`purchases?purchaseNo=${purchaseNo}`);
   return (
     <Paper sx={{ p: 3 }}>
       <Typography variant="h6" sx={{ mb: 2 }}>
@@ -230,7 +233,12 @@ export default function InventoryTable({ inventories, products, purchases }: Pro
                   }}
                 >
                   <TableCell>{inv.productName}</TableCell>
-                  <TableCell>{purchase?.purchaseNo || '-'}</TableCell>
+                  <TableCell
+                    onClick={navigateToPurchase(inv.purchaseNo)}
+                    className="cursor-pointer hover:bg-blue-100"
+                  >
+                    {purchase?.purchaseNo || '-'}
+                  </TableCell>
                   <TableCell align="right">¥{inv.purchaseAmountJpy.toFixed(2)}</TableCell>
                   <TableCell align="right">{inv.purchaseQuantity}</TableCell>
                   <TableCell align="right">¥{inv.unitCost.toFixed(2)}</TableCell>

@@ -19,7 +19,7 @@ export default function PurchasesPage() {
   const searchParams = useSearchParams();
 
   const [filters, setFilters] = useState({
-    purchaseNo: '',
+    purchaseNo: searchParams.get('purchaseNo') ?? '',
     supplierId: 0,
     dateRange: 'all',
     startDate: '',
@@ -36,14 +36,9 @@ export default function PurchasesPage() {
     severity: 'success' as 'success' | 'error',
   });
 
-  // 初始化：加载供应商和从 URL 读取筛选参数
+  // 初始化：加载供应商
   useEffect(() => {
     loadSuppliers().catch(() => showSnackbar('加载供应商列表失败', 'error'));
-
-    const purchaseNoFromUrl = searchParams.get('purchaseNo');
-    if (purchaseNoFromUrl) {
-      setFilters((prev) => ({ ...prev, purchaseNo: purchaseNoFromUrl }));
-    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 

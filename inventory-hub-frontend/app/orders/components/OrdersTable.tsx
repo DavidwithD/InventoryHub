@@ -161,11 +161,13 @@ export default function OrdersTable({ orders, onEdit, onDelete, onViewDetails }:
               <TableRow key={order.id}>
                 <TableCell>
                   {order.imageUrl ? (
-                    <img
-                      src={order.imageUrl}
-                      alt={order.name}
-                      style={{ width: 60, height: 60, objectFit: 'cover', borderRadius: 4 }}
-                    />
+                    <a href={`https://jp.mercari.com/item/${order.orderNo}`}>
+                      <img
+                        src={order.imageUrl}
+                        alt={order.name}
+                        style={{ width: 60, height: 60, objectFit: 'cover', borderRadius: 4 }}
+                      />
+                    </a>
                   ) : (
                     <Box sx={{ width: 60, height: 60, bgcolor: 'grey.200', borderRadius: 1 }} />
                   )}
