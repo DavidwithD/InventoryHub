@@ -19,11 +19,13 @@ import {
   IconButton,
 } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
+import PlaylistAddIcon from '@mui/icons-material/PlaylistAdd';
 import EditIcon from '@mui/icons-material/Edit';
 import DeleteIcon from '@mui/icons-material/Delete';
 import api from '@/lib/api';
 import { OrderDetail, Inventory, Category } from '@/types';
 import OrderDetailEditDialog from './OrderDetailEditDialog';
+import OrderDetailBulkCreateDialog from './OrderDetailBulkCreateDialog';
 
 interface Props {
   open: boolean;
@@ -46,6 +48,7 @@ export default function OrderDetailsDialog({
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
+  const [bulkCreateDialogOpen, setBulkCreateDialogOpen] = useState(false);
   const [selectedDetail, setSelectedDetail] = useState<OrderDetail | null>(null);
 
   useEffect(() => {
@@ -94,6 +97,11 @@ export default function OrderDetailsDialog({
     onSaved();
   };
 
+  const handleBulkCreateDialogSaved = () => {
+    loadDetails();
+    onSaved();
+  };
+
   const handleDeleteClick = async (detail: OrderDetail) => {
     if (!confirm(`确定要删除商品 "${detail.productName}" 吗？`)) {
       return;
@@ -125,14 +133,24 @@ export default function OrderDetailsDialog({
         <DialogTitle>
           <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <span>订单详细 - 订单#{orderId}</span>
-            <Button
-              variant="outlined"
-              size="small"
-              startIcon={<AddIcon />}
-              onClick={handleAddClick}
-            >
-              添加商品
-            </Button>
+            <Box sx={{ display: 'flex', gap: 1 }}>
+              <Button
+                variant="outlined"
+                size="small"
+                startIcon={<AddIcon />}
+                onClick={handleAddClick}
+              >
+                添加商品
+              </Button>
+              <Button
+                variant="outlined"
+                size="small"
+                startIcon={<PlaylistAddIcon />}
+                onClick={() => setBulkCreateDialogOpen(true)}
+              >
+                批量添加
+              </Button>
+            </Box>
           </Box>
         </DialogTitle>
         <DialogContent>
@@ -210,6 +228,17 @@ export default function OrderDetailsDialog({
           categories={categories}
           onClose={handleEditDialogClose}
           onSaved={handleEditDialogSaved}
+        />
+      )}
+
+      {orderId && (
+        <OrderDetailBulkCreateDialog
+          open={bulkCreateDialogOpen}
+          orderId={orderId}
+          inventories={inventories}
+          categories={categories}
+          onClose={() => setBulkCreateDialogOpen(false)}
+          onSaved={handleBulkCreateDialogSaved}
         />
       )}
     </>
