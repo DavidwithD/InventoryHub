@@ -104,7 +104,7 @@ export default function OrderDetailBulkCreateDialog({
       productId: inventory.productId,
       categoryName: inventory.categoryName || '',
       productName: inventory.productName,
-      unitPrice: inventory.unitCost,
+      unitPrice: inventory.priceJpy,
       stockQuantity: inventory.stockQuantity,
       quantity: 1,
     };
@@ -213,11 +213,7 @@ export default function OrderDetailBulkCreateDialog({
           <Box sx={{ display: 'flex', gap: 2, mb: 3, alignItems: 'flex-start' }}>
             <FormControl size="small" sx={{ minWidth: 150 }}>
               <InputLabel>商品分类</InputLabel>
-              <Select
-                value={categoryId}
-                label="商品分类"
-                onChange={handleCategoryChange}
-              >
+              <Select value={categoryId} label="商品分类" onChange={handleCategoryChange}>
                 <MenuItem value={0}>全部分类</MenuItem>
                 {categories.map((cat) => (
                   <MenuItem key={cat.id} value={cat.id}>
@@ -228,7 +224,11 @@ export default function OrderDetailBulkCreateDialog({
             </FormControl>
 
             <Box sx={{ minWidth: 350, flex: 1 }}>
-              <Typography variant="caption" color="text.secondary" sx={{ mb: 0.5, display: 'block' }}>
+              <Typography
+                variant="caption"
+                color="text.secondary"
+                sx={{ mb: 0.5, display: 'block' }}
+              >
                 库存商品（点击添加，可连续选择）
               </Typography>
               <ReactSelect<InventoryOption>
@@ -327,11 +327,7 @@ export default function OrderDetailBulkCreateDialog({
         <Button onClick={handleClose} disabled={saving}>
           取消
         </Button>
-        <Button
-          onClick={handleSave}
-          variant="contained"
-          disabled={saving || rows.length === 0}
-        >
+        <Button onClick={handleSave} variant="contained" disabled={saving || rows.length === 0}>
           {saving ? '保存中...' : '全部保存'}
         </Button>
       </DialogActions>

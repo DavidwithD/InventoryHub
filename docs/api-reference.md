@@ -11,6 +11,7 @@ http://localhost:5022/api
 ## Common Response Formats
 
 ### Success Response
+
 ```json
 {
   "id": 1,
@@ -19,6 +20,7 @@ http://localhost:5022/api
 ```
 
 ### List Response
+
 ```json
 [
   { "id": 1, "field": "value" },
@@ -27,6 +29,7 @@ http://localhost:5022/api
 ```
 
 ### Error Response
+
 ```json
 {
   "type": "https://tools.ietf.org/html/rfc7231#section-6.5.1",
@@ -38,14 +41,14 @@ http://localhost:5022/api
 
 ## HTTP Status Codes
 
-| Code | Description |
-|------|-------------|
-| 200 | Success |
-| 201 | Created |
-| 204 | No Content (successful delete) |
-| 400 | Bad Request (validation error) |
-| 404 | Not Found |
-| 500 | Internal Server Error |
+| Code | Description                    |
+| ---- | ------------------------------ |
+| 200  | Success                        |
+| 201  | Created                        |
+| 204  | No Content (successful delete) |
+| 400  | Bad Request (validation error) |
+| 404  | Not Found                      |
+| 500  | Internal Server Error          |
 
 ---
 
@@ -59,12 +62,13 @@ GET /api/orders
 
 **Query Parameters:**
 
-| Parameter | Type | Description |
-|-----------|------|-------------|
-| `startDate` | date | Filter orders from this date (inclusive) |
-| `endDate` | date | Filter orders until this date (inclusive) |
+| Parameter   | Type | Description                               |
+| ----------- | ---- | ----------------------------------------- |
+| `startDate` | date | Filter orders from this date (inclusive)  |
+| `endDate`   | date | Filter orders until this date (inclusive) |
 
 **Response:**
+
 ```json
 [
   {
@@ -72,9 +76,9 @@ GET /api/orders
     "orderNo": "m12345678",
     "name": "Wireless Earbuds",
     "imageUrl": "https://example.com/image.jpg",
-    "revenue": 3500.00,
-    "totalCost": 1200.00,
-    "shippingFee": 200.00,
+    "revenue": 3500.0,
+    "totalCost": 1200.0,
+    "shippingFee": 200.0,
     "transactionTime": "2024-01-15T10:30:00"
   }
 ]
@@ -89,15 +93,16 @@ GET /api/orders/{id}
 ```
 
 **Response:**
+
 ```json
 {
   "id": 1,
   "orderNo": "m12345678",
   "name": "Wireless Earbuds",
   "imageUrl": "https://example.com/image.jpg",
-  "revenue": 3500.00,
-  "totalCost": 1200.00,
-  "shippingFee": 200.00,
+  "revenue": 3500.0,
+  "totalCost": 1200.0,
+  "shippingFee": 200.0,
   "transactionTime": "2024-01-15T10:30:00"
 }
 ```
@@ -111,20 +116,21 @@ POST /api/orders
 ```
 
 **Request Body:**
+
 ```json
 {
   "orderNo": "m12345678",
   "name": "Wireless Earbuds",
   "imageUrl": "https://example.com/image.jpg",
-  "revenue": 3500.00,
-  "shippingFee": 200.00,
+  "revenue": 3500.0,
+  "shippingFee": 200.0,
   "transactionTime": "2024-01-15T10:30:00",
   "details": [
     {
       "inventoryId": 1,
       "productId": 1,
       "quantity": 2,
-      "packagingCost": 50.00,
+      "packagingCost": 50.0,
       "otherCost": 0
     }
   ]
@@ -142,11 +148,12 @@ PUT /api/orders/{id}
 ```
 
 **Request Body:**
+
 ```json
 {
   "name": "Updated Name",
-  "revenue": 4000.00,
-  "shippingFee": 250.00
+  "revenue": 4000.0,
+  "shippingFee": 250.0
 }
 ```
 
@@ -171,6 +178,7 @@ GET /api/orders/{orderId}/details
 ```
 
 **Response:**
+
 ```json
 [
   {
@@ -180,11 +188,11 @@ GET /api/orders/{orderId}/details
     "productId": 3,
     "productName": "Wireless Earbuds",
     "categoryName": "Electronics",
-    "unitPrice": 537.50,
+    "unitPrice": 537.5,
     "quantity": 2,
-    "packagingCost": 50.00,
+    "packagingCost": 50.0,
     "otherCost": 0,
-    "subtotalCost": 1125.00,
+    "subtotalCost": 1125.0,
     "notes": null,
     "availableStock": 8
   }
@@ -200,13 +208,14 @@ POST /api/orders/details
 ```
 
 **Request Body:**
+
 ```json
 {
   "orderId": 1,
   "inventoryId": 5,
   "productId": 3,
   "quantity": 2,
-  "packagingCost": 50.00,
+  "packagingCost": 50.0,
   "otherCost": 0,
   "notes": "Gift wrap"
 }
@@ -215,6 +224,7 @@ POST /api/orders/details
 **Response:** `201 Created` with created detail
 
 **Note:** This will automatically:
+
 - Snapshot `unit_price` from inventory
 - Calculate `subtotal_cost`
 - Deduct `stock_quantity` from inventory
@@ -229,12 +239,13 @@ PUT /api/orders/details/{id}
 ```
 
 **Request Body:**
+
 ```json
 {
   "inventoryId": 5,
   "productId": 3,
   "quantity": 3,
-  "packagingCost": 75.00,
+  "packagingCost": 75.0,
   "otherCost": 0,
   "notes": "Updated notes"
 }
@@ -265,6 +276,7 @@ POST /api/orders/import-from-curl
 ```
 
 **Request Body:**
+
 ```json
 {
   "curlCommand": "curl 'https://api.mercari.jp/...' -H 'Authorization: Bearer ...'"
@@ -272,6 +284,7 @@ POST /api/orders/import-from-curl
 ```
 
 **Response:**
+
 ```json
 {
   "total": 150,
@@ -292,13 +305,10 @@ POST /api/orders/import-from-curl
 GET /api/inventory
 ```
 
-**Query Parameters:**
-
-| Parameter | Type | Description |
-|-----------|------|-------------|
-| `purchaseId` | int | Filter by purchase ID |
+**Query Parameters:** None
 
 **Response:**
+
 ```json
 [
   {
@@ -307,14 +317,18 @@ GET /api/inventory
     "productName": "Wireless Earbuds",
     "categoryId": 1,
     "categoryName": "Electronics",
-    "purchaseId": 1,
     "purchaseNo": "PO-2024-001",
-    "purchaseAmountJpy": 5375.00,
-    "purchaseAmountCny": 250.00,
     "purchaseQuantity": 10,
-    "unitCost": 537.50,
+    "priceJpy": 537.5,
+    "priceCny": 25.0,
     "stockQuantity": 8,
-    "isReferenced": true
+    "supplierId": 1,
+    "purchaseDate": "2024-01-15T00:00:00",
+    "currencyType": "JPY",
+    "exchangeRate": 1.0,
+    "isReferenced": true,
+    "createdAt": "2024-01-15T10:00:00",
+    "updatedAt": "2024-01-16T09:00:00"
   }
 ]
 ```
@@ -327,7 +341,7 @@ GET /api/inventory
 GET /api/inventory/{id}
 ```
 
-**Response:** Single inventory object
+**Response:** Single inventory object (same shape as list item)
 
 ---
 
@@ -338,19 +352,23 @@ POST /api/inventory
 ```
 
 **Request Body:**
+
 ```json
 {
   "productId": 3,
-  "purchaseId": 1,
-  "purchaseAmountJpy": 5375.00,
-  "purchaseAmountCny": 250.00,
-  "purchaseQuantity": 10
+  "purchaseQuantity": 10,
+  "stockQuantity": 10,
+  "priceJpy": 537.5,
+  "priceCny": 25.0,
+  "supplierId": 1,
+  "purchaseDate": "2024-01-15T00:00:00",
+  "purchaseNo": "PO-2024-001",
+  "currencyType": "JPY",
+  "exchangeRate": 1.0
 }
 ```
 
-**Response:** `201 Created` with created inventory
-
-**Note:** `unit_cost` and `stock_quantity` are automatically calculated
+**Response:** `201 Created` with created inventory item
 
 ---
 
@@ -361,19 +379,22 @@ POST /api/inventory/batch
 ```
 
 **Request Body:**
+
 ```json
 {
-  "purchaseId": 1,
   "items": [
     {
       "productId": 3,
-      "purchaseAmountJpy": 5375.00,
-      "purchaseQuantity": 10
+      "purchaseQuantity": 10,
+      "stockQuantity": 10,
+      "priceJpy": 537.5,
+      "purchaseNo": "PO-2024-001"
     },
     {
       "productId": 4,
-      "purchaseAmountJpy": 2150.00,
-      "purchaseQuantity": 5
+      "purchaseQuantity": 5,
+      "stockQuantity": 5,
+      "priceJpy": 430.0
     }
   ]
 }
@@ -390,12 +411,14 @@ PUT /api/inventory/{id}
 ```
 
 **Request Body:**
+
 ```json
 {
   "productId": 3,
-  "purchaseAmountJpy": 5500.00,
   "purchaseQuantity": 10,
-  "stockQuantity": 7
+  "stockQuantity": 7,
+  "priceJpy": 550.0,
+  "priceCny": 26.0
 }
 ```
 
@@ -415,36 +438,6 @@ DELETE /api/inventory/{id}
 
 ---
 
-### Get Purchase Total Amount
-
-```http
-GET /api/inventory/purchase/{purchaseId}/total
-```
-
-**Response:**
-```json
-{
-  "totalAmount": 7525.00
-}
-```
-
----
-
-### Get Purchase Expected Total (JPY)
-
-```http
-GET /api/inventory/purchase/{purchaseId}/expected-total-jpy
-```
-
-**Response:**
-```json
-{
-  "expectedTotalJpy": 10750.00
-}
-```
-
----
-
 ## Purchases
 
 ### List Purchases
@@ -454,6 +447,7 @@ GET /api/purchases
 ```
 
 **Response:**
+
 ```json
 [
   {
@@ -462,9 +456,9 @@ GET /api/purchases
     "supplierName": "Taobao",
     "purchaseDate": "2024-01-15",
     "purchaseNo": "PO-2024-001",
-    "totalAmount": 500.00,
+    "totalAmount": 500.0,
     "currencyType": "CNY",
-    "exchangeRate": 21.50
+    "exchangeRate": 21.5
   }
 ]
 ```
@@ -488,14 +482,15 @@ POST /api/purchases
 ```
 
 **Request Body:**
+
 ```json
 {
   "supplierId": 1,
   "purchaseDate": "2024-01-15",
   "purchaseNo": "PO-2024-001",
-  "totalAmount": 500.00,
+  "totalAmount": 500.0,
   "currencyType": "CNY",
-  "exchangeRate": 21.50
+  "exchangeRate": 21.5
 }
 ```
 
@@ -510,11 +505,12 @@ PUT /api/purchases/{id}
 ```
 
 **Request Body:**
+
 ```json
 {
   "supplierId": 1,
   "purchaseDate": "2024-01-16",
-  "totalAmount": 550.00,
+  "totalAmount": 550.0,
   "currencyType": "CNY",
   "exchangeRate": 21.75
 }
@@ -543,6 +539,7 @@ GET /api/products
 ```
 
 **Response:**
+
 ```json
 [
   {
@@ -573,6 +570,7 @@ POST /api/products
 ```
 
 **Request Body:**
+
 ```json
 {
   "categoryId": 1,
@@ -591,6 +589,7 @@ PUT /api/products/{id}
 ```
 
 **Request Body:**
+
 ```json
 {
   "categoryId": 1,
@@ -621,6 +620,7 @@ GET /api/categories
 ```
 
 **Response:**
+
 ```json
 [
   {
@@ -650,6 +650,7 @@ POST /api/categories
 ```
 
 **Request Body:**
+
 ```json
 {
   "name": "Electronics"
@@ -667,6 +668,7 @@ PUT /api/categories/{id}
 ```
 
 **Request Body:**
+
 ```json
 {
   "name": "Consumer Electronics"
@@ -696,6 +698,7 @@ GET /api/suppliers
 ```
 
 **Response:**
+
 ```json
 [
   {
@@ -725,6 +728,7 @@ POST /api/suppliers
 ```
 
 **Request Body:**
+
 ```json
 {
   "name": "Taobao"
@@ -742,6 +746,7 @@ PUT /api/suppliers/{id}
 ```
 
 **Request Body:**
+
 ```json
 {
   "name": "Taobao Global"
@@ -771,10 +776,11 @@ GET /api/dashboard/stats
 ```
 
 **Response:**
+
 ```json
 {
-  "totalInventoryValue": 125000.00,
-  "monthlyProfit": 45000.00,
+  "totalInventoryValue": 125000.0,
+  "monthlyProfit": 45000.0,
   "totalOrdersCount": 350,
   "ordersWithoutCostCount": 12,
   "lowStockProductsCount": 5,
@@ -783,6 +789,7 @@ GET /api/dashboard/stats
 ```
 
 **Calculations:**
+
 - `totalInventoryValue`: Sum of (stock_quantity × unit_cost) for all inventory
 - `monthlyProfit`: Sum of (revenue - total_cost - shipping_fee) for current month orders
 - `lowStockProductsCount`: Products with stock_quantity < 5

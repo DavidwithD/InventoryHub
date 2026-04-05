@@ -169,18 +169,11 @@ public class PurchaseService : IPurchaseService
     public async Task<bool> DeleteAsync(int id)
     {
         var purchase = await _context.Purchases
-            .Include(p => p.InventoryItems)
             .FirstOrDefaultAsync(p => p.Id == id && !p.IsDeleted);
 
         if (purchase == null)
         {
             return false;
-        }
-
-        // 检查是否有关联的库存记录
-        if (purchase.InventoryItems.Any())
-        {
-            throw new InvalidOperationException("该进货单下有关联的库存记录，无法删除");
         }
 
         purchase.IsDeleted = true;

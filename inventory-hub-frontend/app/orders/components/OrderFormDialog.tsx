@@ -74,7 +74,7 @@ export default function OrderFormDialog({
     packagingCost: 0,
     otherCost: 0,
     availableStock: 0,
-    unitCost: 0,
+    priceJpy: 0,
     notes: '',
   });
 
@@ -98,9 +98,9 @@ export default function OrderFormDialog({
           if (inventory) {
             updated.productId = inventory.productId;
             updated.productName = inventory.productName;
-            updated.unitCost = inventory.unitCost;
+            updated.priceJpy = inventory.priceJpy;
             updated.availableStock = inventory.stockQuantity;
-            updated.unitPrice = inventory.unitCost;
+            updated.unitPrice = inventory.priceJpy;
           }
         }
 

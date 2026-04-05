@@ -4,6 +4,7 @@ using InventoryHub.API.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -11,9 +12,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace InventoryHub.API.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    partial class AppDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260405055617_RemovePurchaseFieldsAddPriceFields")]
+    partial class RemovePurchaseFieldsAddPriceFields
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -78,6 +81,15 @@ namespace InventoryHub.API.Migrations
                         .HasColumnType("datetime")
                         .HasColumnName("created_at")
                         .HasDefaultValueSql("CURRENT_TIMESTAMP");
+
+                    b.Property<string>("CurrencyType")
+                        .HasMaxLength(10)
+                        .HasColumnType("varchar(10)")
+                        .HasColumnName("currency_type");
+
+                    b.Property<decimal?>("ExchangeRate")
+                        .HasColumnType("decimal(10,4)")
+                        .HasColumnName("exchange_rate");
 
                     b.Property<bool>("IsDeleted")
                         .ValueGeneratedOnAdd()

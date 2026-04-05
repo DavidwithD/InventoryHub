@@ -105,7 +105,7 @@ export default function OrderDetailEditDialog({
     if (inventory) {
       setProductId(inventory.productId);
       setProductName(inventory.productName);
-      setUnitPrice(inventory.unitCost);
+      setUnitPrice(inventory.priceJpy);
       setAvailableStock(inventory.stockQuantity);
       if (inventory.categoryId && categoryId === 0) {
         setCategoryId(inventory.categoryId);
@@ -115,8 +115,7 @@ export default function OrderDetailEditDialog({
 
   const getFilteredInventories = () => {
     return inventories.filter(
-      (inv) =>
-        inv.stockQuantity > 0 && (categoryId === 0 || inv.categoryId === categoryId)
+      (inv) => inv.stockQuantity > 0 && (categoryId === 0 || inv.categoryId === categoryId)
     );
   };
 
@@ -203,9 +202,7 @@ export default function OrderDetailEditDialog({
 
   return (
     <Dialog open={open} onClose={handleClose} maxWidth="sm" fullWidth>
-      <DialogTitle>
-        {isEditMode ? '编辑订单详细' : '添加订单详细'}
-      </DialogTitle>
+      <DialogTitle>{isEditMode ? '编辑订单详细' : '添加订单详细'}</DialogTitle>
       <DialogContent>
         <Box sx={{ pt: 2 }}>
           {error && (
@@ -218,11 +215,7 @@ export default function OrderDetailEditDialog({
             <Grid size={{ xs: 12, sm: 6 }}>
               <FormControl fullWidth size="small">
                 <InputLabel>商品分类</InputLabel>
-                <Select
-                  value={categoryId}
-                  label="商品分类"
-                  onChange={handleCategoryChange}
-                >
+                <Select value={categoryId} label="商品分类" onChange={handleCategoryChange}>
                   <MenuItem value={0}>全部分类</MenuItem>
                   {categories.map((cat) => (
                     <MenuItem key={cat.id} value={cat.id}>
@@ -236,11 +229,7 @@ export default function OrderDetailEditDialog({
             <Grid size={{ xs: 12, sm: 6 }}>
               <FormControl fullWidth size="small">
                 <InputLabel>库存商品</InputLabel>
-                <Select
-                  value={inventoryId}
-                  label="库存商品"
-                  onChange={handleInventoryChange}
-                >
+                <Select value={inventoryId} label="库存商品" onChange={handleInventoryChange}>
                   <MenuItem value={0}>请选择商品</MenuItem>
                   {getFilteredInventories().map((inv) => (
                     <MenuItem key={inv.id} value={inv.id}>
@@ -253,13 +242,7 @@ export default function OrderDetailEditDialog({
 
             {productName && (
               <Grid size={12}>
-                <TextField
-                  fullWidth
-                  size="small"
-                  label="商品名"
-                  value={productName}
-                  disabled
-                />
+                <TextField fullWidth size="small" label="商品名" value={productName} disabled />
               </Grid>
             )}
 
@@ -287,7 +270,6 @@ export default function OrderDetailEditDialog({
                 helperText={availableStock > 0 ? `可用库存：${availableStock}` : ''}
               />
             </Grid>
-
 
             <Grid size={12}>
               <Box sx={{ p: 2, bgcolor: 'grey.100', borderRadius: 1 }}>

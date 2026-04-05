@@ -1,3 +1,13 @@
+// PreviewRow (Pinduoduo import)
+export interface PreviewRow {
+  purchaseNo: string;
+  purchaseDate: string;
+  productName: string;
+  purchasePriceCny: number;
+  purchaseAmount: number;
+  thumbUrl: string;
+}
+
 // Base Entity
 export interface BaseEntity {
   id: number;
@@ -37,29 +47,29 @@ export interface Purchase extends BaseEntity {
 // Inventory
 export interface Inventory extends BaseEntity {
   productId: number;
-  purchaseId: number;
-  purchaseAmountJpy: number; // 进货金额(日元)
-  purchaseAmountCny: number; // 进货金额(人民币)
   purchaseQuantity: number;
-  unitCost: number;
+  priceJpy: number; // 日元单价
+  priceCny?: number; // 人民币单价
   stockQuantity: number;
   isReferenced: boolean;
   productName: string;
   categoryId?: number;
   categoryName?: string;
+  supplierId?: number;
+  purchaseDate?: string;
   purchaseNo?: string;
   product?: Product;
-  purchase?: Purchase;
 }
 
 export interface CreateInventory {
   productId: number;
-  purchaseId: number;
-  purchaseAmountJpy: number; // 日元金额
-  purchaseAmountCny: number; // 人民币金额
   purchaseQuantity: number;
   stockQuantity: number;
-  unitCostJpy: number;
+  priceJpy: number; // 日元单价
+  priceCny?: number; // 人民币单价
+  supplierId?: number;
+  purchaseDate?: string;
+  purchaseNo?: string;
 }
 
 export interface InventoryRow extends CreateInventory {
@@ -67,9 +77,6 @@ export interface InventoryRow extends CreateInventory {
   id?: number; // 已存在的库存记录有id
   isReferenced?: boolean; // 是否被订单引用
   productName?: string;
-  purchaseAmountJpy: number; // 计算得到的日元金额
-  purchaseAmountCny: number; // 计算得到的人民币金额
-  // unitCostJpy?: number; // 计算得到的日元单位成本
 }
 
 // Order
@@ -156,6 +163,6 @@ export interface OrderDetailRow {
   packagingCost: number;
   otherCost: number;
   availableStock?: number;
-  unitCost?: number;
+  priceJpy?: number;
   notes?: string;
 }

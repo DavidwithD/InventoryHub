@@ -16,7 +16,6 @@ import {
 import {
   Inventory as InventoryIcon,
   ShoppingCart,
-  LocalShipping,
   Category,
   Business,
   TrendingUp,
@@ -54,8 +53,6 @@ export default function Home() {
 
   const navigationCards = [
     { title: '订单管理', icon: ShoppingCart, path: '/orders', color: 'primary.main' },
-    { title: '库存管理', icon: InventoryIcon, path: '/inventory', color: 'secondary.main' },
-    { title: '进货管理', icon: LocalShipping, path: '/purchases', color: 'info.main' },
     { title: '商品管理', icon: InventoryIcon, path: '/products', color: 'warning.main' },
     { title: '分类管理', icon: Category, path: '/categories', color: 'primary.main' },
     { title: '供应商管理', icon: Business, path: '/suppliers', color: 'success.main' },

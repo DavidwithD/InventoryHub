@@ -20,8 +20,6 @@ import {
 import MenuIcon from '@mui/icons-material/Menu';
 import HomeIcon from '@mui/icons-material/Home';
 import ShoppingCartIcon from '@mui/icons-material/ShoppingCart';
-import InventoryIcon from '@mui/icons-material/Inventory';
-import LocalShippingIcon from '@mui/icons-material/LocalShipping';
 import CategoryIcon from '@mui/icons-material/Category';
 import LabelIcon from '@mui/icons-material/Label';
 import StoreIcon from '@mui/icons-material/Store';
@@ -37,8 +35,6 @@ interface MenuItem {
 const menuItems: MenuItem[] = [
   { title: '主页', path: '/', icon: <HomeIcon /> },
   { title: '订单管理', path: '/orders', icon: <ShoppingCartIcon /> },
-  { title: '库存管理', path: '/inventory', icon: <InventoryIcon /> },
-  { title: '进货管理', path: '/purchases', icon: <LocalShippingIcon /> },
   { title: '商品管理', path: '/products', icon: <CategoryIcon /> },
   { title: '分类管理', path: '/categories', icon: <LabelIcon /> },
   { title: '渠道管理', path: '/suppliers', icon: <StoreIcon /> },

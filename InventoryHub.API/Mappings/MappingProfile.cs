@@ -29,6 +29,7 @@ public class MappingProfile : Profile
         // Inventory mappings
         CreateMap<CreateInventoryDto, Inventory>();
         CreateMap<UpdateInventoryDto, Inventory>();
+        CreateMap<Inventory, InventoryDto>();
 
         // Order mappings
         CreateMap<Order, OrderDto>();

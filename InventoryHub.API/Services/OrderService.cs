@@ -111,8 +111,8 @@ public class OrderService : IOrderService
                         $"库存不足：商品 ID {detailDto.ProductId}，可用库存 {inventory.StockQuantity}，需要 {detailDto.Quantity}");
                 }
 
-                // 计算小计成本：(库存单位成本 * 数量) + 包装成本 + 其他成本
-                var subtotalCost = (inventory.UnitCost * detailDto.Quantity)
+                // 计算小计成本：(库存日元单价 * 数量) + 包装成本 + 其他成本
+                var subtotalCost = (inventory.PriceJpy * detailDto.Quantity)
                                  + detailDto.PackagingCost
                                  + detailDto.OtherCost;
 
@@ -290,7 +290,7 @@ public class OrderService : IOrderService
             }
 
             // 计算小计成本
-            var subtotalCost = (inventory.UnitCost * dto.Quantity)
+            var subtotalCost = (inventory.PriceJpy * dto.Quantity)
                              + dto.PackagingCost
                              + dto.OtherCost;
 
@@ -365,7 +365,7 @@ public class OrderService : IOrderService
             newInventory.UpdatedAt = DateTime.UtcNow;
 
             // 计算新的小计成本
-            var newSubtotalCost = (newInventory.UnitCost * dto.Quantity)
+            var newSubtotalCost = (newInventory.PriceJpy * dto.Quantity)
                                 + dto.PackagingCost
                                 + dto.OtherCost;
 

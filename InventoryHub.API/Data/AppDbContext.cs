@@ -102,12 +102,13 @@ public class AppDbContext : DbContext
             entity.HasKey(e => e.Id);
             entity.Property(e => e.Id).HasColumnName("id");
             entity.Property(e => e.ProductId).HasColumnName("product_id").IsRequired();
-            entity.Property(e => e.PurchaseId).HasColumnName("purchase_id").IsRequired();
-            entity.Property(e => e.PurchaseAmountJpy).HasColumnName("purchase_amount").HasColumnType("decimal(15,2)").IsRequired();
-            entity.Property(e => e.PurchaseAmountCny).HasColumnName("purchase_amount_cny").HasColumnType("decimal(15,2)").IsRequired();
             entity.Property(e => e.PurchaseQuantity).HasColumnName("purchase_quantity").IsRequired();
-            entity.Property(e => e.UnitCost).HasColumnName("unit_cost").HasColumnType("decimal(15,2)").IsRequired();
+            entity.Property(e => e.PriceJpy).HasColumnName("price_jpy").HasColumnType("decimal(15,2)").IsRequired();
+            entity.Property(e => e.PriceCny).HasColumnName("price_cny").HasColumnType("decimal(15,2)");
             entity.Property(e => e.StockQuantity).HasColumnName("stock_quantity").IsRequired();
+            entity.Property(e => e.SupplierId).HasColumnName("supplier_id");
+            entity.Property(e => e.PurchaseDate).HasColumnName("purchase_date").HasColumnType("datetime");
+            entity.Property(e => e.PurchaseNo).HasColumnName("purchase_no").HasMaxLength(100);
             entity.Property(e => e.CreatedAt).HasColumnName("created_at").HasColumnType("datetime").HasDefaultValueSql("CURRENT_TIMESTAMP");
             entity.Property(e => e.UpdatedAt).HasColumnName("updated_at").HasColumnType("datetime").HasDefaultValueSql("CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP");
             entity.Property(e => e.IsDeleted).HasColumnName("is_deleted").HasDefaultValue(false);
@@ -117,13 +118,7 @@ public class AppDbContext : DbContext
                 .HasForeignKey(i => i.ProductId)
                 .OnDelete(DeleteBehavior.Restrict);
 
-            entity.HasOne(i => i.Purchase)
-                .WithMany(p => p.InventoryItems)
-                .HasForeignKey(i => i.PurchaseId)
-                .OnDelete(DeleteBehavior.Restrict);
-
             entity.HasIndex(e => e.ProductId).HasDatabaseName("idx_product_id");
-            entity.HasIndex(e => e.PurchaseId).HasDatabaseName("idx_purchase_id");
         });
 
         // Order configuration

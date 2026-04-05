@@ -1,0 +1,268 @@
+'use client';
+
+import { useEffect, useMemo, useState } from 'react';
+import {
+  Alert,
+  Box,
+  Button,
+  CircularProgress,
+  FormControl,
+  InputLabel,
+  MenuItem,
+  Paper,
+  Select,
+  SelectChangeEvent,
+  Stack,
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableRow,
+  TextField,
+  Typography,
+} from '@mui/material';
+import { useSuppliers } from '../suppliers/hooks/useSuppliers';
+
+type PinduoduoGoods = {
+  goods_name?: string;
+  goods_price?: number;
+  goods_number?: number;
+  thumb_url?: string;
+};
+
+type PinduoduoOrder = {
+  order_sn?: string;
+  order_time?: number;
+  order_goods?: PinduoduoGoods[];
+};
+
+type PinduoduoResponse = {
+  orders?: PinduoduoOrder[];
+};
+
+type PreviewRow = {
+  purchaseNo: string;
+  purchaseDate: string;
+  productName: string;
+  purchasePriceCny: number;
+  purchaseAmount: number;
+  thumbUrl: string;
+};
+
+function unixToLocalDateTime(unixSeconds?: number): string {
+  if (!unixSeconds) {
+    return '';
+  }
+  return new Date(unixSeconds * 1000).toLocaleString('zh-CN', {
+    hour12: false,
+  });
+}
+
+function fenToYuan(value?: number): number {
+  if (typeof value !== 'number' || Number.isNaN(value)) {
+    return 0;
+  }
+  return value / 100;
+}
+
+function extractRowsFromResponse(data: unknown): PreviewRow[] {
+  if (!data || typeof data !== 'object') {
+    return [];
+  }
+  const response = data as PinduoduoResponse;
+  const orders = Array.isArray(response.orders) ? response.orders : [];
+  const rows: PreviewRow[] = [];
+  for (const order of orders) {
+    const goodsList = Array.isArray(order.order_goods) ? order.order_goods : [];
+    for (const goods of goodsList) {
+      rows.push({
+        purchaseNo: order.order_sn ?? '',
+        purchaseDate: unixToLocalDateTime(order.order_time),
+        productName: goods.goods_name ?? '',
+        purchasePriceCny: fenToYuan(goods.goods_price),
+        purchaseAmount: goods.goods_number ?? 0,
+        thumbUrl: goods.thumb_url ?? '',
+      });
+    }
+  }
+  return rows;
+}
+
+export default function InventoryImportPage() {
+  const { suppliers, loading: supplierLoading, loadSuppliers } = useSuppliers();
+
+  const [supplierId, setSupplierId] = useState('');
+  const [curlCommand, setCurlCommand] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+  const [info, setInfo] = useState('');
+  const [rows, setRows] = useState<PreviewRow[]>([]);
+
+  useEffect(() => {
+    loadSuppliers().catch(() => {
+      setError('Failed to load suppliers');
+    });
+  }, [loadSuppliers]);
+
+  const selectedSupplier = useMemo(
+    () => suppliers.find((s) => String(s.id) === supplierId)?.name ?? '',
+    [supplierId, suppliers],
+  );
+
+  const handleSupplierChange = (event: SelectChangeEvent<string>) => {
+    setSupplierId(event.target.value);
+  };
+
+  const handleParseCurl = async () => {
+    if (!supplierId) {
+      setError('Please select a supplier first');
+      return;
+    }
+    if (!curlCommand.trim()) {
+      setError('Please paste a cURL command');
+      return;
+    }
+
+    setLoading(true);
+    setError('');
+    setInfo('Fetching and parsing data...');
+
+    try {
+      const response = await fetch('/api/curl-fetch', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ curlCommand }),
+      });
+      const result = await response.json();
+      if (!response.ok) {
+        const msg = result?.message || 'Request failed';
+        throw new Error(typeof msg === 'string' ? msg : 'Request failed');
+      }
+      const extracted = extractRowsFromResponse(result.data);
+      setRows(extracted);
+      setInfo('Parsed ' + extracted.length + ' product rows from the response');
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Parse failed';
+      setError(msg);
+      setInfo('');
+      setRows([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <Stack spacing={3}>
+      <Box>
+        <Typography variant="h5" sx={{ mb: 1, fontWeight: 600 }}>
+          Purchase Import Preview
+        </Typography>
+        <Typography variant="body2" color="text.secondary">
+          Select a supplier and paste the Pinduoduo cURL to fetch and extract inventory fields.
+        </Typography>
+      </Box>
+
+      {error && (
+        <Alert severity="error" onClose={() => setError('')}>
+          {error}
+        </Alert>
+      )}
+      {info && <Alert severity="info">{info}</Alert>}
+
+      <Paper sx={{ p: 2 }}>
+        <Stack spacing={2}>
+          <FormControl fullWidth>
+            <InputLabel id="supplier-select-label">Supplier</InputLabel>
+            <Select
+              labelId="supplier-select-label"
+              value={supplierId}
+              label="Supplier"
+              onChange={handleSupplierChange}
+              disabled={supplierLoading || loading}
+            >
+              {suppliers.map((supplier) => (
+                <MenuItem key={supplier.id} value={String(supplier.id)}>
+                  {supplier.name}
+                </MenuItem>
+              ))}
+            </Select>
+          </FormControl>
+
+          <TextField
+            label="cURL Command"
+            multiline
+            minRows={8}
+            value={curlCommand}
+            onChange={(e) => setCurlCommand(e.target.value)}
+            placeholder="Paste the full cURL command from browser DevTools"
+            disabled={loading}
+            fullWidth
+          />
+
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+            <Button
+              variant="contained"
+              onClick={handleParseCurl}
+              disabled={loading || supplierLoading}
+            >
+              {'Parse & Preview'}
+            </Button>
+            {loading && <CircularProgress size={22} />}
+          </Box>
+        </Stack>
+      </Paper>
+
+      <Paper sx={{ p: 2 }}>
+        <Typography variant="h6" sx={{ mb: 1 }}>
+          Extracted Results
+        </Typography>
+        <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+          Supplier: {selectedSupplier || '-'}
+        </Typography>
+
+        {rows.length === 0 ? (
+          <Typography variant="body2" color="text.secondary">
+            {'No data yet. Select a supplier and click Parse & Preview.'}
+          </Typography>
+        ) : (
+          <Box sx={{ overflowX: 'auto' }}>
+            <Table size="small">
+              <TableHead>
+                <TableRow>
+                  <TableCell>PurchaseNo</TableCell>
+                  <TableCell>PurchaseDate</TableCell>
+                  <TableCell>Product Name</TableCell>
+                  <TableCell align="right">Price (CNY)</TableCell>
+                  <TableCell align="right">Amount</TableCell>
+                  <TableCell>Thumb</TableCell>
+                </TableRow>
+              </TableHead>
+              <TableBody>
+                {rows.map((row, idx) => (
+                  <TableRow key={row.purchaseNo + '-' + idx}>
+                    <TableCell>{row.purchaseNo}</TableCell>
+                    <TableCell>{row.purchaseDate}</TableCell>
+                    <TableCell>{row.productName}</TableCell>
+                    <TableCell align="right">
+                      {row.purchasePriceCny.toFixed(2)}
+                    </TableCell>
+                    <TableCell align="right">{row.purchaseAmount}</TableCell>
+                    <TableCell>
+                      {row.thumbUrl ? (
+                        <a href={row.thumbUrl} target="_blank" rel="noreferrer">
+                          View
+                        </a>
+                      ) : (
+                        '-'
+                      )}
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </Box>
+        )}
+      </Paper>
+    </Stack>
+  );
+}

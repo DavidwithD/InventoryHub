@@ -1,0 +1,17 @@
+curl 'https://mobile.pinduoduo.com/proxy/api/api/aristotle/order_list_v4?pdduid=6913736127507' \
+  -H 'accept: application/json, text/plain, */*' \
+  -H 'accept-language: en-US,en;q=0.9,ja;q=0.8,ko;q=0.7,zh-CN;q=0.6,zh;q=0.5' \
+  -H 'anti-content: 0asWfqnFpcojg9dZAAmy42gFEEBn27DKB2rQGm6fIaP_i2M5eAnsgcOwBBnrASAPCQadi51cI_0FVDw-ZbZWob9f_diCa9L62L44Isr1DorJ7lmuk1DHiW6J-1mvvvzJUPXKzGBIebxMADIDYjwa-2s_Kc_7jz4JLSDU9rnLxyzvsewwWPZQni5fMSydiV2TeUNOxvyTEOKPyOD__GKXlhaFKpkAWZih3tkJUMrRl74JUdgCuhq7Wp3HKlx3ALgB0oPi5ymWDeiOnLeCi8bRKByHX8j11LIdNE3XwYA2PX1_e5OvGSD2ZnedTbL9Be6E9LVBdgSa1oVm1exRKUBRLaq6Pwj3PG2k-bb0mE9equdUB-qKUm2ovzZ20zVmWSMWEgUO59sRkzq6OaYbu-OMucuQl0eQlAZ36IbtuJEvW81nyP6ZygEQZFkR8k-5xok0lBJDpi5W6Sfi_64qPdzAFxN2-aSTuUqHA_0U1Jg5wWm44dlimgfh8BiyA31Hx3CCor8kWy-tEGUnKy7HG-Q08-TYPI63__TpNFx8vzGuuQIYO7AAUTHVjTdmp5HxkzFPe_nbKRipiHSCoNrxshiE419ZsNk' \
+  -H 'content-type: application/json;charset=UTF-8' \
+  -b 'api_uid=65c33292d8154cbc8b033c5e9701c5e2; plp_uid=65c33292d8154cbc8b033c5e9701c5e2; dilx=myIoe6sLPkAUlGI2O6Mzp; _nano_fp=Xpm8npgqnqmJlpXqlT_687xs0b6oyz8B3PQLTTjG; webp=1; jrpl=TvvggznIbfVOewTyQmCFjDHdhHSNXfL7; njrpl=TvvggznIbfVOewTyQmCFjDHdhHSNXfL7; PDDAccessToken=S33O5KU3QMWOCZUVDUJOPB2NYHOJ6SPU4R5LXA6OUITZ3243ROFA120136b; pdd_user_id=6913736127507; pdd_user_uin=PD7UR2FRSFL7CA2BJN7PA2QO7U_GEXDA; JSESSIONID=15AF2B63082EF00C4A9476EAD4C6B267; rec_list_personal=rec_list_personal_5ru8i8; pdd_vds=garLYydbfixEeQeLrOrNsILnwaYaDofGxiuaciDyBOsLdmryTOuGuIxaeiBb' \
+  -H 'origin: https://mobile.pinduoduo.com' \
+  -H 'priority: u=1, i' \
+  -H 'referer: https://mobile.pinduoduo.com/orders.html?type=0&comment_tab=1&combine_orders=1&main_orders=1&refer_page_name=personal&refer_page_id=10001_1775349228831_3ierclj6vf&refer_page_sn=10001' \
+  -H 'sec-ch-ua: "Chromium";v="142", "Google Chrome";v="142", "Not_A Brand";v="99"' \
+  -H 'sec-ch-ua-mobile: ?0' \
+  -H 'sec-ch-ua-platform: "macOS"' \
+  -H 'sec-fetch-dest: empty' \
+  -H 'sec-fetch-mode: cors' \
+  -H 'sec-fetch-site: same-origin' \
+  -H 'user-agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36' \
+  --data-raw '{"type":"all","page":1,"origin_host_name":"mobile.pinduoduo.com","scene":"order_list_h5","page_from":0,"pay_front_supports":[],"anti_content":"0asWfqnFpcojg9dZAAmy42gFEEBn27DKB2rQGm6fIaP_i2M5eAnsgcOwBBnrASAPCQadi51cI_0FVDw-ZbZWob9f_diCa9L62L44Isr1DorJ7lmuk1DHiW6J-1mvvvzJUPXKzGBIebxMADIDYjwa-2s_Kc_7jz4JLSDU9rnLxyzvsewwWPZQni5fMSydiV2TeUNOxvyTEOKPyOD__GKXlhaFKpkAWZih3tkJUMrRl74JUdgCuhq7Wp3HKlx3ALgB0oPi5ymWDeiOnLeCi8bRKByHX8j11LIdNE3XwYA2PX1_e5OvGSD2ZnedTbL9Be6E9LVBdgSa1oVm1exRKUBRLaq6Pwj3PG2k-bb0mE9equdUB-qKUm2ovzZ20zVmWSMWEgUO59sRkzq6OaYbu-OMucuQl0eQlAZ36IbtuJEvW81nyP6ZygEQZFkR8k-5xok0lBJDpi5W6Sfi_64qPdzAFxN2-aSTuUqHA_0U1Jg5wWm44dlimgfh8BiyA31Hx3CCor8kWy-tEGUnKy7HG-Q08-TYPI63__TpNFx8vzGuuQIYO7AAUTHVjTdmp5HxkzFPe_nbKRipiHSCoNrxshiE419ZsNk","size":10,"offset":"MO-01-260306-481820752191043"}'

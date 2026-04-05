@@ -24,10 +24,10 @@ public class DashboardService : IDashboardService
         var startOfMonth = new DateTime(now.Year, now.Month, 1);
         var endOfMonth = startOfMonth.AddMonths(1);
 
-        // 总库存价值 = SUM(库存数量 × 单件成本)
+        // 总库存价値 = SUM(库存数量 × 单件日元价)
         var totalInventoryValue = await _context.Inventory
             .Where(i => !i.IsDeleted)
-            .SumAsync(i => i.StockQuantity * i.UnitCost);
+            .SumAsync(i => i.StockQuantity * i.PriceJpy);
 
         // 本月订单（包含订单详细以计算成本）
         var monthlyOrders = await _context.Orders

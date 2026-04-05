@@ -6,7 +6,6 @@ import { Inventory, CreateInventory } from '@/types';
 
 export function useInventory() {
   const [inventories, setInventories] = useState<Inventory[]>([]);
-  const [expectedTotalJpy, setExpectedTotalJpy] = useState<number>(0);
 
   const loadAllInventories = useCallback(async () => {
     try {
@@ -19,25 +18,12 @@ export function useInventory() {
     }
   }, []);
 
-  const loadInventoriesByPurchase = useCallback(async (purchaseId: number) => {
+  const create = useCallback(async (item: CreateInventory) => {
     try {
-      const res = await api.get<Inventory[]>(`/inventory?purchaseId=${purchaseId}`);
-      setInventories(res.data || []);
+      const res = await api.post<Inventory>('/inventory', item);
       return res.data;
     } catch (err) {
-      console.error('loadInventoriesByPurchase error', err);
-      throw err;
-    }
-  }, []);
-
-  const loadExpectedTotal = useCallback(async (purchaseId: number) => {
-    try {
-      const res = await api.get<number>(`/inventory/purchase/${purchaseId}/expected-total-jpy`);
-      setExpectedTotalJpy(res.data || 0);
-      return res.data;
-    } catch (err) {
-      console.error('loadExpectedTotal error', err);
-      setExpectedTotalJpy(0);
+      console.error('create inventory error', err);
       throw err;
     }
   }, []);
@@ -45,7 +31,6 @@ export function useInventory() {
   const createBatch = useCallback(async (items: CreateInventory[]) => {
     try {
       const res = await api.post('/inventory/batch', { items });
-      // refresh list after creation
       await loadAllInventories();
       return res.data;
     } catch (err) {
@@ -57,7 +42,6 @@ export function useInventory() {
   const updateInventory = useCallback(async (id: number, data: CreateInventory) => {
     try {
       const res = await api.put(`/inventory/${id}`, data);
-      // refresh list after update
       await loadAllInventories();
       return res.data;
     } catch (err) {
@@ -69,7 +53,6 @@ export function useInventory() {
   const deleteInventory = useCallback(async (id: number) => {
     try {
       await api.delete(`/inventory/${id}`);
-      // refresh list after deletion
       await loadAllInventories();
     } catch (err) {
       console.error('deleteInventory error', err);
@@ -79,10 +62,8 @@ export function useInventory() {
 
   return {
     inventories,
-    expectedTotalJpy,
     loadAllInventories,
-    loadInventoriesByPurchase,
-    loadExpectedTotal,
+    create,
     createBatch,
     updateInventory,
     deleteInventory,

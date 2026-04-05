@@ -11,5 +11,4 @@ public class Purchase : BaseEntity
 
     // Navigation properties
     public Supplier Supplier { get; set; } = null!;
-    public ICollection<Inventory> InventoryItems { get; set; } = new List<Inventory>();
 }

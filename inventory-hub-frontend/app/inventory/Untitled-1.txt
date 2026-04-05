@@ -1,0 +1,34 @@
+  <TableCell>Category</TableCell>
+                  <TableCell>Product</TableCell>
+                </TableRow>
+              </TableHead>
+              <TableBody>
+                {rows.map((row, idx) => (
+                  <ExtractedResultRow
+                    key={row.purchaseNo + '-' + idx}
+                    row={row}
+                    categories={categories}
+                    products={products}
+                    selectedProductId={productMap[row.productName] ?? null}
+                    onProductSelected={handleProductSelected}
+                    onProductCreated={handleProductCreated}
+                  /  loadCategories().catch(() => {});
+    loadProducts().catch(() => {});
+  }, [loadSuppliers, loadCategories, loadProducts]);
+
+  const handleProductSelected = (productName: string, productId: number) => {
+    setProductMap((prev) => ({ ...prev, [productName]: productId }));
+  };
+
+  const handleProductCreated = async (data: { categoryId: number; name: string }): Promise<Product> => {
+    return createProduct(data);
+  }  const { categories, loadCategories } = useCategories();
+  const { products, loadProducts, createProduct } = useProducts();
+
+  const [supplierId, setSupplierId] = useState('');
+  const [curlCommand, setCurlCommand] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+  const [info, setInfo] = useState('');
+  const [rows, setRows] = useState<PreviewRow[]>([]);
+  const [productMap, setProductMap] = useState<Record<string, number>>({}

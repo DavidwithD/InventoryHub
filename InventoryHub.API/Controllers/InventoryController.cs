@@ -16,9 +16,9 @@ public class InventoryController : ControllerBase
     }
 
     [HttpGet]
-    public async Task<ActionResult<IEnumerable<InventoryDto>>> GetAll([FromQuery] int? purchaseId = null)
+    public async Task<ActionResult<IEnumerable<InventoryDto>>> GetAll()
     {
-        var inventories = await _inventoryService.GetAllAsync(purchaseId);
+        var inventories = await _inventoryService.GetAllAsync();
         return Ok(inventories);
     }
 
@@ -31,20 +31,6 @@ public class InventoryController : ControllerBase
             return NotFound($"库存记录 ID {id} 不存在");
         }
         return Ok(inventory);
-    }
-
-    [HttpGet("purchase/{purchaseId}/total")]
-    public async Task<ActionResult<decimal>> GetPurchaseTotal(int purchaseId)
-    {
-        var total = await _inventoryService.GetPurchaseTotalAmountAsync(purchaseId);
-        return Ok(total);
-    }
-
-    [HttpGet("purchase/{purchaseId}/expected-total-jpy")]
-    public async Task<ActionResult<decimal>> GetPurchaseExpectedTotalJpy(int purchaseId)
-    {
-        var total = await _inventoryService.GetPurchaseExpectedTotalJpyAsync(purchaseId);
-        return Ok(total);
     }
 
     [HttpPost]

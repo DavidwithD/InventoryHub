@@ -17,21 +17,12 @@ public class InventoryService : IInventoryService
         _mapper = mapper;
     }
 
-    public async Task<IEnumerable<InventoryDto>> GetAllAsync(int? purchaseId = null)
+    public async Task<IEnumerable<InventoryDto>> GetAllAsync()
     {
-        var query = _context.Inventory
-            .Where(i => !i.IsDeleted);
-
-        // 按进货单筛选
-        if (purchaseId.HasValue)
-        {
-            query = query.Where(i => i.PurchaseId == purchaseId.Value);
-        }
-
-        var inventories = await query
+        var inventories = await _context.Inventory
+            .Where(i => !i.IsDeleted)
             .Include(i => i.Product)
                 .ThenInclude(p => p.Category)
-            .Include(i => i.Purchase)
             .OrderByDescending(i => i.CreatedAt)
             .ToListAsync();
 
@@ -50,12 +41,12 @@ public class InventoryService : IInventoryService
             ProductName = i.Product?.Name ?? "",
             CategoryId = i.Product?.CategoryId ?? 0,
             CategoryName = i.Product?.Category?.Name ?? "",
-            PurchaseId = i.PurchaseId,
-            PurchaseNo = i.Purchase?.PurchaseNo ?? "",
-            PurchaseAmountJpy = i.PurchaseAmountJpy,
-            PurchaseAmountCny = i.PurchaseAmountCny,
+            PurchaseNo = i.PurchaseNo,
+            SupplierId = i.SupplierId,
+            PurchaseDate = i.PurchaseDate,
             PurchaseQuantity = i.PurchaseQuantity,
-            UnitCost = i.UnitCost,
+            PriceJpy = i.PriceJpy,
+            PriceCny = i.PriceCny,
             StockQuantity = i.StockQuantity,
             IsReferenced = referencedIds.Contains(i.Id),
             CreatedAt = i.CreatedAt,
@@ -68,7 +59,6 @@ public class InventoryService : IInventoryService
         var inventory = await _context.Inventory
             .Include(i => i.Product)
                 .ThenInclude(p => p.Category)
-            .Include(i => i.Purchase)
             .FirstOrDefaultAsync(i => i.Id == id && !i.IsDeleted);
 
         if (inventory == null) return null;
@@ -84,12 +74,12 @@ public class InventoryService : IInventoryService
             ProductName = inventory.Product?.Name ?? "",
             CategoryId = inventory.Product?.CategoryId ?? 0,
             CategoryName = inventory.Product?.Category?.Name ?? "",
-            PurchaseId = inventory.PurchaseId,
-            PurchaseNo = inventory.Purchase?.PurchaseNo ?? "",
-            PurchaseAmountJpy = inventory.PurchaseAmountJpy,
-            PurchaseAmountCny = inventory.PurchaseAmountCny,
+            PurchaseNo = inventory.PurchaseNo,
+            SupplierId = inventory.SupplierId,
+            PurchaseDate = inventory.PurchaseDate,
             PurchaseQuantity = inventory.PurchaseQuantity,
-            UnitCost = inventory.UnitCost,
+            PriceJpy = inventory.PriceJpy,
+            PriceCny = inventory.PriceCny,
             StockQuantity = inventory.StockQuantity,
             IsReferenced = isReferenced,
             CreatedAt = inventory.CreatedAt,
@@ -107,14 +97,6 @@ public class InventoryService : IInventoryService
             throw new InvalidOperationException($"商品 ID {dto.ProductId} 不存在");
         }
 
-        // 验证进货单是否存在并获取汇率
-        var purchase = await _context.Purchases
-            .FirstOrDefaultAsync(p => p.Id == dto.PurchaseId && !p.IsDeleted);
-        if (purchase == null)
-        {
-            throw new InvalidOperationException($"进货单 ID {dto.PurchaseId} 不存在");
-        }
-
         // 验证数量
         if (dto.PurchaseQuantity <= 0)
         {
@@ -124,20 +106,18 @@ public class InventoryService : IInventoryService
         {
             throw new InvalidOperationException("库存数量不能为负数");
         }
-        Console.WriteLine($"purchase Amount Jpy {dto.PurchaseAmountJpy}");
+
         // 创建库存记录
         var inventory = new Inventory
         {
             ProductId = dto.ProductId,
-            PurchaseId = dto.PurchaseId,
             PurchaseQuantity = dto.PurchaseQuantity,
             StockQuantity = dto.StockQuantity,
-            // 保存原始人民币金额
-            PurchaseAmountCny = dto.PurchaseAmountCny,
-            // 将人民币转换为日元：CNY × 汇率 = JPY
-            PurchaseAmountJpy = dto.PurchaseAmountJpy,
-            // 计算日元单位成本
-            UnitCost = dto.UnitCostJpy
+            PriceJpy = dto.PriceJpy,
+            PriceCny = dto.PriceCny,
+            SupplierId = dto.SupplierId,
+            PurchaseDate = dto.PurchaseDate,
+            PurchaseNo = dto.PurchaseNo,
         };
 
         _context.Inventory.Add(inventory);
@@ -185,14 +165,6 @@ public class InventoryService : IInventoryService
             throw new InvalidOperationException($"商品 ID {dto.ProductId} 不存在");
         }
 
-        // 验证进货单是否存在并获取汇率
-        var purchase = await _context.Purchases
-            .FirstOrDefaultAsync(p => p.Id == dto.PurchaseId && !p.IsDeleted);
-        if (purchase == null)
-        {
-            throw new InvalidOperationException($"进货单 ID {dto.PurchaseId} 不存在");
-        }
-
         // 验证数量
         if (dto.PurchaseQuantity <= 0)
         {
@@ -205,15 +177,13 @@ public class InventoryService : IInventoryService
 
         // 更新库存记录
         inventory.ProductId = dto.ProductId;
-        inventory.PurchaseId = dto.PurchaseId;
         inventory.PurchaseQuantity = dto.PurchaseQuantity;
         inventory.StockQuantity = dto.StockQuantity;
-        // 保存原始人民币金额
-        inventory.PurchaseAmountCny = dto.PurchaseAmountCny;
-        // 将人民币转换为日元
-        inventory.PurchaseAmountJpy = dto.PurchaseAmountJpy;
-        // 重新计算日元单位成本
-        inventory.UnitCost = dto.UnitCostJpy;
+        inventory.PriceJpy = dto.PriceJpy;
+        inventory.PriceCny = dto.PriceCny;
+        inventory.SupplierId = dto.SupplierId;
+        inventory.PurchaseDate = dto.PurchaseDate;
+        inventory.PurchaseNo = dto.PurchaseNo;
         inventory.UpdatedAt = DateTime.UtcNow;
         await _context.SaveChangesAsync();
 
@@ -244,23 +214,5 @@ public class InventoryService : IInventoryService
         await _context.SaveChangesAsync();
 
         return true;
-    }
-
-    public async Task<decimal> GetPurchaseTotalAmountAsync(int purchaseId)
-    {
-        // 返回该进货单的日元总额（用于验证）
-        var total = await _context.Inventory
-            .Where(i => i.PurchaseId == purchaseId && !i.IsDeleted)
-            .SumAsync(i => i.PurchaseAmountJpy);
-        return total;
-    }
-
-    public async Task<decimal> GetPurchaseExpectedTotalJpyAsync(int purchaseId)
-    {
-        // 获取进货单的期望日元总额：人民币总额 × 汇率
-        var purchase = await _context.Purchases
-            .FirstOrDefaultAsync(p => p.Id == purchaseId && !p.IsDeleted);
-        if (purchase == null) return 0;
-        return purchase.TotalAmount * purchase.ExchangeRate;
     }
 }

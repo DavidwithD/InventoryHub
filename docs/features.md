@@ -6,14 +6,14 @@ This document provides detailed descriptions of InventoryHub's features and how 
 
 InventoryHub provides comprehensive inventory and order management with the following core capabilities:
 
-| Feature | Description |
-|---------|-------------|
+| Feature              | Description                                                      |
+| -------------------- | ---------------------------------------------------------------- |
 | Inventory Management | Track stock levels across multiple products and purchase sources |
-| Purchase Processing | Record purchases with multi-currency support |
-| Order Management | Create and manage sales orders with cost tracking |
-| Batch Import | Import orders from Mercari marketplace |
-| Analytics Dashboard | View key metrics and statistics |
-| Data Export | Export data to Excel/CSV formats |
+| Purchase Processing  | Record purchases with multi-currency support                     |
+| Order Management     | Create and manage sales orders with cost tracking                |
+| Batch Import         | Import orders from Mercari marketplace                           |
+| Analytics Dashboard  | View key metrics and statistics                                  |
+| Data Export          | Export data to Excel/CSV formats                                 |
 
 ---
 
@@ -23,21 +23,21 @@ The dashboard provides an at-a-glance view of your business metrics.
 
 ### Statistics Cards
 
-| Metric | Description | Calculation |
-|--------|-------------|-------------|
-| Total Inventory Value | Total value of current inventory | Sum of (stock_quantity × unit_cost) |
-| Monthly Profit | Profit for current month | Sum of (revenue - total_cost - shipping_fee) |
-| Total Orders | Total number of orders | Count of all orders |
-| Orders Without Cost | Orders missing cost data | Count where total_cost is NULL |
-| Low Stock Products | Products with low inventory | Count where stock_quantity < 5 |
-| Monthly Orders | Orders this month | Count of orders in current month |
+| Metric                | Description                      | Calculation                                  |
+| --------------------- | -------------------------------- | -------------------------------------------- |
+| Total Inventory Value | Total value of current inventory | Sum of (stock_quantity × unit_cost)          |
+| Monthly Profit        | Profit for current month         | Sum of (revenue - total_cost - shipping_fee) |
+| Total Orders          | Total number of orders           | Count of all orders                          |
+| Orders Without Cost   | Orders missing cost data         | Count where total_cost is NULL               |
+| Low Stock Products    | Products with low inventory      | Count where stock_quantity < 5               |
+| Monthly Orders        | Orders this month                | Count of orders in current month             |
 
 ### Quick Navigation
 
 The dashboard provides quick access to all modules:
+
 - Orders
 - Inventory
-- Purchases
 - Products
 - Categories
 - Suppliers
@@ -49,6 +49,7 @@ The dashboard provides quick access to all modules:
 ### Viewing Inventory
 
 The inventory page displays all inventory items with:
+
 - Product name and category
 - Purchase information
 - Cost per unit
@@ -57,43 +58,44 @@ The inventory page displays all inventory items with:
 
 ### Filtering Options
 
-| Filter | Description |
-|--------|-------------|
-| Purchase | Filter by specific purchase order |
-| Category | Filter products by category |
+| Filter       | Description                                 |
+| ------------ | ------------------------------------------- |
+| Category     | Filter products by category                 |
 | Stock Status | Filter by low stock, in stock, out of stock |
 
 ### Creating Inventory Items
 
 When creating inventory, you specify:
 
-| Field | Description | Required |
-|-------|-------------|----------|
-| Product | Select from existing products | Yes |
-| Purchase | Select the purchase order | Yes |
-| Purchase Amount (JPY) | Cost in Japanese Yen | Yes |
-| Purchase Amount (CNY) | Cost in Chinese Yuan | No |
-| Quantity | Number of units | Yes |
+| Field          | Description                       | Required |
+| -------------- | --------------------------------- | -------- |
+| Product        | Select from existing products     | Yes      |
+| Price (JPY)    | Unit price in Japanese Yen        | Yes      |
+| Price (CNY)    | Unit price in Chinese Yuan        | No       |
+| Quantity       | Number of units purchased         | Yes      |
+| Stock Quantity | Initial available stock           | Yes      |
+| Purchase No    | Reference purchase order number   | No       |
+| Supplier       | Supplier reference                | No       |
+| Purchase Date  | Date of purchase                  | No       |
+| Currency Type  | Currency code (JPY, CNY, etc.)    | No       |
+| Exchange Rate  | Exchange rate at time of purchase | No       |
 
-**Automatic Calculations:**
-- `unit_cost = purchase_amount_jpy / quantity`
-- `stock_quantity = quantity` (initially equals purchase quantity)
+**Stock behavior:**
+
+- `stock_quantity` starts equal to `purchase_quantity` and decreases as order details are created.
 
 ### Batch Creation
 
-For purchases with multiple products:
-1. Select the purchase order
-2. Add multiple rows with different products
-3. Allocate amounts to each product
-4. Save all items at once
+For bulk entries with the same purchase details:
 
-**Validation:**
-- Sum of all item amounts should equal purchase total
-- Warning shown if amounts don't match
+1. Add multiple rows with different products
+2. Set price and quantity for each product
+3. Save all items at once
 
 ### Stock Updates
 
 Stock is automatically updated when:
+
 - Order details are created (stock decreases)
 - Order details are updated (stock adjusts)
 - Order details are deleted (stock restores)
@@ -102,47 +104,10 @@ Stock is automatically updated when:
 ### Reference Protection
 
 Inventory items referenced by order details have restrictions:
+
 - Cannot be deleted
 - Stock cannot be reduced below used amount
 - Warning displayed on edit
-
----
-
-## Purchase Management
-
-### Creating Purchases
-
-Record new purchases with:
-
-| Field | Description | Required |
-|-------|-------------|----------|
-| Supplier | Select from existing suppliers | Yes |
-| Purchase Date | Date of purchase | Yes |
-| Purchase No | Unique identifier (e.g., PO-2024-001) | Yes |
-| Total Amount | Total purchase cost | Yes |
-| Currency | JPY, CNY, USD, etc. | Yes |
-| Exchange Rate | Rate to convert to JPY | Yes |
-
-### Currency Support
-
-| Currency | Code | Typical Use |
-|----------|------|-------------|
-| Japanese Yen | JPY | Primary currency |
-| Chinese Yuan | CNY | Common purchase currency |
-| US Dollar | USD | International purchases |
-
-**Exchange Rate Handling:**
-- Rate is captured at purchase time
-- Used to calculate JPY equivalent for inventory
-- Historical rates preserved for accuracy
-
-### Purchase-Inventory Workflow
-
-1. Create purchase with total amount and currency
-2. Navigate to inventory
-3. Add inventory items for this purchase
-4. Allocate purchase amount to each product
-5. System validates total allocation
 
 ---
 
@@ -151,6 +116,7 @@ Record new purchases with:
 ### Order List
 
 The orders page displays:
+
 - Order number
 - Item name and image
 - Revenue
@@ -160,46 +126,48 @@ The orders page displays:
 
 ### Filtering and Search
 
-| Filter | Description |
-|--------|-------------|
-| Date Range | Filter by transaction date |
-| Search | Search by order number |
+| Filter      | Description                          |
+| ----------- | ------------------------------------ |
+| Date Range  | Filter by transaction date           |
+| Search      | Search by order number               |
 | Cost Status | Filter orders with/without cost data |
 
 ### Creating Orders
 
 Basic order information:
 
-| Field | Description | Required |
-|-------|-------------|----------|
-| Order No | Unique identifier | Yes |
-| Name | Item/order name | No |
-| Image URL | Product image | No |
-| Revenue | Sales amount | Yes |
-| Shipping Fee | Shipping cost | No |
-| Transaction Time | When order occurred | Yes |
+| Field            | Description         | Required |
+| ---------------- | ------------------- | -------- |
+| Order No         | Unique identifier   | Yes      |
+| Name             | Item/order name     | No       |
+| Image URL        | Product image       | No       |
+| Revenue          | Sales amount        | Yes      |
+| Shipping Fee     | Shipping cost       | No       |
+| Transaction Time | When order occurred | Yes      |
 
 ### Order Details (Line Items)
 
 Each order can have multiple line items:
 
-| Field | Description |
-|-------|-------------|
-| Category | Filter products by category |
-| Product | Select the product |
-| Inventory | Select specific inventory item |
-| Quantity | Number of units |
-| Packaging Cost | Additional packaging cost |
-| Other Cost | Miscellaneous costs |
-| Notes | Additional notes |
+| Field          | Description                    |
+| -------------- | ------------------------------ |
+| Category       | Filter products by category    |
+| Product        | Select the product             |
+| Inventory      | Select specific inventory item |
+| Quantity       | Number of units                |
+| Packaging Cost | Additional packaging cost      |
+| Other Cost     | Miscellaneous costs            |
+| Notes          | Additional notes               |
 
 **Automatic Values:**
+
 - `unit_price`: Snapshot from inventory.unit_cost
 - `subtotal_cost`: (unit_price × quantity) + packaging_cost + other_cost
 
 ### Order Detail Editor
 
 The order detail editor provides:
+
 1. Order info card (read-only)
 2. Multi-row editable table
 3. Add/Remove row buttons
@@ -207,6 +175,7 @@ The order detail editor provides:
 5. Save all changes at once
 
 **Validation Rules:**
+
 - Quantity cannot exceed available stock
 - At least one detail required
 - Inventory item must be selected
@@ -214,6 +183,7 @@ The order detail editor provides:
 ### Stock Deduction
 
 When order details are saved:
+
 1. System validates stock availability
 2. Deducts quantity from inventory
 3. Snapshots unit cost to unit price
@@ -246,17 +216,18 @@ Import sold orders from Mercari marketplace using the browser's network request.
 
 **Field Mapping:**
 
-| Mercari Field | InventoryHub Field |
-|--------------|-------------------|
-| item.item_id | order_no |
-| item.name | name |
-| photo_thumbnail_url | image_url |
-| sales_profit | revenue |
-| transaction_finished_at | transaction_time |
+| Mercari Field           | InventoryHub Field |
+| ----------------------- | ------------------ |
+| item.item_id            | order_no           |
+| item.name               | name               |
+| photo_thumbnail_url     | image_url          |
+| sales_profit            | revenue            |
+| transaction_finished_at | transaction_time   |
 
 ### Import Results
 
 After import, you'll see:
+
 - Total orders found
 - Successfully imported
 - Skipped (already exist)
@@ -270,10 +241,10 @@ After import, you'll see:
 
 ### Creating Products
 
-| Field | Description | Required |
-|-------|-------------|----------|
-| Category | Product category | Yes |
-| Name | Product name | Yes |
+| Field    | Description      | Required |
+| -------- | ---------------- | -------- |
+| Category | Product category | Yes      |
+| Name     | Product name     | Yes      |
 
 ### Product-Category Relationship
 
@@ -293,13 +264,14 @@ After import, you'll see:
 
 ### Creating Categories
 
-| Field | Description | Required |
-|-------|-------------|----------|
-| Name | Category name (unique) | Yes |
+| Field | Description            | Required |
+| ----- | ---------------------- | -------- |
+| Name  | Category name (unique) | Yes      |
 
 ### Category Usage
 
 Categories are used for:
+
 - Organizing products
 - Filtering product selection
 - Reporting and analytics
@@ -315,13 +287,14 @@ Categories are used for:
 
 ### Creating Suppliers
 
-| Field | Description | Required |
-|-------|-------------|----------|
-| Name | Supplier name (unique) | Yes |
+| Field | Description            | Required |
+| ----- | ---------------------- | -------- |
+| Name  | Supplier name (unique) | Yes      |
 
 ### Supplier Usage
 
 Suppliers/channels represent:
+
 - Purchase sources (Taobao, 1688, Amazon)
 - Vendors or wholesalers
 - Platforms for procurement
@@ -345,6 +318,7 @@ Export data to Excel format (.xlsx):
 4. File downloads automatically
 
 **Exported Fields (Orders):**
+
 - Order No
 - Name
 - Revenue
@@ -365,11 +339,11 @@ Export to CSV format for compatibility:
 
 ## Keyboard Shortcuts
 
-| Shortcut | Action |
-|----------|--------|
-| Ctrl/Cmd + S | Save current form |
-| Escape | Close dialog/cancel |
-| Enter | Submit form |
+| Shortcut     | Action              |
+| ------------ | ------------------- |
+| Ctrl/Cmd + S | Save current form   |
+| Escape       | Close dialog/cancel |
+| Enter        | Submit form         |
 
 ---
 
