@@ -21,7 +21,6 @@ public class OrderService : IOrderService
     public async Task<IEnumerable<OrderDto>> GetAllOrdersAsync(DateTime? startDate = null, DateTime? endDate = null)
     {
         var query = _context.Orders
-            .Include(o => o.OrderDetails.Where(d => !d.IsDeleted))
             .Where(o => !o.IsDeleted);
 
         if (startDate.HasValue)
@@ -34,46 +33,44 @@ public class OrderService : IOrderService
             query = query.Where(o => o.TransactionTime <= endDate.Value);
         }
 
-        var orders = await query
+        return await query
             .OrderByDescending(o => o.TransactionTime)
+            .Select(o => new OrderDto
+            {
+                Id = o.Id,
+                OrderNo = o.OrderNo,
+                Name = o.Name,
+                ImageUrl = o.ImageUrl,
+                Revenue = o.Revenue,
+                TotalCost = o.OrderDetails.Where(d => !d.IsDeleted).Sum(d => d.SubtotalCost),
+                HasDetails = o.OrderDetails.Any(d => !d.IsDeleted),
+                ShippingFee = o.ShippingFee,
+                TransactionTime = o.TransactionTime,
+                CreatedAt = o.CreatedAt,
+                UpdatedAt = o.UpdatedAt
+            })
             .ToListAsync();
-
-        return orders.Select(o => new OrderDto
-        {
-            Id = o.Id,
-            OrderNo = o.OrderNo,
-            Name = o.Name,
-            ImageUrl = o.ImageUrl,
-            Revenue = o.Revenue,
-            TotalCost = o.OrderDetails.Sum(d => d.SubtotalCost),
-            ShippingFee = o.ShippingFee,
-            TransactionTime = o.TransactionTime,
-            CreatedAt = o.CreatedAt,
-            UpdatedAt = o.UpdatedAt
-        });
     }
 
     public async Task<OrderDto?> GetOrderByIdAsync(int id)
     {
-        var order = await _context.Orders
-            .Include(o => o.OrderDetails.Where(d => !d.IsDeleted))
-            .FirstOrDefaultAsync(o => o.Id == id && !o.IsDeleted);
-
-        if (order == null) return null;
-
-        return new OrderDto
-        {
-            Id = order.Id,
-            OrderNo = order.OrderNo,
-            Name = order.Name,
-            ImageUrl = order.ImageUrl,
-            Revenue = order.Revenue,
-            TotalCost = order.OrderDetails.Sum(d => d.SubtotalCost),
-            ShippingFee = order.ShippingFee,
-            TransactionTime = order.TransactionTime,
-            CreatedAt = order.CreatedAt,
-            UpdatedAt = order.UpdatedAt
-        };
+        return await _context.Orders
+            .Where(o => o.Id == id && !o.IsDeleted)
+            .Select(o => new OrderDto
+            {
+                Id = o.Id,
+                OrderNo = o.OrderNo,
+                Name = o.Name,
+                ImageUrl = o.ImageUrl,
+                Revenue = o.Revenue,
+                TotalCost = o.OrderDetails.Where(d => !d.IsDeleted).Sum(d => d.SubtotalCost),
+                HasDetails = o.OrderDetails.Any(d => !d.IsDeleted),
+                ShippingFee = o.ShippingFee,
+                TransactionTime = o.TransactionTime,
+                CreatedAt = o.CreatedAt,
+                UpdatedAt = o.UpdatedAt
+            })
+            .FirstOrDefaultAsync();
     }
 
     public async Task<OrderDto> CreateOrderWithDetailsAsync(CreateOrderWithDetailsDto dto)

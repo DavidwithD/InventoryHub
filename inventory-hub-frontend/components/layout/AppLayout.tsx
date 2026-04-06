@@ -23,6 +23,7 @@ import ShoppingCartIcon from '@mui/icons-material/ShoppingCart';
 import CategoryIcon from '@mui/icons-material/Category';
 import LabelIcon from '@mui/icons-material/Label';
 import StoreIcon from '@mui/icons-material/Store';
+import InventoryIcon from '@mui/icons-material/Inventory';
 
 const drawerWidth = 240;
 
@@ -36,6 +37,7 @@ const menuItems: MenuItem[] = [
   { title: '主页', path: '/', icon: <HomeIcon /> },
   { title: '订单管理', path: '/orders', icon: <ShoppingCartIcon /> },
   { title: '商品管理', path: '/products', icon: <CategoryIcon /> },
+  { title: '库存管理', path: '/inventory', icon: <InventoryIcon /> },
   { title: '分类管理', path: '/categories', icon: <LabelIcon /> },
   { title: '渠道管理', path: '/suppliers', icon: <StoreIcon /> },
 ];
@@ -52,7 +54,7 @@ export default function AppLayout({ children }: AppLayoutProps) {
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
 
   const handleDrawerToggle = () => {
-    if(isMobile) setMobileOpen(!mobileOpen);
+    if (isMobile) setMobileOpen(!mobileOpen);
   };
 
   const handleNavigation = (path: string) => {
@@ -71,7 +73,7 @@ export default function AppLayout({ children }: AppLayoutProps) {
 
   // 获取当前页面标题
   const getCurrentPageTitle = () => {
-    const currentItem = menuItems.find(item => item.path === pathname);
+    const currentItem = menuItems.find((item) => item.path === pathname);
     return currentItem ? currentItem.title : 'InventoryHub';
   };
 
@@ -143,21 +145,17 @@ export default function AppLayout({ children }: AppLayoutProps) {
           >
             <MenuIcon />
           </IconButton>
-          <IconButton
-            color="inherit"
-            onClick={handleLogoClick}
-            sx={{ mr: 2 }}
-          >
+          <IconButton color="inherit" onClick={handleLogoClick} sx={{ mr: 2 }}>
             <HomeIcon />
           </IconButton>
           <Typography
             variant="h6"
             noWrap
             component="div"
-            sx={{ 
+            sx={{
               flexGrow: 1,
               cursor: 'pointer',
-              '&:hover': { opacity: 0.8 }
+              '&:hover': { opacity: 0.8 },
             }}
             onClick={handleLogoClick}
           >
@@ -170,10 +168,7 @@ export default function AppLayout({ children }: AppLayoutProps) {
       </AppBar>
 
       {/* Drawer */}
-      <Box
-        component="nav"
-        sx={{ width: { md: drawerWidth }, flexShrink: { md: 0 } }}
-      >
+      <Box component="nav" sx={{ width: { md: drawerWidth }, flexShrink: { md: 0 } }}>
         {/* Mobile drawer */}
         <Drawer
           variant="temporary"

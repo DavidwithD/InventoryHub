@@ -31,6 +31,7 @@ export interface Product extends BaseEntity {
   categoryId: number;
   categoryName: string;
   name: string;
+  imageUrl?: string;
 }
 
 // Purchase
@@ -88,6 +89,7 @@ export interface Order extends BaseEntity {
   totalCost: number;
   shippingFee: number;
   transactionTime: string;
+  hasDetails: boolean;
 }
 
 export interface CreateOrder {

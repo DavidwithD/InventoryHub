@@ -7,6 +7,7 @@ import { Product } from '@/types';
 interface ProductFormData {
   categoryId: number;
   name: string;
+  imageUrl?: string;
 }
 
 export function useProducts() {

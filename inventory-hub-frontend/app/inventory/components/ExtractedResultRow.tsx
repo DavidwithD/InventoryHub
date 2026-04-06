@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
   Autocomplete,
   Box,
@@ -14,6 +14,7 @@ import {
   InputLabel,
   MenuItem,
   Select,
+  Stack,
   TableCell,
   TableRow,
   TextField,
@@ -26,6 +27,7 @@ export interface RegisterInventoryPayload {
   purchaseQuantity: number;
   purchaseNo: string;
   purchaseDate: string;
+  thumbUrl?: string;
 }
 
 interface Props {
@@ -33,6 +35,7 @@ interface Props {
   categories: Category[];
   products: Product[];
   selectedProductId: number | null;
+  alreadyRegistered: boolean;
   onProductSelected: (productName: string, productId: number) => void;
   onProductCreated: (data: { categoryId: number; name: string }) => Promise<Product>;
   onRegister: (payload: RegisterInventoryPayload) => Promise<void>;
@@ -43,6 +46,7 @@ export default function ExtractedResultRow({
   categories,
   products,
   selectedProductId,
+  alreadyRegistered,
   onProductSelected,
   onProductCreated,
   onRegister,
@@ -55,6 +59,17 @@ export default function ExtractedResultRow({
   const [newProductCategoryId, setNewProductCategoryId] = useState<number>(0);
   const [creating, setCreating] = useState(false);
 
+  const hasExactMatch = products.some((p) => p.name === row.productName);
+
+  useEffect(() => {
+    if (selectedProductId) return;
+    const match = products.find((p) => p.name === row.productName);
+    if (match) {
+      onProductSelected(row.productName, match.id);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [products]);
+
   const filteredProducts = categoryFilter
     ? products.filter((p) => p.categoryId === categoryFilter)
     : products;
@@ -62,6 +77,8 @@ export default function ExtractedResultRow({
   const selectedProduct = selectedProductId
     ? (products.find((p) => p.id === selectedProductId) ?? null)
     : null;
+
+  const isRegistered = registered || alreadyRegistered;
 
   const handleProductChange = (_: unknown, value: Product | null) => {
     if (value) {
@@ -79,6 +96,7 @@ export default function ExtractedResultRow({
         purchaseQuantity: row.purchaseAmount,
         purchaseNo: row.purchaseNo,
         purchaseDate: row.purchaseDate,
+        thumbUrl: row.thumbUrl || undefined,
       });
       setRegistered(true);
     } finally {
@@ -109,70 +127,81 @@ export default function ExtractedResultRow({
 
   return (
     <>
-      <TableRow>
-        <TableCell>{row.purchaseNo}</TableCell>
-        <TableCell>{row.purchaseDate}</TableCell>
-        <TableCell>{row.productName}</TableCell>
-        <TableCell align="right">{row.purchasePriceCny.toFixed(2)}</TableCell>
-        <TableCell align="right">{row.purchaseAmount}</TableCell>
-        <TableCell>
+      <TableRow sx={{ verticalAlign: 'top' }}>
+        <TableCell sx={{ p: 1 }}>
           {row.thumbUrl ? (
-            <a href={row.thumbUrl} target="_blank" rel="noreferrer">
-              View
-            </a>
+            <Box component="a" href={row.thumbUrl} target="_blank" rel="noreferrer">
+              <Box
+                component="img"
+                src={row.thumbUrl}
+                alt="thumbnail"
+                sx={{
+                  width: 96,
+                  height: 96,
+                  objectFit: 'cover',
+                  borderRadius: 1,
+                  display: 'block',
+                }}
+              />
+            </Box>
           ) : (
-            '-'
+            <Box sx={{ width: 96, height: 96, bgcolor: 'grey.100', borderRadius: 1 }} />
           )}
         </TableCell>
-        <TableCell sx={{ minWidth: 140 }}>
-          <FormControl size="small" fullWidth>
-            <InputLabel>Category</InputLabel>
-            <Select
-              value={categoryFilter}
-              label="Category"
-              onChange={(e) => setCategoryFilter(e.target.value as number | '')}
-            >
-              <MenuItem value="">All</MenuItem>
-              {categories.map((c) => (
-                <MenuItem key={c.id} value={c.id}>
-                  {c.name}
-                </MenuItem>
-              ))}
-            </Select>
-          </FormControl>
-        </TableCell>
-        <TableCell sx={{ minWidth: 220 }}>
-          <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
+        <TableCell>{row.purchaseNo}</TableCell>
+        <TableCell sx={{ whiteSpace: 'nowrap' }}>{row.purchaseDate.split('T')[0]}</TableCell>
+        <TableCell sx={{ maxWidth: 200, wordBreak: 'break-word' }}>{row.productName}</TableCell>
+        <TableCell align="right">{row.purchasePriceCny.toFixed(2)}</TableCell>
+        <TableCell align="right">{row.purchaseAmount}</TableCell>
+        <TableCell sx={{ minWidth: 240 }}>
+          <Stack spacing={1}>
+            <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
+              <FormControl size="small" sx={{ flexGrow: 1 }}>
+                <InputLabel>分类</InputLabel>
+                <Select
+                  value={categoryFilter}
+                  label="分类"
+                  onChange={(e) => setCategoryFilter(e.target.value as number | '')}
+                >
+                  <MenuItem value="">全部</MenuItem>
+                  {categories.map((c) => (
+                    <MenuItem key={c.id} value={c.id}>
+                      {c.name}
+                    </MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+              <Button
+                size="small"
+                variant="outlined"
+                onClick={handleOpenCreateDialog}
+                disabled={hasExactMatch}
+                sx={{ whiteSpace: 'nowrap' }}
+              >
+                新商品
+              </Button>
+            </Box>
             <Autocomplete
               size="small"
-              sx={{ minWidth: 180, flexGrow: 1 }}
               options={filteredProducts}
               getOptionLabel={(o) => o.name}
               value={selectedProduct}
               onChange={handleProductChange}
               isOptionEqualToValue={(opt, val) => opt.id === val.id}
-              renderInput={(params) => <TextField {...params} label="Product" />}
+              renderInput={(params) => <TextField {...params} label="商品" />}
             />
-            <Button
-              size="small"
-              variant="outlined"
-              onClick={handleOpenCreateDialog}
-              sx={{ whiteSpace: 'nowrap' }}
-            >
-              New
-            </Button>
-          </Box>
+          </Stack>
         </TableCell>
         <TableCell>
           <Button
             size="small"
-            variant={registered ? 'outlined' : 'contained'}
-            color={registered ? 'success' : 'primary'}
-            disabled={!selectedProductId || registering || registered}
+            variant={isRegistered ? 'outlined' : 'contained'}
+            color={isRegistered ? 'success' : 'primary'}
+            disabled={!selectedProductId || registering || isRegistered}
             onClick={handleRegister}
             sx={{ whiteSpace: 'nowrap' }}
           >
-            {registered ? '完成' : '登录'}
+            {isRegistered ? '完成' : '登录'}
           </Button>
         </TableCell>
       </TableRow>
@@ -183,13 +212,13 @@ export default function ExtractedResultRow({
         maxWidth="sm"
         fullWidth
       >
-        <DialogTitle>Create Product</DialogTitle>
+        <DialogTitle>创建商品</DialogTitle>
         <DialogContent>
           <Grid container spacing={2} sx={{ mt: 1 }}>
             <Grid size={{ xs: 12 }}>
               <TextField
                 autoFocus
-                label="Product Name"
+                label="商品名称"
                 fullWidth
                 value={newProductName}
                 onChange={(e) => setNewProductName(e.target.value)}
@@ -197,14 +226,14 @@ export default function ExtractedResultRow({
             </Grid>
             <Grid size={{ xs: 12 }}>
               <FormControl fullWidth>
-                <InputLabel>Category</InputLabel>
+                <InputLabel>分类</InputLabel>
                 <Select
                   value={newProductCategoryId}
-                  label="Category"
+                  label="分类"
                   onChange={(e) => setNewProductCategoryId(Number(e.target.value))}
                 >
                   <MenuItem value={0} disabled>
-                    Select a category
+                    选择分类
                   </MenuItem>
                   {categories.map((c) => (
                     <MenuItem key={c.id} value={c.id}>
@@ -217,13 +246,13 @@ export default function ExtractedResultRow({
           </Grid>
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setCreateDialogOpen(false)}>Cancel</Button>
+          <Button onClick={() => setCreateDialogOpen(false)}>取消</Button>
           <Button
             variant="contained"
             onClick={handleCreate}
             disabled={creating || !newProductName.trim() || !newProductCategoryId}
           >
-            Create
+            创建
           </Button>
         </DialogActions>
       </Dialog>

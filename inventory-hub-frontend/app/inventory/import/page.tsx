@@ -13,18 +13,14 @@ import {
   Select,
   SelectChangeEvent,
   Stack,
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableRow,
   TextField,
   Typography,
 } from '@mui/material';
 import { useSuppliers } from '../../suppliers/hooks/useSuppliers';
 import { useCategories } from '../../categories/hooks/useCategories';
 import { useProducts } from '../../products/hooks/useProducts';
-import ExtractedResultRow, { RegisterInventoryPayload } from '../components/ExtractedResultRow';
+import ExtractedResultTable from '../components/ExtractedResultTable';
+import { RegisterInventoryPayload } from '../components/ExtractedResultRow';
 import { PreviewRow, Product } from '@/types';
 import { useInventory } from '../hooks/useInventory';
 import { fetchExchangeRate } from '@/lib/exchangeRate';
@@ -34,7 +30,13 @@ export default function InventoryImportPage() {
   const { suppliers, loading: supplierLoading, loadSuppliers } = useSuppliers();
 
   const [supplierId, setSupplierId] = useState('');
-  const [fetchCommand, setFetchCommand] = useState('');
+  const STORAGE_KEY = 'pinduoduo_fetch_command';
+  const [fetchCommand, setFetchCommand] = useState(() => {
+    if (typeof window !== 'undefined') {
+      return localStorage.getItem(STORAGE_KEY) ?? '';
+    }
+    return '';
+  });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [info, setInfo] = useState('');
@@ -43,8 +45,9 @@ export default function InventoryImportPage() {
   const [exchangeRate, setExchangeRate] = useState<number>(0);
   const [nextOffset, setNextOffset] = useState<string | null>(null);
   const { categories, loadCategories } = useCategories();
-  const { products, loadProducts, createProduct } = useProducts();
-  const { create: createInventory } = useInventory();
+  const { products, loadProducts, createProduct, updateProduct } = useProducts();
+  const { create: createInventory, loadAllInventories } = useInventory();
+  const [registeredPurchaseNos, setRegisteredPurchaseNos] = useState<Set<string>>(new Set());
   const handleProductSelected = (productName: string, productId: number) => {
     setProductMap((prev) => ({ ...prev, [productName]: productId }));
   };
@@ -68,6 +71,19 @@ export default function InventoryImportPage() {
       purchaseDate: payload.purchaseDate || undefined,
       purchaseNo: payload.purchaseNo || undefined,
     });
+    if (payload.thumbUrl) {
+      const product = products.find((p) => p.id === payload.productId);
+      if (product && !product.imageUrl) {
+        await updateProduct(payload.productId, {
+          categoryId: product.categoryId,
+          name: product.name,
+          imageUrl: payload.thumbUrl,
+        });
+      }
+    }
+    if (payload.purchaseNo) {
+      setRegisteredPurchaseNos((prev) => new Set(prev).add(payload.purchaseNo));
+    }
   };
 
   useEffect(() => {
@@ -80,10 +96,18 @@ export default function InventoryImportPage() {
     loadProducts().catch(() => {
       setError('加载商品失败');
     });
+    loadAllInventories()
+      .then((data) => {
+        const nos = new Set((data ?? []).map((inv) => inv.purchaseNo ?? '').filter(Boolean));
+        setRegisteredPurchaseNos(nos);
+      })
+      .catch(() => {
+        // non-critical, ignore
+      });
     fetchExchangeRate()
       .then((rate) => setExchangeRate(rate))
       .catch(() => setError('获取汇率失败'));
-  }, [loadSuppliers, loadCategories, loadProducts]);
+  }, [loadSuppliers, loadCategories, loadProducts, loadAllInventories]);
 
   const selectedSupplier = useMemo(
     () => suppliers.find((s) => String(s.id) === supplierId)?.name ?? '',
@@ -169,11 +193,11 @@ export default function InventoryImportPage() {
       <Paper sx={{ p: 2 }}>
         <Stack spacing={2}>
           <FormControl fullWidth>
-            <InputLabel id="supplier-select-label">Supplier</InputLabel>
+            <InputLabel id="supplier-select-label">供应商</InputLabel>
             <Select
               labelId="supplier-select-label"
               value={supplierId}
-              label="Supplier"
+              label="供应商"
               onChange={handleSupplierChange}
               disabled={supplierLoading || loading}
             >
@@ -191,7 +215,10 @@ export default function InventoryImportPage() {
             minRows={1}
             maxRows={5}
             value={fetchCommand}
-            onChange={(e) => setFetchCommand(e.target.value)}
+            onChange={(e) => {
+              setFetchCommand(e.target.value);
+              localStorage.setItem(STORAGE_KEY, e.target.value);
+            }}
             placeholder="粘贴从浏览器开发者工具复制的完整 fetch 命令"
             disabled={loading}
             fullWidth
@@ -218,51 +245,19 @@ export default function InventoryImportPage() {
           供应商：{selectedSupplier || '-'}
         </Typography>
 
-        {rows.length === 0 ? (
-          <Typography variant="body2" color="text.secondary">
-            {'暂无数据。请选择供应商后点击"解析并预览"。'}
-          </Typography>
-        ) : (
-          <Box sx={{ overflowX: 'auto' }}>
-            <Table size="small">
-              <TableHead>
-                <TableRow>
-                  <TableCell>采购单号</TableCell>
-                  <TableCell>采购日期</TableCell>
-                  <TableCell>商品名称</TableCell>
-                  <TableCell align="right">价格（元）</TableCell>
-                  <TableCell align="right">数量</TableCell>
-                  <TableCell>缩略图</TableCell>
-                  <TableCell>分类</TableCell>
-                  <TableCell>商品</TableCell>
-                  <TableCell>上传</TableCell>
-                </TableRow>
-              </TableHead>
-              <TableBody>
-                {rows.map((row, idx) => (
-                  <ExtractedResultRow
-                    key={row.purchaseNo + '-' + idx}
-                    row={row}
-                    categories={categories}
-                    products={products}
-                    selectedProductId={productMap[row.productName] ?? null}
-                    onProductSelected={handleProductSelected}
-                    onProductCreated={handleProductCreated}
-                    onRegister={handleRegister}
-                  />
-                ))}
-              </TableBody>
-            </Table>
-          </Box>
-        )}
-        {nextOffset && rows.length > 0 && (
-          <Box sx={{ mt: 2, display: 'flex', alignItems: 'center', gap: 2 }}>
-            <Button variant="outlined" onClick={handleNextPage} disabled={loading}>
-              加载下一批
-            </Button>
-            {loading && <CircularProgress size={22} />}
-          </Box>
-        )}
+        <ExtractedResultTable
+          rows={rows}
+          categories={categories}
+          products={products}
+          productMap={productMap}
+          registeredPurchaseNos={registeredPurchaseNos}
+          loading={loading}
+          hasMore={!!nextOffset}
+          onProductSelected={handleProductSelected}
+          onProductCreated={handleProductCreated}
+          onRegister={handleRegister}
+          onLoadMore={handleNextPage}
+        />
       </Paper>
     </Stack>
   );

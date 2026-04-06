@@ -10,6 +10,7 @@ public class OrderDto
     public decimal TotalCost { get; set; }
     public decimal ShippingFee { get; set; }
     public DateTime TransactionTime { get; set; }
+    public bool HasDetails { get; set; }
     public DateTime CreatedAt { get; set; }
     public DateTime UpdatedAt { get; set; }
 }

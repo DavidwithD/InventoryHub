@@ -31,6 +31,7 @@ public class ProductService : IProductService
             CategoryId = p.CategoryId,
             CategoryName = p.Category?.Name ?? "",
             Name = p.Name,
+            ImageUrl = p.ImageUrl,
             CreatedAt = p.CreatedAt,
             UpdatedAt = p.UpdatedAt
         });
@@ -50,6 +51,7 @@ public class ProductService : IProductService
             CategoryId = product.CategoryId,
             CategoryName = product.Category?.Name ?? "",
             Name = product.Name,
+            ImageUrl = product.ImageUrl,
             CreatedAt = product.CreatedAt,
             UpdatedAt = product.UpdatedAt
         };
@@ -105,7 +107,9 @@ public class ProductService : IProductService
             throw new InvalidOperationException($"商品名称 '{dto.Name}' 已存在");
         }
 
-        _mapper.Map(dto, product);
+        product.CategoryId = dto.CategoryId;
+        product.Name = dto.Name;
+        if (dto.ImageUrl is not null) product.ImageUrl = dto.ImageUrl;
         product.UpdatedAt = DateTime.UtcNow;
         await _context.SaveChangesAsync();
 

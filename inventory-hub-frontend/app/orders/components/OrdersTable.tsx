@@ -196,7 +196,7 @@ export default function OrdersTable({ orders, onEdit, onDelete, onViewDetails }:
                     color="info"
                     className=" font-normal"
                   >
-                    编辑详细
+                    {order.hasDetails ? '查看' : '添加'}
                   </IconButton>
                   {/* <IconButton size="small" onClick={() => onEdit(order)} color="primary">
                     <EditIcon />

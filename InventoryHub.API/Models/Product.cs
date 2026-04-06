@@ -4,6 +4,7 @@ public class Product : BaseEntity
 {
     public int CategoryId { get; set; }
     public string Name { get; set; } = string.Empty;
+    public string? ImageUrl { get; set; }
 
     // Navigation properties
     public Category Category { get; set; } = null!;

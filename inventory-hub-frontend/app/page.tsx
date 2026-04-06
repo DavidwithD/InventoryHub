@@ -54,6 +54,7 @@ export default function Home() {
   const navigationCards = [
     { title: '订单管理', icon: ShoppingCart, path: '/orders', color: 'primary.main' },
     { title: '商品管理', icon: InventoryIcon, path: '/products', color: 'warning.main' },
+    { title: '库存管理', icon: InventoryIcon, path: '/inventory', color: 'secondary.main' },
     { title: '分类管理', icon: Category, path: '/categories', color: 'primary.main' },
     { title: '供应商管理', icon: Business, path: '/suppliers', color: 'success.main' },
   ];
@@ -69,7 +70,11 @@ export default function Home() {
         </Typography>
       </Box>
 
-      {error && <Alert severity="error" sx={{ mb: 3 }} onClose={() => setError('')}>{error}</Alert>}
+      {error && (
+        <Alert severity="error" sx={{ mb: 3 }} onClose={() => setError('')}>
+          {error}
+        </Alert>
+      )}
 
       {/* 统计卡片 */}
       <Grid container spacing={3} sx={{ mb: 4 }}>
@@ -151,9 +156,7 @@ export default function Home() {
                 <CardActionArea onClick={() => router.push(card.path)}>
                   <CardContent sx={{ textAlign: 'center', py: 3 }}>
                     <IconComponent sx={{ fontSize: 48, color: card.color, mb: 1 }} />
-                    <Typography variant="h6">
-                      {card.title}
-                    </Typography>
+                    <Typography variant="h6">{card.title}</Typography>
                   </CardContent>
                 </CardActionArea>
               </Card>
@@ -177,4 +180,3 @@ export default function Home() {
     </Container>
   );
 }
-
