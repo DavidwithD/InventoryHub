@@ -1,0 +1,68 @@
+$session = New-Object Microsoft.PowerShell.Commands.WebRequestSession
+$session.UserAgent = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Safari/537.36"
+$session.Cookies.Add((New-Object System.Net.Cookie("cna", "scEnII1G+2cCAbQ4iBF/0KZM", "/", ".taobao.com")))
+$session.Cookies.Add((New-Object System.Net.Cookie("_hvn_lgc_", "0", "/", ".taobao.com")))
+$session.Cookies.Add((New-Object System.Net.Cookie("havana_lgc2_0", "eyJoaWQiOjE5MjU0MjA1NDEsInNnIjoiMTIxMDgzYjNlMGIyMzNmOGY5MGFmN2FmZmM1MDY0ZDgiLCJzaXRlIjowLCJ0b2tlbiI6IjFQZ28tZzBhRkRFY1R5UjB0NWdENkZRIn0", "/", ".taobao.com")))
+$session.Cookies.Add((New-Object System.Net.Cookie("tracknick", "%5Cu6211%5Cu4EEC%5Cu76841314%5Cu5462", "/", ".taobao.com")))
+$session.Cookies.Add((New-Object System.Net.Cookie("aui", "1925420541", "/", ".taobao.com")))
+$session.Cookies.Add((New-Object System.Net.Cookie("useNativeIM", "false", "/", ".taobao.com")))
+$session.Cookies.Add((New-Object System.Net.Cookie("wwUserTip", "false", "/", ".taobao.com")))
+$session.Cookies.Add((New-Object System.Net.Cookie("mtop_partitioned_detect", "1", "/", ".taobao.com")))
+$session.Cookies.Add((New-Object System.Net.Cookie("_m_h5_tk", "8e5ac69859e58ad924b8f9075f54be27_1775574746404", "/", ".taobao.com")))
+$session.Cookies.Add((New-Object System.Net.Cookie("_m_h5_tk_enc", "f6d4d82e64e436c17857fcf2afc388ab", "/", ".taobao.com")))
+$session.Cookies.Add((New-Object System.Net.Cookie("thw", "jp", "/", ".taobao.com")))
+$session.Cookies.Add((New-Object System.Net.Cookie("xlly_s", "1", "/", ".taobao.com")))
+$session.Cookies.Add((New-Object System.Net.Cookie("cookie2", "1673eae7241c38f7d50850c8ffd91d39", "/", ".taobao.com")))
+$session.Cookies.Add((New-Object System.Net.Cookie("t", "0af4b405a6a725727339c47e84504fb7", "/", ".taobao.com")))
+$session.Cookies.Add((New-Object System.Net.Cookie("_samesite_flag_", "true", "/", ".taobao.com")))
+$session.Cookies.Add((New-Object System.Net.Cookie("lgc", "%5Cu6211%5Cu4EEC%5Cu76841314%5Cu5462", "/", ".taobao.com")))
+$session.Cookies.Add((New-Object System.Net.Cookie("cancelledSubSites", "empty", "/", ".taobao.com")))
+$session.Cookies.Add((New-Object System.Net.Cookie("wk_cookie2", "171e05959ac98e09e4b0f52b0d4466a1", "/", ".taobao.com")))
+$session.Cookies.Add((New-Object System.Net.Cookie("wk_unb", "UojWkCScVJmlZQ%3D%3D", "/", ".taobao.com")))
+$session.Cookies.Add((New-Object System.Net.Cookie("sdkSilent", "1775594912479", "/", ".taobao.com")))
+$session.Cookies.Add((New-Object System.Net.Cookie("havana_sdkSilent", "1775594912479", "/", ".taobao.com")))
+$session.Cookies.Add((New-Object System.Net.Cookie("3PcFlag", "1775566113215", "/", ".taobao.com")))
+$session.Cookies.Add((New-Object System.Net.Cookie("_tb_token_", "5b1e76557e98a", "/", ".taobao.com")))
+$session.Cookies.Add((New-Object System.Net.Cookie("sgcookie", "E100nADj3xExe6GZlG0vxkL%2B12LynPrBgho5%2B%2B%2FVr3sGLlwAwPP1rx4nMAl%2FzqHeGoGaH7ksnWGt44tC8egx6l99535qmyRCxZ33mV7H2xAOHsI3%2FFWBMbJnalx50WJmQ%2FhN", "/", ".taobao.com")))
+$session.Cookies.Add((New-Object System.Net.Cookie("unb", "1925420541", "/", ".taobao.com")))
+$session.Cookies.Add((New-Object System.Net.Cookie("csg", "697aefbb", "/", ".taobao.com")))
+$session.Cookies.Add((New-Object System.Net.Cookie("cookie17", "UojWkCScVJmlZQ%3D%3D", "/", ".taobao.com")))
+$session.Cookies.Add((New-Object System.Net.Cookie("dnk", "%5Cu5189%5Cu5BB6%5Cu575D%5Cu91CE%5Cu73AB%5Cu7470", "/", ".taobao.com")))
+$session.Cookies.Add((New-Object System.Net.Cookie("existShop", "MTc3NTU2NjExNg%3D%3D", "/", ".taobao.com")))
+$session.Cookies.Add((New-Object System.Net.Cookie("uc4", "nk4=0%40r7rLGbsOefmcmd16WTgI9dUeR18K1jg%3D&id4=0%40UOBSsjteSeQNE6NR807LxMTbocvG", "/", ".taobao.com")))
+$session.Cookies.Add((New-Object System.Net.Cookie("_l_g_", "Ug%3D%3D", "/", ".taobao.com")))
+$session.Cookies.Add((New-Object System.Net.Cookie("sg", "%E5%91%A21f", "/", ".taobao.com")))
+$session.Cookies.Add((New-Object System.Net.Cookie("_nk_", "%5Cu6211%5Cu4EEC%5Cu76841314%5Cu5462", "/", ".taobao.com")))
+$session.Cookies.Add((New-Object System.Net.Cookie("cookie1", "AV12FcMgqoaDEphEgnMPoW2NSBbTcjQrb2ylJRmINvI%3D", "/", ".taobao.com")))
+$session.Cookies.Add((New-Object System.Net.Cookie("uc3", "nk2=rUtN8N%2F56P2tlyvq&vt3=F8dD29u4s7MRtYNJmd8%3D&id2=UojWkCScVJmlZQ%3D%3D&lg2=UtASsssmOIJ0bQ%3D%3D", "/", ".taobao.com")))
+$session.Cookies.Add((New-Object System.Net.Cookie("skt", "247546d4e0cfed2a", "/", ".taobao.com")))
+$session.Cookies.Add((New-Object System.Net.Cookie("_cc_", "WqG3DMC9EA%3D%3D", "/", ".taobao.com")))
+$session.Cookies.Add((New-Object System.Net.Cookie("havana_lgc_exp", "1806670125904", "/", ".taobao.com")))
+$session.Cookies.Add((New-Object System.Net.Cookie("fastSlient", "1775566125904", "/", ".taobao.com")))
+$session.Cookies.Add((New-Object System.Net.Cookie("sca", "c81879fd", "/", ".taobao.com")))
+$session.Cookies.Add((New-Object System.Net.Cookie("isg", "BNXVAE1eEMA-dzrIFIBwOGn75NeP0onkK36N_ld55My_rvegHiJxtIJ9e6oYjqGc", "/", ".taobao.com")))
+$session.Cookies.Add((New-Object System.Net.Cookie("uc1", "pas=0&cookie15=W5iHLLyFOGW7aA%3D%3D&existShop=false&cookie21=UIHiLt3xThajWBV08wP6&cookie16=W5iHLLyFPlMGbLDwA%2BdvAGZqLg%3D%3D&cookie14=UoYZbx52o5BN5Q%3D%3D", "/", ".taobao.com")))
+$session.Cookies.Add((New-Object System.Net.Cookie("tfstk", "gALZ80xaSZvQiDkkaQbqYK62R-bOWZkSnE6fiIAc1OXiD1g0uIRlGfHx6H5Dhphx6NOc3KJCpr1jXxU2LdOkfG9XftfcKpA_5tgO0KRWeKajWh10upOAmKT2Mr5DiKhOhfnB6CQAoYMWu4O96Q1pBpHCojAhls-BslNk6CQY9WwmVHAtuu_ADsfcnX7hisWcoGjm-X5VZZ4GmPq3K9CcoZXgo6fhZsz0I1fiTBXdiZXDnGcF-9CcotvcoUbHrEeFGGcNm1WJmy5dbTAGLzvW81j8XCXUorYe6GWuP9z0oe5wiS0ytP0PKhtD5wYiK8QHwH9GTau4g6-ytNfwH4UOSQAHmG8qc7BvYBx5YHFs668waE5PxJcNHF9wuGLoFyBMYeLV5HMaPtIDAFIJ5v4Nr3d15nvnirX2xsjP4-CnGITvb-qVj6CFFXleXlFg_Ig31LrYDGhOTTGGjoEAjv1FFXlUDoI_-6WSsGf..", "/", ".taobao.com")))
+Invoke-WebRequest -UseBasicParsing -Uri "https://h5api.m.taobao.com/h5/mtop.taobao.order.queryboughtlistv2/1.0/?jsv=2.7.2&appKey=12574478&t=1775567694387&sign=32e4c9a2dd7b781fee18d56ade222abb&v=1.0&ecode=1&timeout=8000&dataType=json&valueType=original&ttid=1%40tbwang_mac_1.0.0%23pc&needLogin=true&type=originaljson&isHttps=1&needRetry=true&api=mtop.taobao.order.queryboughtlistV2&__customTag__=boughtList_all_OrderList&preventFallback=true" `
+-Method "POST" `
+-WebSession $session `
+-Headers @{
+"authority"="h5api.m.taobao.com"
+  "method"="POST"
+  "path"="/h5/mtop.taobao.order.queryboughtlistv2/1.0/?jsv=2.7.2&appKey=12574478&t=1775567694387&sign=32e4c9a2dd7b781fee18d56ade222abb&v=1.0&ecode=1&timeout=8000&dataType=json&valueType=original&ttid=1%40tbwang_mac_1.0.0%23pc&needLogin=true&type=originaljson&isHttps=1&needRetry=true&api=mtop.taobao.order.queryboughtlistV2&__customTag__=boughtList_all_OrderList&preventFallback=true"
+  "scheme"="https"
+  "accept"="application/json"
+  "accept-encoding"="gzip, deflate, br, zstd"
+  "accept-language"="en-US,en;q=0.9,ja;q=0.8,ko;q=0.7,zh-CN;q=0.6,zh;q=0.5"
+  "origin"="https://buyertrade.taobao.com"
+  "priority"="u=1, i"
+  "referer"="https://buyertrade.taobao.com/trade/itemlist/list_bought_items.htm?spm=0.2.bought.1.75aa978bJLbCP4"
+  "sec-ch-ua"="`"Chromium`";v=`"146`", `"Not-A.Brand`";v=`"24`", `"Google Chrome`";v=`"146`""
+  "sec-ch-ua-mobile"="?0"
+  "sec-ch-ua-platform"="`"macOS`""
+  "sec-fetch-dest"="empty"
+  "sec-fetch-mode"="cors"
+  "sec-fetch-site"="same-site"
+} `
+-ContentType "application/x-www-form-urlencoded" `
+-Body "data=%7B%22tabCode%22%3A%22all%22%2C%22page%22%3A1%2C%22OrderType%22%3A%22OrderList%22%2C%22appName%22%3A%22tborder%22%2C%22appVersion%22%3A%223.0%22%2C%22condition%22%3A%22%7B%5C%22directRouteToTm2Scene%5C%22%3A%5C%221%5C%22%7D%22%2C%22__needlessClearProtocol__%22%3Atrue%7D"

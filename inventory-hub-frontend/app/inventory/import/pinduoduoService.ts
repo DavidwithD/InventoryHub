@@ -1,4 +1,8 @@
 import { PreviewRow } from '@/types';
+import {
+  PINDUODUO_ORDER_LIST_URL,
+  PinduoduoRequestConfig,
+} from '@/data/pinduoduo/order_list/defaultFetchCommand';
 
 type PinduoduoGoods = {
   goods_name?: string;
@@ -10,6 +14,7 @@ type PinduoduoGoods = {
 type PinduoduoOrder = {
   order_sn?: string;
   order_time?: number;
+  offset?: string;
   order_goods?: PinduoduoGoods[];
 };
 
@@ -42,10 +47,11 @@ function parseRows(data: unknown): { rows: PreviewRow[]; nextOffset: string | nu
         purchasePriceCny: fenToYuan(goods.goods_price),
         purchaseAmount: goods.goods_number ?? 0,
         thumbUrl: goods.thumb_url ?? '',
+        offset: order.offset ?? '',
       });
     }
   }
-  const lastOrderSn = orders.length > 0 ? (orders[orders.length - 1].order_sn ?? null) : null;
+  const lastOrderSn = orders.length > 0 ? (orders[orders.length - 1].offset ?? null) : null;
   return { rows, nextOffset: lastOrderSn };
 }
 
@@ -65,6 +71,29 @@ export async function fetchPinduoduoOrders(
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ fetchCommand }),
+  });
+  const result = await response.json();
+  if (!response.ok) {
+    const msg = result?.message || 'Request failed';
+    throw new Error(typeof msg === 'string' ? msg : 'Request failed');
+  }
+  return parseRows(result.data);
+}
+
+export async function fetchPinduoduoOrdersByConfig(
+  config: PinduoduoRequestConfig,
+  offset?: string
+): Promise<{ rows: PreviewRow[]; nextOffset: string | null }> {
+  const body = offset ? { ...config.body, offset } : config.body;
+  const response = await fetch('/api/fetch', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      url: PINDUODUO_ORDER_LIST_URL,
+      method: 'POST',
+      headers: config.headers,
+      body: JSON.stringify(body),
+    }),
   });
   const result = await response.json();
   if (!response.ok) {

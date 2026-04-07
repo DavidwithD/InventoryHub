@@ -6,6 +6,7 @@ export interface PreviewRow {
   purchasePriceCny: number;
   purchaseAmount: number;
   thumbUrl: string;
+  offset: string;
 }
 
 // Base Entity

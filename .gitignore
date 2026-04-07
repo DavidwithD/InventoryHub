@@ -8,6 +8,4 @@ node_modules/
 # Sensitive configuration files
 **/appsettings.json
 **/appsettings.Development.json
-InventoryHub.API/logs/app20260406.log
-InventoryHub.API/logs/app20260405.log
-InventoryHub.API/logs/app20260405.log
+InventoryHub.API/logs/*.log
