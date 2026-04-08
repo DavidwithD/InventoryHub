@@ -8,9 +8,11 @@ type TaobaoEntry = {
 
 type TaobaoItem = {
   title?: string;
+  skuText?: string;
   pic?: string;
   quantity?: string;
   priceInfo?: { actualTotalFee?: string };
+  refundStatus?: string;
 };
 
 type TaobaoItemInfoFields = {
@@ -21,6 +23,7 @@ type TaobaoItemInfoFields = {
 type TaobaoShopInfoFields = {
   createTime?: string;
   orderId?: string;
+  tradeTitle?: string;
 };
 
 type TaobaoPageControl = {
@@ -53,13 +56,16 @@ function parseRows(data: unknown): { rows: PreviewRow[]; nextOffset: string | nu
   const componentDict = response.data?.data ?? {};
   const pageControl = response.data?.global?.pageControl;
 
-  // Build shopInfo lookup: orderId → createTime
-  const shopInfoMap: Record<string, string> = {};
+  // Build shopInfo lookup: orderId → { createTime, tradeTitle }
+  const shopInfoMap: Record<string, { createTime?: string; tradeTitle?: string }> = {};
   for (const entry of Object.values(componentDict)) {
     if (entry.tag === 'shopInfo' && entry.fields) {
       const fields = entry.fields as TaobaoShopInfoFields;
-      if (fields.orderId && fields.createTime) {
-        shopInfoMap[fields.orderId] = fields.createTime;
+      if (fields.orderId) {
+        shopInfoMap[fields.orderId] = {
+          createTime: fields.createTime,
+          tradeTitle: fields.tradeTitle,
+        };
       }
     }
   }
@@ -75,11 +81,13 @@ function parseRows(data: unknown): { rows: PreviewRow[]; nextOffset: string | nu
       const fields = entry.fields as TaobaoItemInfoFields;
       const orderId = fields.orderId ?? '';
       const item = fields.item ?? {};
+      const shopInfo = shopInfoMap[orderId];
+      if (item.refundStatus || shopInfo?.tradeTitle === '交易关闭') continue;
       const pic = typeof item.pic === 'string' ? item.pic : '';
       rows.push({
         purchaseNo: orderId,
-        purchaseDate: toISOString(shopInfoMap[orderId]),
-        productName: item.title ?? '',
+        purchaseDate: toISOString(shopInfo?.createTime),
+        productName: `${item.title} ${item.skuText}`,
         purchasePriceCny: yenStringToFloat(item.priceInfo?.actualTotalFee),
         purchaseAmount: Number(item.quantity ?? 0),
         thumbUrl: pic.startsWith('//') ? 'https:' + pic : pic,

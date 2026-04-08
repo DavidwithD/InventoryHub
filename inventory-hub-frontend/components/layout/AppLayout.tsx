@@ -24,6 +24,7 @@ import CategoryIcon from '@mui/icons-material/Category';
 import LabelIcon from '@mui/icons-material/Label';
 import StoreIcon from '@mui/icons-material/Store';
 import InventoryIcon from '@mui/icons-material/Inventory';
+import BarChartIcon from '@mui/icons-material/BarChart';
 
 const drawerWidth = 240;
 
@@ -35,6 +36,7 @@ interface MenuItem {
 
 const menuItems: MenuItem[] = [
   { title: '主页', path: '/', icon: <HomeIcon /> },
+  { title: 'Stats', path: '/stats', icon: <BarChartIcon /> },
   { title: '订单管理', path: '/orders', icon: <ShoppingCartIcon /> },
   { title: '商品管理', path: '/products', icon: <CategoryIcon /> },
   { title: '库存管理', path: '/inventory', icon: <InventoryIcon /> },
@@ -73,7 +75,9 @@ export default function AppLayout({ children }: AppLayoutProps) {
 
   // 获取当前页面标题
   const getCurrentPageTitle = () => {
-    const currentItem = menuItems.find((item) => item.path === pathname);
+    const currentItem = menuItems.find(
+      (item) => item.path === pathname || (item.path !== '/' && pathname.startsWith(item.path))
+    );
     return currentItem ? currentItem.title : 'InventoryHub';
   };
 
@@ -96,7 +100,7 @@ export default function AppLayout({ children }: AppLayoutProps) {
         {menuItems.map((item) => (
           <ListItem key={item.path} disablePadding>
             <ListItemButton
-              selected={pathname === item.path}
+              selected={pathname === item.path || (item.path !== '/' && pathname.startsWith(item.path))}
               onClick={() => handleNavigation(item.path)}
               sx={{
                 '&.Mui-selected': {
@@ -113,7 +117,7 @@ export default function AppLayout({ children }: AppLayoutProps) {
             >
               <ListItemIcon
                 sx={{
-                  color: pathname === item.path ? 'white' : 'inherit',
+                  color: (pathname === item.path || (item.path !== '/' && pathname.startsWith(item.path))) ? 'white' : 'inherit',
                 }}
               >
                 {item.icon}

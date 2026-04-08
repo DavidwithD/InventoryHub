@@ -1,0 +1,779 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>InventoryHub — Stats Page Mockup</title>
+  <style>
+    /* ── Reset & base ── */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: system-ui, sans-serif; background: #f0f2f5; color: #1a1a2e; font-size: 14px; }
+    a { color: #4f46e5; text-decoration: none; }
+
+    /* ── Layout shell ── */
+    .shell { display: flex; min-height: 100vh; }
+
+    /* ── Sidebar nav ── */
+    .sidebar {
+      width: 200px; flex-shrink: 0;
+      background: #1e1e2e; color: #cdd6f4;
+      padding: 24px 0; position: sticky; top: 0; height: 100vh;
+    }
+    .sidebar .logo { padding: 0 20px 24px; font-size: 16px; font-weight: 700; color: #cba6f7; }
+    .sidebar nav a {
+      display: flex; align-items: center; gap: 10px;
+      padding: 10px 20px; color: #a6adc8; font-size: 13px;
+      transition: background .15s;
+    }
+    .sidebar nav a:hover { background: #313244; color: #cdd6f4; }
+    .sidebar nav a.active { background: #45475a; color: #cba6f7; font-weight: 600; }
+    .sidebar nav .section-label {
+      padding: 16px 20px 6px; font-size: 10px; font-weight: 700;
+      letter-spacing: .08em; color: #585b70; text-transform: uppercase;
+    }
+
+    /* ── Main area ── */
+    .main { flex: 1; padding: 28px 32px; min-width: 0; }
+
+    /* ── Page header ── */
+    .page-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px; flex-wrap: wrap; gap: 12px; }
+    .page-header h1 { font-size: 20px; font-weight: 700; }
+    .page-header .subtitle { font-size: 12px; color: #64748b; margin-top: 2px; }
+
+    /* ── Global date range filter ── */
+    .date-filter {
+      display: flex; align-items: center; gap: 6px;
+      background: #fff; border: 1px solid #e2e8f0;
+      border-radius: 8px; padding: 6px 10px;
+    }
+    .date-filter .label { font-size: 12px; color: #64748b; margin-right: 4px; }
+    .pill-group { display: flex; gap: 4px; }
+    .pill {
+      padding: 4px 10px; border-radius: 20px; font-size: 12px; font-weight: 500;
+      border: 1px solid #e2e8f0; background: #f8fafc; cursor: pointer; color: #475569;
+    }
+    .pill.active { background: #4f46e5; color: #fff; border-color: #4f46e5; }
+    .pill-custom { padding: 4px 10px; font-size: 12px; border: 1px dashed #cbd5e1; border-radius: 20px; color: #64748b; cursor: pointer; }
+
+    /* ── KPI cards ── */
+    .kpi-row { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 14px; margin-bottom: 24px; }
+    .kpi-card {
+      background: #fff; border-radius: 10px; padding: 16px 18px;
+      border: 1px solid #e8ecf0; box-shadow: 0 1px 3px rgba(0,0,0,.05);
+    }
+    .kpi-card .kpi-label { font-size: 11px; color: #64748b; font-weight: 600; text-transform: uppercase; letter-spacing: .05em; }
+    .kpi-card .kpi-value { font-size: 24px; font-weight: 700; margin-top: 6px; }
+    .kpi-card .kpi-sub { font-size: 11px; color: #94a3b8; margin-top: 4px; }
+    .kpi-card.live .kpi-label::after { content: " ●"; color: #22c55e; font-size: 9px; }
+    /* "live" = always current, not date-filtered */
+    .badge-alert { display: inline-block; background: #fef2f2; color: #ef4444; border-radius: 12px; padding: 1px 7px; font-size: 10px; font-weight: 700; margin-top: 4px; }
+
+    /* ── Section cards ── */
+    .card {
+      background: #fff; border-radius: 10px; padding: 20px;
+      border: 1px solid #e8ecf0; box-shadow: 0 1px 3px rgba(0,0,0,.05);
+      margin-bottom: 20px;
+    }
+    .card-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; flex-wrap: wrap; gap: 8px; }
+    .card-title { font-size: 14px; font-weight: 700; }
+    .card-comment { font-size: 11px; color: #94a3b8; margin-top: 2px; }
+
+    /* ── Chart placeholder ── */
+    .chart-placeholder {
+      background: #f8fafc; border: 1.5px dashed #cbd5e1; border-radius: 8px;
+      display: flex; align-items: center; justify-content: center;
+      color: #94a3b8; font-size: 12px; font-style: italic;
+    }
+    .chart-placeholder.tall { height: 220px; }
+    .chart-placeholder.medium { height: 160px; }
+    .chart-placeholder.short { height: 100px; }
+
+    /* ── Two / three column grid ── */
+    .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+    .grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; }
+    @media (max-width: 900px) { .grid-2, .grid-3 { grid-template-columns: 1fr; } }
+
+    /* ── Toggle / granularity ── */
+    .toggle-group { display: flex; gap: 0; border: 1px solid #e2e8f0; border-radius: 6px; overflow: hidden; }
+    .toggle-btn {
+      padding: 5px 12px; font-size: 12px; font-weight: 500;
+      background: #f8fafc; border: none; cursor: pointer; color: #64748b;
+      border-right: 1px solid #e2e8f0;
+    }
+    .toggle-btn:last-child { border-right: none; }
+    .toggle-btn.active { background: #4f46e5; color: #fff; }
+
+    /* ── Tables ── */
+    .table-wrap { overflow-x: auto; }
+    table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    th {
+      text-align: left; padding: 8px 10px; font-size: 11px; font-weight: 700;
+      color: #64748b; border-bottom: 1.5px solid #e8ecf0; background: #f8fafc;
+      cursor: pointer; user-select: none; white-space: nowrap;
+    }
+    th .sort-icon { color: #cbd5e1; margin-left: 4px; font-size: 10px; }
+    th.sorted .sort-icon { color: #4f46e5; }
+    td { padding: 9px 10px; border-bottom: 1px solid #f1f5f9; vertical-align: middle; }
+    tr:last-child td { border-bottom: none; }
+    tr:hover td { background: #f8fafc; }
+
+    /* Progress bar used in Inventory Health */
+    .prog-bar-wrap { display: flex; align-items: center; gap: 8px; min-width: 120px; }
+    .prog-bar { flex: 1; height: 6px; background: #e2e8f0; border-radius: 3px; overflow: hidden; }
+    .prog-bar .fill { height: 100%; border-radius: 3px; }
+    .fill.ok    { background: #22c55e; }
+    .fill.warn  { background: #f59e0b; }
+    .fill.low   { background: #ef4444; }
+    .prog-label { font-size: 11px; color: #64748b; white-space: nowrap; }
+
+    /* Sparkline placeholder */
+    .sparkline { display: inline-block; width: 60px; height: 24px; background: #f1f5f9; border-radius: 3px; vertical-align: middle; font-size: 10px; color: #94a3b8; text-align: center; line-height: 24px; }
+
+    /* Badges */
+    .badge { display: inline-block; padding: 1px 8px; border-radius: 10px; font-size: 11px; font-weight: 600; }
+    .badge.dead    { background: #fef2f2; color: #ef4444; }
+    .badge.slow    { background: #fff7ed; color: #f59e0b; }
+    .badge.healthy { background: #f0fdf4; color: #22c55e; }
+
+    /* Search / filter bar */
+    .filter-bar { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin-bottom: 14px; }
+    .filter-bar input[type=text] {
+      padding: 6px 12px; border: 1px solid #e2e8f0; border-radius: 6px;
+      font-size: 13px; width: 200px; background: #f8fafc;
+    }
+    .filter-bar select {
+      padding: 6px 10px; border: 1px solid #e2e8f0; border-radius: 6px;
+      font-size: 13px; background: #f8fafc;
+    }
+
+    /* Donut placeholder */
+    .donut-placeholder {
+      width: 120px; height: 120px; border-radius: 50%;
+      background: conic-gradient(#4f46e5 0% 35%, #818cf8 35% 58%, #a5b4fc 58% 73%, #c7d2fe 73% 85%, #e0e7ff 85% 100%);
+      margin: auto; position: relative;
+    }
+    .donut-hole {
+      position: absolute; top: 50%; left: 50%; transform: translate(-50%,-50%);
+      width: 60px; height: 60px; background: #fff; border-radius: 50%;
+    }
+    .donut-legend { margin-top: 12px; display: flex; flex-direction: column; gap: 4px; font-size: 11px; }
+    .donut-legend-item { display: flex; align-items: center; gap: 6px; }
+    .donut-legend-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+
+    /* Section anchor link */
+    .anchor-links { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 20px; }
+    .anchor-link {
+      font-size: 12px; padding: 4px 12px;
+      border: 1px solid #e2e8f0; border-radius: 20px;
+      background: #fff; color: #4f46e5;
+    }
+
+    /* Supplier concentration bar */
+    .conc-bar-row { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; font-size: 12px; }
+    .conc-bar-label { width: 110px; flex-shrink: 0; color: #475569; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .conc-bar-fill { height: 14px; border-radius: 3px; background: #6366f1; }
+    .conc-bar-pct { width: 36px; text-align: right; color: #64748b; flex-shrink: 0; }
+
+    /* ── Sub-tabs (Stats page navigation) ── */
+    .stats-tabs { display: flex; gap: 0; border-bottom: 2px solid #e2e8f0; margin-bottom: 28px; }
+    .stats-tab {
+      padding: 10px 20px; font-size: 13px; font-weight: 500;
+      color: #64748b; cursor: pointer;
+      border-bottom: 2px solid transparent; margin-bottom: -2px;
+    }
+    .stats-tab:hover { color: #1a1a2e; }
+    .stats-tab.active { color: #4f46e5; border-bottom-color: #4f46e5; font-weight: 600; }
+
+    /* ── Period comparison on KPI cards ── */
+    .kpi-change { font-size: 11px; margin-top: 3px; font-weight: 600; }
+    .kpi-change.up   { color: #22c55e; }
+    .kpi-change.down { color: #ef4444; }
+    .kpi-change.flat { color: #94a3b8; }
+
+    /* Comment callout */
+    .comment {
+      font-size: 11px; color: #64748b; font-style: italic;
+      background: #fffbeb; border-left: 3px solid #fbbf24;
+      padding: 6px 10px; border-radius: 0 6px 6px 0; margin-bottom: 10px;
+    }
+
+    /* Open questions list */
+    .oq-list { list-style: none; display: flex; flex-direction: column; gap: 8px; }
+    .oq-list li {
+      display: flex; gap: 10px; align-items: flex-start;
+      padding: 10px 12px; background: #f8fafc; border-radius: 8px; border: 1px solid #e8ecf0;
+    }
+    .oq-num { font-weight: 700; color: #6366f1; flex-shrink: 0; }
+  </style>
+</head>
+<body>
+<div class="shell">
+
+  <!-- ══════════════════════════════════════════
+       SIDEBAR — persistent navigation
+  ══════════════════════════════════════════ -->
+  <aside class="sidebar">
+    <div class="logo">📦 InventoryHub</div>
+    <nav>
+      <div class="section-label">Overview</div>
+      <a href="#">🏠 Dashboard</a>
+      <div class="section-label">Analytics</div>
+      <!-- Stats = single nav item; sub-tabs are rendered inside the main area -->
+      <a href="#dashboard" class="active">📊 Stats</a>
+      <div class="section-label">Data</div>
+      <a href="#">Orders</a>
+      <a href="#">Inventory</a>
+    </nav>
+  </aside>
+
+  <!-- ══════════════════════════════════════════
+       MAIN CONTENT AREA
+  ══════════════════════════════════════════ -->
+  <main class="main">
+
+    <!-- ── Stats sub-tabs — persists across all 4 sub-pages ── -->
+    <div class="stats-tabs">
+      <div class="stats-tab active">Dashboard</div>
+      <div class="stats-tab">Inventory Health</div>
+      <div class="stats-tab">Product Performance</div>
+      <div class="stats-tab">Purchase &amp; Supply</div>
+    </div>
+
+    <!-- ────────────────────────────────────────
+         PAGE 1: MAIN DASHBOARD
+    ──────────────────────────────────────── -->
+    <section id="dashboard">
+      <div class="page-header">
+        <div>
+          <h1>Dashboard</h1>
+          <div class="subtitle">Sales & profit overview</div>
+        </div>
+        <!-- Global date filter — affects all date-sensitive metrics -->
+        <div class="date-filter">
+          <span class="label">Period:</span>
+          <div class="pill-group">
+            <span class="pill">7d</span>
+            <span class="pill active">30d</span>
+            <span class="pill">3m</span>
+            <span class="pill">1y</span>
+          </div>
+          <span class="pill-custom">Custom ▾</span>
+        </div>
+      </div>
+
+      <!-- KPI Cards -->
+      <div class="comment">
+        Cards marked with a green dot (●) are always live — they ignore the date filter because they reflect current stock state.
+      </div>
+      <div class="kpi-row">
+        <div class="kpi-card">
+          <div class="kpi-label">Total Revenue</div>
+          <div class="kpi-value">¥284,500</div>
+          <div class="kpi-change up">↑ 18% vs prev period</div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-label">Total Profit</div>
+          <div class="kpi-value">¥91,200</div>
+          <div class="kpi-change up">↑ 9% vs prev period</div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-label">Avg Margin %</div>
+          <div class="kpi-value">32.1%</div>
+          <div class="kpi-change down">↓ 2.4pp vs prev period</div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-label">Orders</div>
+          <div class="kpi-value">148</div>
+          <div class="kpi-change up">↑ 22% vs prev period</div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-label">Avg Order Value</div>
+          <div class="kpi-value">¥1,922</div>
+          <div class="kpi-change down">↓ 3% vs prev period</div>
+        </div>
+        <div class="kpi-card live">
+          <div class="kpi-label">Stock Value</div>
+          <div class="kpi-value">¥1.2M</div>
+          <div class="kpi-sub">Σ(qty × unit cost) — live</div>
+        </div>
+        <div class="kpi-card live">
+          <div class="kpi-label">Low Stock Items</div>
+          <div class="kpi-value">7</div>
+          <div class="badge-alert">⚠ Needs reorder</div>
+        </div>
+      </div>
+
+      <!-- Charts row -->
+      <div class="grid-2">
+
+        <!-- Revenue vs Profit trend -->
+        <div class="card">
+          <div class="card-header">
+            <div>
+              <div class="card-title">Revenue vs. Profit</div>
+              <div class="card-comment">Dual-line or stacked bar — toggle granularity</div>
+            </div>
+            <!-- Granularity toggle: day / week / month -->
+            <div class="toggle-group">
+              <button class="toggle-btn">Day</button>
+              <button class="toggle-btn active">Week</button>
+              <button class="toggle-btn">Month</button>
+            </div>
+          </div>
+          <div class="chart-placeholder tall">[ Line / Bar chart — Revenue (blue) vs Profit (green) over time ]</div>
+        </div>
+
+        <!-- Sales by Category donut -->
+        <div class="card">
+          <div class="card-header">
+            <div>
+              <div class="card-title">Sales by Category</div>
+              <div class="card-comment">Donut or bar — share of total revenue</div>
+            </div>
+            <div class="toggle-group">
+              <button class="toggle-btn active">Donut</button>
+              <button class="toggle-btn">Bar</button>
+            </div>
+          </div>
+          <div style="display:flex; gap:24px; align-items:center; padding: 8px 0;">
+            <div class="donut-placeholder"><div class="donut-hole"></div></div>
+            <div class="donut-legend">
+              <div class="donut-legend-item"><div class="donut-legend-dot" style="background:#4f46e5"></div>Electronics 35%</div>
+              <div class="donut-legend-item"><div class="donut-legend-dot" style="background:#818cf8"></div>Apparel 23%</div>
+              <div class="donut-legend-item"><div class="donut-legend-dot" style="background:#a5b4fc"></div>Accessories 15%</div>
+              <div class="donut-legend-item"><div class="donut-legend-dot" style="background:#c7d2fe"></div>Home Goods 12%</div>
+              <div class="donut-legend-item"><div class="donut-legend-dot" style="background:#e0e7ff"></div>Other 15%</div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- Top 5 Products -->
+      <div class="card">
+        <div class="card-header">
+          <div>
+            <div class="card-title">Top 5 Products by Revenue</div>
+            <div class="card-comment">Horizontal bar — clicking a row navigates to Product Performance page</div>
+          </div>
+        </div>
+        <div class="chart-placeholder medium">[ Horizontal bar chart — Product A / B / C / D / E with revenue bars, clickable ]</div>
+      </div>
+    </section>
+
+    <!-- ────────────────────────────────────────
+         PAGE 2: INVENTORY HEALTH
+    ──────────────────────────────────────── -->
+    <section id="inventory" style="padding-top: 56px;">
+      <div class="page-header">
+        <div>
+          <h1>Inventory Health</h1>
+          <div class="subtitle">Operational view — stock levels, dead stock, capital lock-up</div>
+        </div>
+        <!-- Date filter here controls the "last N days" window for dead stock / slow mover calculations -->
+        <div class="date-filter">
+          <span class="label">Sales window:</span>
+          <div class="pill-group">
+            <span class="pill">30d</span>
+            <span class="pill active">60d</span>
+            <span class="pill">90d</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Anchor links for long-page navigation -->
+      <div class="comment">Anchor links let users jump to specific sections without scrolling.</div>
+      <div class="anchor-links">
+        <a class="anchor-link" href="#inv-stock-levels">Stock Levels</a>
+        <a class="anchor-link" href="#inv-by-category">By Category</a>
+        <a class="anchor-link" href="#inv-dead">Dead Stock</a>
+        <a class="anchor-link" href="#inv-slow">Slow Movers</a>
+      </div>
+
+      <!-- ── Section: Stock Levels per Product ── -->
+      <div class="card" id="inv-stock-levels">
+        <div class="card-header">
+          <div class="card-title">Stock Levels per Product</div>
+          <div class="badge badge-alert">7 low stock</div>
+        </div>
+        <div class="comment">Progress bar shows current stock as % of original purchase quantity. Threshold TBD (Open Question #2).</div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Product <span class="sort-icon">↕</span></th>
+                <th>Category <span class="sort-icon">↕</span></th>
+                <th>Stock Qty <span class="sort-icon sorted">↓</span></th>
+                <th>Stock Level</th>
+                <th>Status</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>Widget Pro Max</td><td>Electronics</td><td>82</td>
+                <td><div class="prog-bar-wrap"><div class="prog-bar"><div class="fill ok" style="width:82%"></div></div><span class="prog-label">82%</span></div></td>
+                <td><span class="badge healthy">Healthy</span></td>
+              </tr>
+              <tr>
+                <td>Tote Bag Classic</td><td>Apparel</td><td>34</td>
+                <td><div class="prog-bar-wrap"><div class="prog-bar"><div class="fill warn" style="width:34%"></div></div><span class="prog-label">34%</span></div></td>
+                <td><span class="badge slow">Low</span></td>
+              </tr>
+              <tr>
+                <td>USB-C Hub</td><td>Accessories</td><td>7</td>
+                <td><div class="prog-bar-wrap"><div class="prog-bar"><div class="fill low" style="width:7%"></div></div><span class="prog-label">7%</span></div></td>
+                <td><span class="badge dead">Critical</span></td>
+              </tr>
+              <tr>
+                <td>Desk Lamp Mini</td><td>Home Goods</td><td>55</td>
+                <td><div class="prog-bar-wrap"><div class="prog-bar"><div class="fill ok" style="width:55%"></div></div><span class="prog-label">55%</span></div></td>
+                <td><span class="badge healthy">Healthy</span></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- ── Section: By Category — Stock Value / Turnover / Capital Lock-up ── -->
+      <div class="card" id="inv-by-category">
+        <div class="card-header">
+          <div>
+            <div class="card-title">By Category</div>
+            <div class="card-comment">
+              Stock value = total inventory value. Capital lock-up = value of dead + slow stock only.
+              Turnover rate helps decide which of the two is more meaningful per category.
+            </div>
+          </div>
+        </div>
+        <div class="comment">
+          Stock Value vs Capital Lock-up: if turnover is high, they diverge (most stock is moving). If turnover is low, they converge.
+          The "Turnover Rate" column was added to help decide which metric to keep long-term (Open Question).
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Category <span class="sort-icon">↕</span></th>
+                <th>Stock Value <span class="sort-icon sorted">↓</span></th>
+                <th>Capital Lock-up <span class="sort-icon">↕</span></th>
+                <th>Turnover Rate <span class="sort-icon">↕</span></th>
+                <th>Chart</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>Electronics</td><td>¥480,000</td><td>¥42,000</td><td>2.4×</td>
+                <td><div class="chart-placeholder short" style="width:120px; display:inline-flex;">[ bar ]</div></td>
+              </tr>
+              <tr>
+                <td>Apparel</td><td>¥210,000</td><td>¥140,000</td><td>0.6×</td>
+                <td><div class="chart-placeholder short" style="width:120px; display:inline-flex;">[ bar ]</div></td>
+              </tr>
+              <tr>
+                <td>Accessories</td><td>¥95,000</td><td>¥18,000</td><td>3.1×</td>
+                <td><div class="chart-placeholder short" style="width:120px; display:inline-flex;">[ bar ]</div></td>
+              </tr>
+              <tr>
+                <td>Home Goods</td><td>¥130,000</td><td>¥80,000</td><td>0.9×</td>
+                <td><div class="chart-placeholder short" style="width:120px; display:inline-flex;">[ bar ]</div></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- ── Section: Dead Stock ── -->
+      <div class="card" id="inv-dead">
+        <div class="card-header">
+          <div class="card-title">Dead Stock</div>
+          <div class="card-comment">stock_quantity &gt; 0, but zero sales in the selected window</div>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Product <span class="sort-icon">↕</span></th>
+                <th>Category <span class="sort-icon">↕</span></th>
+                <th>Qty</th>
+                <th>Value (¥) <span class="sort-icon sorted">↓</span></th>
+                <th>Days Since Last Sale <span class="sort-icon">↕</span></th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr><td>Retro Camera Case</td><td>Accessories</td><td>40</td><td>¥48,000</td><td>98</td></tr>
+              <tr><td>Wool Scarf XL</td><td>Apparel</td><td>25</td><td>¥35,000</td><td>77</td></tr>
+              <tr><td>Bamboo Cutting Board</td><td>Home Goods</td><td>18</td><td>¥14,400</td><td>65</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- ── Section: Slow Movers ── -->
+      <div class="card" id="inv-slow">
+        <div class="card-header">
+          <div class="card-title">Slow Movers</div>
+          <div class="card-comment">Has sales, but velocity is low relative to remaining stock</div>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Product <span class="sort-icon">↕</span></th>
+                <th>Category <span class="sort-icon">↕</span></th>
+                <th>Units Sold</th>
+                <th>Remaining Qty</th>
+                <th>Velocity (units/wk) <span class="sort-icon sorted">↑</span></th>
+                <th>Weeks to Clear</th>
+                <th>Avg Days to Sell <span class="sort-icon">↕</span></th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr><td>Linen Tote Bag</td><td>Apparel</td><td>3</td><td>90</td><td>0.2</td><td>~450</td><td>62d</td></tr>
+              <tr><td>Desk Organizer Set</td><td>Home Goods</td><td>5</td><td>60</td><td>0.5</td><td>~120</td><td>38d</td></tr>
+              <tr><td>Phone Stand Wooden</td><td>Accessories</td><td>8</td><td>45</td><td>0.9</td><td>~50</td><td>21d</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- ────────────────────────────────────────
+         PAGE 3: PRODUCT PERFORMANCE
+    ──────────────────────────────────────── -->
+    <section id="products" style="padding-top: 56px;">
+      <div class="page-header">
+        <div>
+          <h1>Product Performance</h1>
+          <div class="subtitle">Per-product deep dive</div>
+        </div>
+        <div class="date-filter">
+          <span class="label">Period:</span>
+          <div class="pill-group">
+            <span class="pill">7d</span>
+            <span class="pill active">30d</span>
+            <span class="pill">3m</span>
+            <span class="pill">1y</span>
+          </div>
+          <span class="pill-custom">Custom ▾</span>
+        </div>
+      </div>
+
+      <!-- Best / worst margin highlight cards -->
+      <div class="grid-2" style="margin-bottom: 20px;">
+        <div class="kpi-card" style="border-left: 4px solid #22c55e;">
+          <div class="kpi-label">Best Margin</div>
+          <div class="kpi-value">Widget Pro Max</div>
+          <div class="kpi-sub">58.4% margin · ¥32,000 revenue</div>
+        </div>
+        <div class="kpi-card" style="border-left: 4px solid #ef4444;">
+          <div class="kpi-label">Worst Margin</div>
+          <div class="kpi-value">Bamboo Cutting Board</div>
+          <div class="kpi-sub">4.2% margin · ¥6,200 revenue</div>
+        </div>
+      </div>
+
+      <!-- Search + filter bar -->
+      <div class="comment">Search and category filter apply to the table below. "Sparkline" toggle shows/hides the trend column.</div>
+      <div class="filter-bar">
+        <input type="text" placeholder="Search product name…" />
+        <select>
+          <option>All Categories</option>
+          <option>Electronics</option>
+          <option>Apparel</option>
+          <option>Accessories</option>
+          <option>Home Goods</option>
+        </select>
+        <!-- Toggle sparkline trend column visibility -->
+        <label style="display:flex; align-items:center; gap:6px; font-size:12px; color:#475569; cursor:pointer;">
+          <input type="checkbox" checked style="accent-color:#4f46e5;" /> Show trend sparkline
+        </label>
+      </div>
+
+      <!-- Product table -->
+      <div class="card" style="margin-bottom: 20px;">
+        <div class="card-header">
+          <div class="card-title">All Products</div>
+          <div class="card-comment">Sortable by any column. Sparkline = revenue trend over the selected period.</div>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Product <span class="sort-icon">↕</span></th>
+                <th>Category <span class="sort-icon">↕</span></th>
+                <th>Revenue <span class="sort-icon sorted">↓</span></th>
+                <th>Profit <span class="sort-icon">↕</span></th>
+                <th>Margin % <span class="sort-icon">↕</span></th>
+                <th>Units Sold <span class="sort-icon">↕</span></th>
+                <th>Trend</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>Widget Pro Max</td><td>Electronics</td>
+                <td>¥32,000</td><td>¥18,688</td>
+                <td><span style="color:#22c55e; font-weight:600;">58.4%</span></td>
+                <td>12</td>
+                <td><span class="sparkline">↗ chart</span></td>
+              </tr>
+              <tr>
+                <td>USB-C Hub</td><td>Accessories</td>
+                <td>¥28,500</td><td>¥9,120</td>
+                <td>32.0%</td><td>38</td>
+                <td><span class="sparkline">→ chart</span></td>
+              </tr>
+              <tr>
+                <td>Tote Bag Classic</td><td>Apparel</td>
+                <td>¥17,400</td><td>¥3,654</td>
+                <td>21.0%</td><td>20</td>
+                <td><span class="sparkline">↘ chart</span></td>
+              </tr>
+              <tr>
+                <td>Bamboo Cutting Board</td><td>Home Goods</td>
+                <td>¥6,200</td><td>¥260</td>
+                <td><span style="color:#ef4444; font-weight:600;">4.2%</span></td>
+                <td>5</td>
+                <td><span class="sparkline">↘ chart</span></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Unsold products -->
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">Unsold Products</div>
+          <div class="card-comment">In inventory but never appeared in an OrderDetail — may need pricing or promotion review</div>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Product</th><th>Category</th><th>Stock Qty</th><th>Stock Value</th><th>Purchased</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr><td>Retro Camera Case</td><td>Accessories</td><td>40</td><td>¥48,000</td><td>2024-09-12</td></tr>
+              <tr><td>Wool Scarf XL</td><td>Apparel</td><td>25</td><td>¥35,000</td><td>2024-11-03</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- ────────────────────────────────────────
+         PAGE 4: PURCHASE & SUPPLY
+    ──────────────────────────────────────── -->
+    <section id="purchases" style="padding-top: 56px;">
+      <div class="page-header">
+        <div>
+          <h1>Purchase &amp; Supply</h1>
+          <div class="subtitle">Spend history, cost trends, supplier concentration</div>
+        </div>
+        <div class="date-filter">
+          <span class="label">Period:</span>
+          <div class="pill-group">
+            <span class="pill">7d</span>
+            <span class="pill active">30d</span>
+            <span class="pill">3m</span>
+            <span class="pill">1y</span>
+          </div>
+          <span class="pill-custom">Custom ▾</span>
+        </div>
+      </div>
+
+      <!-- Spending over time by supplier -->
+      <div class="card">
+        <div class="card-header">
+          <div>
+            <div class="card-title">Spending Over Time — by Supplier</div>
+            <div class="card-comment">Stacked bar; each color = one supplier</div>
+          </div>
+          <div class="toggle-group">
+            <button class="toggle-btn">Week</button>
+            <button class="toggle-btn active">Month</button>
+            <button class="toggle-btn">Quarter</button>
+          </div>
+        </div>
+        <div class="chart-placeholder tall">[ Stacked bar chart — each supplier in a different color, monthly spend ]</div>
+      </div>
+
+      <div class="grid-2">
+
+        <!-- Exchange rate history -->
+        <div class="card">
+          <div class="card-header">
+            <div>
+              <div class="card-title">Exchange Rate History</div>
+              <div class="card-comment">JPY/CNY over time — cost trend context for CNY purchases</div>
+            </div>
+          </div>
+          <div class="comment">Open Question #3: should CNY costs be converted to JPY for display everywhere, or offer a toggle?</div>
+          <div class="chart-placeholder tall">[ Line chart — JPY/CNY rate over time ]</div>
+        </div>
+
+        <!-- Avg unit cost trend per product -->
+        <div class="card">
+          <div class="card-header">
+            <div>
+              <div class="card-title">Avg Unit Cost Trend</div>
+              <div class="card-comment">Per product — are costs rising? Select a product to drill down.</div>
+            </div>
+            <select style="padding: 5px 8px; border: 1px solid #e2e8f0; border-radius: 6px; font-size: 12px;">
+              <option>Widget Pro Max</option>
+              <option>USB-C Hub</option>
+              <option>Tote Bag Classic</option>
+            </select>
+          </div>
+          <div class="chart-placeholder tall">[ Line chart — unit cost over successive purchase lots for selected product ]</div>
+        </div>
+
+      </div>
+
+      <!-- Supplier concentration -->
+      <div class="card">
+        <div class="card-header">
+          <div>
+            <div class="card-title">Supplier Concentration</div>
+            <div class="card-comment">% of total spend per supplier — high concentration = supply risk</div>
+          </div>
+        </div>
+        <div style="padding: 8px 0;">
+          <div class="conc-bar-row"><div class="conc-bar-label">Supplier Alpha</div><div class="conc-bar-fill" style="width: 38%"></div><div class="conc-bar-pct">38%</div></div>
+          <div class="conc-bar-row"><div class="conc-bar-label">Supplier Beta</div><div class="conc-bar-fill" style="width: 27%; background:#818cf8;"></div><div class="conc-bar-pct">27%</div></div>
+          <div class="conc-bar-row"><div class="conc-bar-label">Supplier Gamma</div><div class="conc-bar-fill" style="width: 20%; background:#a5b4fc;"></div><div class="conc-bar-pct">20%</div></div>
+          <div class="conc-bar-row"><div class="conc-bar-label">Others</div><div class="conc-bar-fill" style="width: 15%; background:#c7d2fe;"></div><div class="conc-bar-pct">15%</div></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ────────────────────────────────────────
+         OPEN QUESTIONS — design reference only
+    ──────────────────────────────────────── -->
+    <section style="padding-top: 56px;">
+      <div class="page-header">
+        <div>
+          <h1>Open Questions</h1>
+          <div class="subtitle">Resolve before implementation — not a real page</div>
+        </div>
+      </div>
+      <div class="card">
+        <div style="margin-bottom:12px; font-size:12px; color:#64748b;">
+          ✅ <strong>Navigation</strong> — Stats = single top-nav item with sub-tabs (Dashboard / Inventory Health / Product Performance / Purchase &amp; Supply)<br>
+          ✅ <strong>Soft-deleted records</strong> — excluded from all stats
+        </div>
+        <ul class="oq-list">
+          <li><span class="oq-num">1</span><span><strong>Profit definition</strong> — should shipping fee be deducted at order level or split across OrderDetails proportionally?</span></li>
+          <li><span class="oq-num">2</span><span><strong>Low stock threshold</strong> — fixed quantity cutoff, or % of original purchase quantity?</span></li>
+          <li><span class="oq-num">3</span><span><strong>Exchange rate / profit calculation</strong> — deferred; pending DB restructure decision</span></li>
+          <li><span class="oq-num">4</span><span><strong>Chart library</strong> — Recharts, Chart.js, ApexCharts, or something already in the project?</span></li>
+          <li><span class="oq-num">5</span><span><strong>Priority</strong> — sales insights vs. inventory health as the primary daily-use view?</span></li>
+        </ul>
+      </div>
+    </section>
+
+  </main>
+</div>
+</body>
+</html>
