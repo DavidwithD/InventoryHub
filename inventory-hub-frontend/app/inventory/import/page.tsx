@@ -25,18 +25,17 @@ import { PreviewRow, Product } from '@/types';
 import { useInventory } from '../hooks/useInventory';
 import { fetchExchangeRate } from '@/lib/exchangeRate';
 import { fetchPinduoduoOrders, buildNextFetchCommand } from './pinduoduoService';
+import { fetchTaobaoOrders, buildNextTaobaoFetchCommand, detectPlatform } from './taobaoService';
+
+function storageKey(platform: 'pinduoduo' | 'taobao'): string {
+  return platform === 'taobao' ? 'taobao_fetch_command' : 'pinduoduo_fetch_command';
+}
 
 export default function InventoryImportPage() {
   const { suppliers, loading: supplierLoading, loadSuppliers } = useSuppliers();
 
   const [supplierId, setSupplierId] = useState('');
-  const STORAGE_KEY = 'pinduoduo_fetch_command';
-  const [fetchCommand, setFetchCommand] = useState(() => {
-    if (typeof window !== 'undefined') {
-      return localStorage.getItem(STORAGE_KEY) ?? '';
-    }
-    return '';
-  });
+  const [fetchCommand, setFetchCommand] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [info, setInfo] = useState('');
@@ -48,6 +47,22 @@ export default function InventoryImportPage() {
   const { products, loadProducts, createProduct, updateProduct } = useProducts();
   const { create: createInventory, loadAllInventories } = useInventory();
   const [registeredPurchaseNos, setRegisteredPurchaseNos] = useState<Set<string>>(new Set());
+
+  const selectedSupplier = useMemo(
+    () => suppliers.find((s) => String(s.id) === supplierId)?.name ?? '',
+    [supplierId, suppliers]
+  );
+  const platform = detectPlatform(selectedSupplier);
+
+  // Load per-platform saved fetch command when supplier changes
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      setFetchCommand(localStorage.getItem(storageKey(platform)) ?? '');
+    }
+    setRows([]);
+    setNextOffset(null);
+  }, [platform]);
+
   const handleProductSelected = (productName: string, productId: number) => {
     setProductMap((prev) => ({ ...prev, [productName]: productId }));
   };
@@ -109,11 +124,6 @@ export default function InventoryImportPage() {
       .catch(() => setError('获取汇率失败'));
   }, [loadSuppliers, loadCategories, loadProducts, loadAllInventories]);
 
-  const selectedSupplier = useMemo(
-    () => suppliers.find((s) => String(s.id) === supplierId)?.name ?? '',
-    [supplierId, suppliers]
-  );
-
   const handleSupplierChange = (event: SelectChangeEvent<string>) => {
     setSupplierId(event.target.value);
   };
@@ -133,7 +143,8 @@ export default function InventoryImportPage() {
     setInfo('正在获取并解析数据...');
 
     try {
-      const { rows: extracted, nextOffset: offset } = await fetchPinduoduoOrders(fetchCommand);
+      const fetcher = platform === 'taobao' ? fetchTaobaoOrders : fetchPinduoduoOrders;
+      const { rows: extracted, nextOffset: offset } = await fetcher(fetchCommand);
       setRows(extracted);
       setNextOffset(offset);
       setInfo('从响应中解析出 ' + extracted.length + ' 条商品记录');
@@ -150,12 +161,16 @@ export default function InventoryImportPage() {
 
   const handleNextPage = async () => {
     if (!nextOffset) return;
-    const nextCommand = buildNextFetchCommand(fetchCommand, nextOffset);
+    const nextCommand =
+      platform === 'taobao'
+        ? buildNextTaobaoFetchCommand(fetchCommand, nextOffset)
+        : buildNextFetchCommand(fetchCommand, nextOffset);
     setLoading(true);
     setError('');
     setInfo('正在获取下一批数据...');
     try {
-      const { rows: extracted, nextOffset: offset } = await fetchPinduoduoOrders(nextCommand);
+      const fetcher = platform === 'taobao' ? fetchTaobaoOrders : fetchPinduoduoOrders;
+      const { rows: extracted, nextOffset: offset } = await fetcher(nextCommand);
       setRows((prev) => [...prev, ...extracted]);
       setNextOffset(offset);
       setInfo('共加载 ' + (rows.length + extracted.length) + ' 条商品记录');
@@ -169,6 +184,8 @@ export default function InventoryImportPage() {
     }
   };
 
+  const platformLabel = platform === 'taobao' ? '淘宝' : '拼多多';
+
   return (
     <Stack spacing={3}>
       <Box>
@@ -176,7 +193,7 @@ export default function InventoryImportPage() {
           采购导入预览
         </Typography>
         <Typography variant="body2" color="text.secondary">
-          选择供应商并粘贴拼多多 fetch 命令，以获取并提取库存字段。
+          选择供应商并粘贴 fetch 命令，以获取并提取库存字段。供应商名称含"淘宝"时自动切换淘宝模式。
         </Typography>
         <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
           当前汇率：1 CNY ≈ {exchangeRate > 0 ? exchangeRate.toFixed(2) : '加载中...'} JPY
@@ -210,16 +227,20 @@ export default function InventoryImportPage() {
           </FormControl>
 
           <TextField
-            label="fetch 命令"
+            label={`fetch 命令（${platformLabel}）`}
             multiline
             minRows={1}
             maxRows={5}
             value={fetchCommand}
             onChange={(e) => {
               setFetchCommand(e.target.value);
-              localStorage.setItem(STORAGE_KEY, e.target.value);
+              localStorage.setItem(storageKey(platform), e.target.value);
             }}
-            placeholder="粘贴从浏览器开发者工具复制的完整 fetch 命令"
+            placeholder={
+              platform === 'taobao'
+                ? '粘贴淘宝买到的宝贝页面的 fetch 命令（注意：sign/token 有效期较短，过期需重新复制）'
+                : '粘贴从浏览器开发者工具复制的完整 fetch 命令'
+            }
             disabled={loading}
             fullWidth
           />
