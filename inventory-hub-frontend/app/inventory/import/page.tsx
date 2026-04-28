@@ -46,7 +46,7 @@ export default function InventoryImportPage() {
   const { categories, loadCategories } = useCategories();
   const { products, loadProducts, createProduct, updateProduct } = useProducts();
   const { create: createInventory, loadAllInventories } = useInventory();
-  const [registeredPurchaseNos, setRegisteredPurchaseNos] = useState<Set<string>>(new Set());
+  const [registeredItems, setRegisteredItems] = useState<Set<string>>(new Set());
 
   const selectedSupplier = useMemo(
     () => suppliers.find((s) => String(s.id) === supplierId)?.name ?? '',
@@ -97,7 +97,8 @@ export default function InventoryImportPage() {
       }
     }
     if (payload.purchaseNo) {
-      setRegisteredPurchaseNos((prev) => new Set(prev).add(payload.purchaseNo));
+      const key = `${payload.purchaseNo}-${payload.productId}`;
+      setRegisteredItems((prev) => new Set(prev).add(key));
     }
   };
 
@@ -113,8 +114,12 @@ export default function InventoryImportPage() {
     });
     loadAllInventories()
       .then((data) => {
-        const nos = new Set((data ?? []).map((inv) => inv.purchaseNo ?? '').filter(Boolean));
-        setRegisteredPurchaseNos(nos);
+        const items = new Set(
+          (data ?? [])
+            .filter((inv) => inv.purchaseNo && inv.productId)
+            .map((inv) => `${inv.purchaseNo}-${inv.productId}`)
+        );
+        setRegisteredItems(items);
       })
       .catch(() => {
         // non-critical, ignore
@@ -271,9 +276,9 @@ export default function InventoryImportPage() {
           categories={categories}
           products={products}
           productMap={productMap}
-          registeredPurchaseNos={registeredPurchaseNos}
+          registeredItems={registeredItems}
           loading={loading}
-          hasMore={!!nextOffset}
+          hasMore={platform == 'pinduoduo' && !!nextOffset}
           onProductSelected={handleProductSelected}
           onProductCreated={handleProductCreated}
           onRegister={handleRegister}

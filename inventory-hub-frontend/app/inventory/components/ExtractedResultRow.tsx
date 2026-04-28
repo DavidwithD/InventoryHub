@@ -35,7 +35,7 @@ interface Props {
   categories: Category[];
   products: Product[];
   selectedProductId: number | null;
-  alreadyRegistered: boolean;
+  registeredItems: Set<string>;
   onProductSelected: (productName: string, productId: number) => void;
   onProductCreated: (data: { categoryId: number; name: string }) => Promise<Product>;
   onRegister: (payload: RegisterInventoryPayload) => Promise<void>;
@@ -46,7 +46,7 @@ export default function ExtractedResultRow({
   categories,
   products,
   selectedProductId,
-  alreadyRegistered,
+  registeredItems,
   onProductSelected,
   onProductCreated,
   onRegister,
@@ -77,6 +77,10 @@ export default function ExtractedResultRow({
   const selectedProduct = selectedProductId
     ? (products.find((p) => p.id === selectedProductId) ?? null)
     : null;
+
+  const alreadyRegistered = selectedProductId 
+    ? registeredItems.has(`${row.purchaseNo}-${selectedProductId}`)
+    : false;
 
   const isRegistered = registered || alreadyRegistered;
 

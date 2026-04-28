@@ -19,7 +19,7 @@ interface Props {
   categories: Category[];
   products: Product[];
   productMap: Record<string, number>;
-  registeredPurchaseNos: Set<string>;
+  registeredItems: Set<string>;
   loading: boolean;
   hasMore: boolean;
   onProductSelected: (productName: string, productId: number) => void;
@@ -33,7 +33,7 @@ export default function ExtractedResultTable({
   categories,
   products,
   productMap,
-  registeredPurchaseNos,
+  registeredItems,
   loading,
   hasMore,
   onProductSelected,
@@ -73,7 +73,7 @@ export default function ExtractedResultTable({
                 categories={categories}
                 products={products}
                 selectedProductId={productMap[row.productName] ?? null}
-                alreadyRegistered={!!row.purchaseNo && registeredPurchaseNos.has(row.purchaseNo)}
+                registeredItems={registeredItems}
                 onProductSelected={onProductSelected}
                 onProductCreated={onProductCreated}
                 onRegister={onRegister}

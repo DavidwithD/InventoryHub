@@ -8,7 +8,7 @@ type TaobaoEntry = {
 
 type TaobaoItem = {
   title?: string;
-  skuText?: string;
+  itemId?: string;
   pic?: string;
   quantity?: string;
   priceInfo?: { actualTotalFee?: string };
@@ -70,8 +70,9 @@ function parseRows(data: unknown): { rows: PreviewRow[]; nextOffset: string | nu
     }
   }
 
-  // Extract one PreviewRow per orderItemInfo entry
-  const rows: PreviewRow[] = [];
+  // Extract and group PreviewRows by orderId + itemId when available
+  const groupedRows = new Map<string, PreviewRow>();
+  const ungroupedRows: PreviewRow[] = [];
   const nextPageIndex = pageControl?.nextPageIndex;
   const hasMore = pageControl?.hasMore ?? false;
   const offsetValue = hasMore && nextPageIndex != null ? String(nextPageIndex) : '';
@@ -83,19 +84,36 @@ function parseRows(data: unknown): { rows: PreviewRow[]; nextOffset: string | nu
       const item = fields.item ?? {};
       const shopInfo = shopInfoMap[orderId];
       if (item.refundStatus || shopInfo?.tradeTitle === '交易关闭') continue;
+
       const pic = typeof item.pic === 'string' ? item.pic : '';
-      rows.push({
+      const purchaseAmount = Number(item.quantity ?? 0);
+      const row: PreviewRow = {
         purchaseNo: orderId,
         purchaseDate: toISOString(shopInfo?.createTime),
-        productName: `${item.title} ${item.skuText}`,
+        productName: item.title ?? '',
         purchasePriceCny: yenStringToFloat(item.priceInfo?.actualTotalFee),
-        purchaseAmount: Number(item.quantity ?? 0),
+        purchaseAmount,
         thumbUrl: pic.startsWith('//') ? 'https:' + pic : pic,
         offset: offsetValue,
-      });
+      };
+
+      const itemId = typeof item.itemId === 'string' ? item.itemId : '';
+      const groupKey = orderId && itemId ? `${orderId}|${itemId}` : '';
+
+      if (groupKey) {
+        const existing = groupedRows.get(groupKey);
+        if (existing) {
+          existing.purchaseAmount += purchaseAmount;
+        } else {
+          groupedRows.set(groupKey, row);
+        }
+      } else {
+        ungroupedRows.push(row);
+      }
     }
   }
 
+  const rows = [...groupedRows.values(), ...ungroupedRows];
   const nextOffset = hasMore && nextPageIndex != null ? String(nextPageIndex) : null;
   return { rows, nextOffset };
 }
