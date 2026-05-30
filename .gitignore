@@ -9,3 +9,4 @@ node_modules/
 **/appsettings.json
 **/appsettings.Development.json
 InventoryHub.API/logs/*.log
+.claude/settings.local.json
