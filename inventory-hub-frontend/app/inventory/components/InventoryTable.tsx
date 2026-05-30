@@ -1,9 +1,7 @@
 'use client';
 
 import {
-  Box,
   Chip,
-  IconButton,
   Paper,
   Table,
   TableBody,
@@ -12,7 +10,6 @@ import {
   TableHead,
   TableRow,
   TableSortLabel,
-  Tooltip,
 } from '@mui/material';
 import { Inventory } from '@/types';
 
@@ -38,7 +35,7 @@ interface Props {
 
 function StockChip({ qty }: { qty: number }) {
   if (qty === 0) return <Chip label="缺货" color="error" size="small" />;
-  if (qty < 5) return <Chip label="低库存" color="warning" size="small" />;
+  if (qty < 5) return <Chip label={String(qty)} color="warning" size="small" />;
   return <Chip label={String(qty)} color="success" size="small" variant="outlined" />;
 }
 

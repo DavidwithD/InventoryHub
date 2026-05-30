@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import {
   Dialog,
   DialogTitle,
@@ -19,6 +19,7 @@ import {
 } from '@mui/material';
 import api from '@/lib/api';
 import { OrderDetail, Inventory, Category, CreateOrderDetail, UpdateOrderDetail } from '@/types';
+import ProductPicker from './ProductPicker';
 
 interface Props {
   open: boolean;
@@ -39,7 +40,6 @@ export default function OrderDetailEditDialog({
   onClose,
   onSaved,
 }: Props) {
-  const [categoryId, setCategoryId] = useState<number>(0);
   const [inventoryId, setInventoryId] = useState<number>(0);
   const [productId, setProductId] = useState<number>(0);
   const [productName, setProductName] = useState<string>('');
@@ -58,7 +58,6 @@ export default function OrderDetailEditDialog({
     if (open) {
       if (detail) {
         const inventory = inventories.find((inv) => inv.id === detail.inventoryId);
-        setCategoryId(inventory?.categoryId || 0);
         setInventoryId(detail.inventoryId);
         setProductId(detail.productId);
         setProductName(detail.productName);
@@ -76,7 +75,6 @@ export default function OrderDetailEditDialog({
   }, [open, detail, inventories]);
 
   const resetForm = () => {
-    setCategoryId(0);
     setInventoryId(0);
     setProductId(0);
     setProductName('');
@@ -88,35 +86,46 @@ export default function OrderDetailEditDialog({
     setAvailableStock(0);
   };
 
-  const handleCategoryChange = (e: SelectChangeEvent<number>) => {
-    const newCategoryId = Number(e.target.value);
-    setCategoryId(newCategoryId);
-    setInventoryId(0);
-    setProductId(0);
-    setProductName('');
-    setAvailableStock(0);
+  const productBatches = useMemo(() => {
+    if (productId === 0) return [];
+    return inventories
+      .filter((inv) => inv.productId === productId && inv.stockQuantity > 0)
+      .slice()
+      .sort((a, b) => {
+        const aTime = a.purchaseDate ? new Date(a.purchaseDate).getTime() : Number.POSITIVE_INFINITY;
+        const bTime = b.purchaseDate ? new Date(b.purchaseDate).getTime() : Number.POSITIVE_INFINITY;
+        if (aTime !== bTime) return aTime - bTime;
+        return a.id - b.id;
+      });
+  }, [productId, inventories]);
+
+  const handleProductPick = (pickedProductId: number) => {
+    const batches = inventories
+      .filter((inv) => inv.productId === pickedProductId && inv.stockQuantity > 0)
+      .slice()
+      .sort((a, b) => {
+        const aTime = a.purchaseDate ? new Date(a.purchaseDate).getTime() : Number.POSITIVE_INFINITY;
+        const bTime = b.purchaseDate ? new Date(b.purchaseDate).getTime() : Number.POSITIVE_INFINITY;
+        if (aTime !== bTime) return aTime - bTime;
+        return a.id - b.id;
+      });
+    const oldest = batches[0];
+    if (!oldest) return;
+    setProductId(pickedProductId);
+    setProductName(oldest.productName);
+    setInventoryId(oldest.id);
+    setUnitPrice(oldest.priceJpy);
+    setAvailableStock(oldest.stockQuantity);
   };
 
-  const handleInventoryChange = (e: SelectChangeEvent<number>) => {
+  const handleBatchChange = (e: SelectChangeEvent<number>) => {
     const newInventoryId = Number(e.target.value);
     setInventoryId(newInventoryId);
-
     const inventory = inventories.find((inv) => inv.id === newInventoryId);
     if (inventory) {
-      setProductId(inventory.productId);
-      setProductName(inventory.productName);
       setUnitPrice(inventory.priceJpy);
       setAvailableStock(inventory.stockQuantity);
-      if (inventory.categoryId && categoryId === 0) {
-        setCategoryId(inventory.categoryId);
-      }
     }
-  };
-
-  const getFilteredInventories = () => {
-    return inventories.filter(
-      (inv) => inv.stockQuantity > 0 && (categoryId === 0 || inv.categoryId === categoryId)
-    );
   };
 
   const calculateSubtotal = (): number => {
@@ -125,7 +134,7 @@ export default function OrderDetailEditDialog({
 
   const validate = (): boolean => {
     if (inventoryId === 0) {
-      setError('请选择库存商品');
+      setError('请选择商品');
       return false;
     }
     if (quantity <= 0) {
@@ -200,8 +209,15 @@ export default function OrderDetailEditDialog({
     onClose();
   };
 
+  const currentBatch = inventories.find((inv) => inv.id === inventoryId);
+  const batchOptions = useMemo(() => {
+    if (!currentBatch) return productBatches;
+    if (productBatches.some((b) => b.id === currentBatch.id)) return productBatches;
+    return [currentBatch, ...productBatches];
+  }, [currentBatch, productBatches]);
+
   return (
-    <Dialog open={open} onClose={handleClose} maxWidth="sm" fullWidth>
+    <Dialog open={open} onClose={handleClose} maxWidth="md" fullWidth>
       <DialogTitle>{isEditMode ? '编辑订单详细' : '添加订单详细'}</DialogTitle>
       <DialogContent>
         <Box sx={{ pt: 2 }}>
@@ -211,40 +227,41 @@ export default function OrderDetailEditDialog({
             </Alert>
           )}
 
-          <Grid container spacing={2}>
-            <Grid size={{ xs: 12, sm: 6 }}>
-              <FormControl fullWidth size="small">
-                <InputLabel>商品分类</InputLabel>
-                <Select value={categoryId} label="商品分类" onChange={handleCategoryChange}>
-                  <MenuItem value={0}>全部分类</MenuItem>
-                  {categories.map((cat) => (
-                    <MenuItem key={cat.id} value={cat.id}>
-                      {cat.name}
-                    </MenuItem>
-                  ))}
-                </Select>
-              </FormControl>
-            </Grid>
+          <ProductPicker
+            inventories={inventories}
+            categories={categories}
+            onPick={handleProductPick}
+            mode="compact"
+          />
 
-            <Grid size={{ xs: 12, sm: 6 }}>
-              <FormControl fullWidth size="small">
-                <InputLabel>库存商品</InputLabel>
-                <Select value={inventoryId} label="库存商品" onChange={handleInventoryChange}>
-                  <MenuItem value={0}>请选择商品</MenuItem>
-                  {getFilteredInventories().map((inv) => (
-                    <MenuItem key={inv.id} value={inv.id}>
-                      {inv.productName}（库存：{inv.stockQuantity}）
-                    </MenuItem>
-                  ))}
-                </Select>
-              </FormControl>
-            </Grid>
-
+          <Grid container spacing={2} sx={{ mt: 1 }}>
             {productName && (
               <Grid size={12}>
                 <TextField fullWidth size="small" label="商品名" value={productName} disabled />
               </Grid>
             )}
+
+            <Grid size={12}>
+              <FormControl fullWidth size="small" disabled={productId === 0}>
+                <InputLabel>批次（最早优先）</InputLabel>
+                <Select
+                  value={inventoryId || 0}
+                  label="批次（最早优先）"
+                  onChange={handleBatchChange}
+                >
+                  <MenuItem value={0}>请选择批次</MenuItem>
+                  {batchOptions.map((b) => (
+                    <MenuItem key={b.id} value={b.id}>
+                      {b.purchaseDate
+                        ? new Date(b.purchaseDate).toLocaleDateString('zh-CN')
+                        : '无日期'}{' '}
+                      · 库存 {b.stockQuantity} · ¥{b.priceJpy.toFixed(2)}
+                      {b.purchaseNo ? ` · ${b.purchaseNo}` : ''}
+                    </MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+            </Grid>
 
             <Grid size={{ xs: 12, sm: 6 }}>
               <TextField
