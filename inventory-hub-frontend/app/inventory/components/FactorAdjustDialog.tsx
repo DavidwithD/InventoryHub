@@ -13,6 +13,7 @@ import {
   Typography,
 } from '@mui/material';
 import { Inventory } from '@/types';
+import { useFactorStore } from '@/lib/stores/factorStore';
 
 interface Props {
   open: boolean;
@@ -29,8 +30,14 @@ export default function FactorAdjustDialog({
   onClose,
   onConfirm,
 }: Props) {
-  // Parent remounts this dialog per target via `key`, so '1' is a fresh default each open.
-  const [factorInput, setFactorInput] = useState('1');
+  const getFactor = useFactorStore((s) => s.getFactor);
+  const setStoredFactor = useFactorStore((s) => s.setFactor);
+
+  // Parent remounts this dialog per target via `key`, so the initializer runs fresh
+  // each open, recalling the product's last applied factor from the store.
+  const [factorInput, setFactorInput] = useState(() =>
+    inventory ? String(getFactor(inventory.productId)) : '1'
+  );
 
   const factor = Number(factorInput);
   const factorValid = Number.isFinite(factor) && factor > 0;
@@ -42,6 +49,9 @@ export default function FactorAdjustDialog({
 
   const handleConfirm = () => {
     if (!factorValid) return;
+    if (inventory) {
+      setStoredFactor(inventory.productId, factor);
+    }
     onConfirm(factor);
   };
 

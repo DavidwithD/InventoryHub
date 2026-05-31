@@ -22,11 +22,10 @@ import { Search as SearchIcon } from '@mui/icons-material';
 import { useRouter } from 'next/navigation';
 import { useInventory } from './hooks/useInventory';
 import { useCategories } from '../products/hooks/useCategories';
-import InventoryTable, { SortField, SortOrder } from './components/InventoryTable';
+import InventoryTable, { SortField } from './components/InventoryTable';
 import FactorAdjustDialog from './components/FactorAdjustDialog';
 import { Inventory, CreateInventory } from '@/types';
-
-type StockFilter = 'all' | 'low' | 'out';
+import { useInventoryFilterStore } from '@/lib/stores/filterStore';
 
 export default function InventoryPage() {
   const router = useRouter();
@@ -37,11 +36,24 @@ export default function InventoryPage() {
   const [adjustTarget, setAdjustTarget] = useState<Inventory | null>(null);
   const [adjusting, setAdjusting] = useState(false);
   const [adjustError, setAdjustError] = useState('');
-  const [search, setSearch] = useState('');
-  const [categoryId, setCategoryId] = useState<number | ''>('');
-  const [stockFilter, setStockFilter] = useState<StockFilter>('all');
-  const [sortField, setSortField] = useState<SortField>('id');
-  const [sortOrder, setSortOrder] = useState<SortOrder>('asc');
+
+  // Filters persist across visits via localStorage (zustand persist).
+  const {
+    search,
+    categoryId,
+    stockFilter,
+    sortField,
+    sortOrder,
+    setSearch,
+    setCategoryId,
+    setStockFilter,
+    setSortField,
+    setSortOrder,
+  } = useInventoryFilterStore();
+
+  useEffect(() => {
+    useInventoryFilterStore.persist.rehydrate();
+  }, []);
 
   useEffect(() => {
     setLoading(true);
@@ -77,7 +89,7 @@ export default function InventoryPage() {
 
   const handleSort = (field: SortField) => {
     if (field === sortField) {
-      setSortOrder((prev) => (prev === 'asc' ? 'desc' : 'asc'));
+      setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
     } else {
       setSortField(field);
       setSortOrder('asc');
