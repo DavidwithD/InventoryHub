@@ -8,5 +8,5 @@ node_modules/
 # Sensitive configuration files
 **/appsettings.json
 **/appsettings.Development.json
-InventoryHub.API/logs/*.log
-.claude/settings.local.json
+**/logs/**
+.claude
