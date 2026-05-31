@@ -64,7 +64,7 @@ export default function InventoryTable({
 }: Props) {
   return (
     <TableContainer component={Paper} sx={{ maxHeight: 'calc(100vh - 280px)' }}>
-      <Table stickyHeader size="small">
+      <Table stickyHeader size="small" sx={{ '& .MuiTableCell-root': { px: 1 } }}>
         <TableHead>
           <TableRow>
             {columns.map((col) => (

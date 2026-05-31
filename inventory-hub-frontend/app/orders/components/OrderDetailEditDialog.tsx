@@ -217,7 +217,13 @@ export default function OrderDetailEditDialog({
   }, [currentBatch, productBatches]);
 
   return (
-    <Dialog open={open} onClose={handleClose} maxWidth="md" fullWidth>
+    <Dialog
+      open={open}
+      onClose={handleClose}
+      maxWidth="lg"
+      fullWidth
+      PaperProps={{ sx: { minHeight: '80vh' } }}
+    >
       <DialogTitle>{isEditMode ? '编辑订单详细' : '添加订单详细'}</DialogTitle>
       <DialogContent>
         <Box sx={{ pt: 2 }}>

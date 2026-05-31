@@ -50,6 +50,7 @@ interface AppLayoutProps {
 
 export default function AppLayout({ children }: AppLayoutProps) {
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [desktopOpen, setDesktopOpen] = useState(true);
   const pathname = usePathname();
   const router = useRouter();
   const theme = useTheme();
@@ -57,6 +58,7 @@ export default function AppLayout({ children }: AppLayoutProps) {
 
   const handleDrawerToggle = () => {
     if (isMobile) setMobileOpen(!mobileOpen);
+    else setDesktopOpen(!desktopOpen);
   };
 
   const handleNavigation = (path: string) => {
@@ -191,12 +193,12 @@ export default function AppLayout({ children }: AppLayoutProps) {
 
         {/* Desktop drawer */}
         <Drawer
-          variant="permanent"
+          variant="persistent"
+          open={desktopOpen}
           sx={{
             display: { xs: 'none', md: 'block' },
             '& .MuiDrawer-paper': { boxSizing: 'border-box', width: drawerWidth },
           }}
-          open
         >
           {drawer}
         </Drawer>
@@ -208,9 +210,15 @@ export default function AppLayout({ children }: AppLayoutProps) {
         sx={{
           flexGrow: 1,
           p: 3,
-          width: { md: `calc(100% - ${drawerWidth}px)` },
           minHeight: '100vh',
           backgroundColor: '#f5f5f5',
+          ml: { md: desktopOpen ? 0 : `-${drawerWidth}px` },
+          transition: theme.transitions.create('margin', {
+            easing: theme.transitions.easing.sharp,
+            duration: desktopOpen
+              ? theme.transitions.duration.enteringScreen
+              : theme.transitions.duration.leavingScreen,
+          }),
         }}
       >
         <Toolbar /> {/* Spacer for AppBar */}

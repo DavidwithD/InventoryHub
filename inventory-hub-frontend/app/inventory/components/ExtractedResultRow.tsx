@@ -18,6 +18,7 @@ import {
   TableCell,
   TableRow,
   TextField,
+  Tooltip,
   Typography,
 } from '@mui/material';
 import { Category, PreviewRow, Product } from '@/types';
@@ -154,26 +155,27 @@ export default function ExtractedResultRow({
     <>
       <TableRow sx={{ verticalAlign: 'top' }}>
         <TableCell sx={{ p: 1 }}>
-          {row.thumbUrl ? (
-            <Box component="a" href={row.thumbUrl} target="_blank" rel="noreferrer">
-              <Box
-                component="img"
-                src={row.thumbUrl}
-                alt="thumbnail"
-                sx={{
-                  width: 96,
-                  height: 96,
-                  objectFit: 'cover',
-                  borderRadius: 1,
-                  display: 'block',
-                }}
-              />
-            </Box>
-          ) : (
-            <Box sx={{ width: 96, height: 96, bgcolor: 'grey.100', borderRadius: 1 }} />
-          )}
+          <Tooltip title={`采购单号：${row.purchaseNo}`} arrow placement="right">
+            {row.thumbUrl ? (
+              <Box component="a" href={row.thumbUrl} target="_blank" rel="noreferrer">
+                <Box
+                  component="img"
+                  src={row.thumbUrl}
+                  alt="thumbnail"
+                  sx={{
+                    width: 96,
+                    height: 96,
+                    objectFit: 'cover',
+                    borderRadius: 1,
+                    display: 'block',
+                  }}
+                />
+              </Box>
+            ) : (
+              <Box sx={{ width: 96, height: 96, bgcolor: 'grey.100', borderRadius: 1 }} />
+            )}
+          </Tooltip>
         </TableCell>
-        <TableCell>{row.purchaseNo}</TableCell>
         <TableCell sx={{ whiteSpace: 'nowrap' }}>{row.purchaseDate.split('T')[0]}</TableCell>
         <TableCell sx={{ maxWidth: 200, wordBreak: 'break-word' }}>{row.productName}</TableCell>
         <TableCell align="right">{row.purchasePriceCny.toFixed(2)}</TableCell>

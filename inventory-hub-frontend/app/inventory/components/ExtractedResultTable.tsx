@@ -57,8 +57,7 @@ export default function ExtractedResultTable({
         <Table size="small">
           <TableHead>
             <TableRow>
-              <TableCell>缩略图</TableCell>
-              <TableCell>采购单号</TableCell>
+              <TableCell></TableCell>
               <TableCell>采购日期</TableCell>
               <TableCell>商品名称</TableCell>
               <TableCell align="right">价格（元）</TableCell>

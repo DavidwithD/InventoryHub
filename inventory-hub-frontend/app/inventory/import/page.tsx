@@ -233,7 +233,7 @@ export default function InventoryImportPage() {
           采购导入预览
         </Typography>
         <Typography variant="body2" color="text.secondary">
-          选择供应商后按下方步骤复制粘贴 fetch 命令，即可解析并提取库存字段。供应商名称含"淘宝"时自动切换淘宝模式。
+          选择供应商后按下方步骤复制粘贴 fetch 命令，即可解析并提取库存字段。
         </Typography>
         <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
           当前汇率：1 CNY ≈ {exchangeRate > 0 ? exchangeRate.toFixed(2) : '加载中...'} JPY

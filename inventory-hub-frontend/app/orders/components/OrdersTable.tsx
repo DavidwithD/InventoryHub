@@ -11,15 +11,9 @@ import {
   TableHead,
   TableRow,
   IconButton,
-  Button,
   TableSortLabel,
   Typography,
 } from '@mui/material';
-import {
-  Edit as EditIcon,
-  Delete as DeleteIcon,
-  Visibility as VisibilityIcon,
-} from '@mui/icons-material';
 import { Order } from '@/types';
 
 type OrderByType =
@@ -112,7 +106,7 @@ export default function OrdersTable({ orders, onEdit, onDelete, onViewDetails }:
                   direction={orderBy === 'revenue' ? order : 'asc'}
                   onClick={() => handleRequestSort('revenue')}
                 >
-                  营业额（¥）
+                  营业额
                 </TableSortLabel>
               </TableCell>
               <TableCell sx={{ width: 110 }}>
@@ -121,7 +115,7 @@ export default function OrdersTable({ orders, onEdit, onDelete, onViewDetails }:
                   direction={orderBy === 'totalCost' ? order : 'asc'}
                   onClick={() => handleRequestSort('totalCost')}
                 >
-                  总成本（¥）
+                  总成本
                 </TableSortLabel>
               </TableCell>
               <TableCell sx={{ width: 110 }}>
@@ -130,7 +124,7 @@ export default function OrdersTable({ orders, onEdit, onDelete, onViewDetails }:
                   direction={orderBy === 'shippingFee' ? order : 'asc'}
                   onClick={() => handleRequestSort('shippingFee')}
                 >
-                  运费（¥）
+                  运费
                 </TableSortLabel>
               </TableCell>
               <TableCell sx={{ width: 110 }}>
@@ -139,7 +133,7 @@ export default function OrdersTable({ orders, onEdit, onDelete, onViewDetails }:
                   direction={orderBy === 'profit' ? order : 'asc'}
                   onClick={() => handleRequestSort('profit')}
                 >
-                  利润（¥）
+                  利润
                 </TableSortLabel>
               </TableCell>
               <TableCell sx={{ width: 120 }}>
