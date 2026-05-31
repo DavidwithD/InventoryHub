@@ -10,6 +10,7 @@ import {
   TableHead,
   TableRow,
   TableSortLabel,
+  Tooltip,
 } from '@mui/material';
 import { Inventory } from '@/types';
 
@@ -31,12 +32,14 @@ interface Props {
   sortField: SortField;
   sortOrder: SortOrder;
   onSort: (field: SortField) => void;
+  onAdjustFactor: (inv: Inventory) => void;
 }
 
-function StockChip({ qty }: { qty: number }) {
-  if (qty === 0) return <Chip label="缺货" color="error" size="small" />;
-  if (qty < 5) return <Chip label={String(qty)} color="warning" size="small" />;
-  return <Chip label={String(qty)} color="success" size="small" variant="outlined" />;
+function StockChip({ qty, onClick }: { qty: number; onClick?: () => void }) {
+  const clickProps = onClick ? { onClick, sx: { cursor: 'pointer' } } : {};
+  if (qty === 0) return <Chip label="缺货" color="error" size="small" {...clickProps} />;
+  if (qty < 5) return <Chip label={String(qty)} color="warning" size="small" {...clickProps} />;
+  return <Chip label={String(qty)} color="success" size="small" variant="outlined" {...clickProps} />;
 }
 
 const columns: { id: SortField | null; label: string; align?: 'right' | 'center' }[] = [
@@ -57,6 +60,7 @@ export default function InventoryTable({
   sortField,
   sortOrder,
   onSort,
+  onAdjustFactor,
 }: Props) {
   return (
     <TableContainer component={Paper} sx={{ maxHeight: 'calc(100vh - 280px)' }}>
@@ -107,7 +111,14 @@ export default function InventoryTable({
                 </TableCell>
                 <TableCell align="right">{inv.purchaseQuantity}</TableCell>
                 <TableCell align="center">
-                  <StockChip qty={inv.stockQuantity} />
+                  <Tooltip title={inv.isReferenced ? '已被订单引用，无法修改' : '调整换算'}>
+                    <span>
+                      <StockChip
+                        qty={inv.stockQuantity}
+                        onClick={inv.isReferenced ? undefined : () => onAdjustFactor(inv)}
+                      />
+                    </span>
+                  </Tooltip>
                 </TableCell>
                 <TableCell align="right">¥{inv.priceJpy.toLocaleString()}</TableCell>
                 <TableCell align="right">

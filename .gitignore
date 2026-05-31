@@ -10,3 +10,4 @@ node_modules/
 **/appsettings.Development.json
 **/logs/**
 .claude
+inventory-hub-frontend/data/**

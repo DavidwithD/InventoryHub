@@ -18,6 +18,7 @@ import {
   TableCell,
   TableRow,
   TextField,
+  Typography,
 } from '@mui/material';
 import { Category, PreviewRow, Product } from '@/types';
 
@@ -25,6 +26,7 @@ export interface RegisterInventoryPayload {
   productId: number;
   priceCny: number;
   purchaseQuantity: number;
+  conversionFactor: number;
   purchaseNo: string;
   purchaseDate: string;
   thumbUrl?: string;
@@ -36,6 +38,7 @@ interface Props {
   products: Product[];
   selectedProductId: number | null;
   registeredItems: Set<string>;
+  factorSuggestions: Record<number, number>;
   onProductSelected: (productName: string, productId: number) => void;
   onProductCreated: (data: { categoryId: number; name: string }) => Promise<Product>;
   onRegister: (payload: RegisterInventoryPayload) => Promise<void>;
@@ -47,6 +50,7 @@ export default function ExtractedResultRow({
   products,
   selectedProductId,
   registeredItems,
+  factorSuggestions,
   onProductSelected,
   onProductCreated,
   onRegister,
@@ -58,6 +62,8 @@ export default function ExtractedResultRow({
   const [newProductName, setNewProductName] = useState(row.productName);
   const [newProductCategoryId, setNewProductCategoryId] = useState<number>(0);
   const [creating, setCreating] = useState(false);
+  const [factorInput, setFactorInput] = useState('1');
+  const [factorTouched, setFactorTouched] = useState(false);
 
   const hasExactMatch = products.some((p) => p.name === row.productName);
 
@@ -78,11 +84,25 @@ export default function ExtractedResultRow({
     ? (products.find((p) => p.id === selectedProductId) ?? null)
     : null;
 
-  const alreadyRegistered = selectedProductId 
+  const alreadyRegistered = selectedProductId
     ? registeredItems.has(`${row.purchaseNo}-${selectedProductId}`)
     : false;
 
   const isRegistered = registered || alreadyRegistered;
+
+  // #3 Option B: prefill the factor from the product's most recent inventory
+  // record (stock/purchase ratio). Only a suggestion — never clobbers a manual edit.
+  useEffect(() => {
+    if (factorTouched) return;
+    const suggested = selectedProductId ? factorSuggestions[selectedProductId] : undefined;
+    setFactorInput(suggested && suggested > 0 ? String(suggested) : '1');
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedProductId, factorSuggestions]);
+
+  const factor = Number(factorInput);
+  const factorValid = Number.isFinite(factor) && factor > 0;
+  const previewPieces = factorValid ? row.purchaseAmount * factor : 0;
+  const previewUnitCny = factorValid ? row.purchasePriceCny / factor : 0;
 
   const handleProductChange = (_: unknown, value: Product | null) => {
     if (value) {
@@ -91,13 +111,14 @@ export default function ExtractedResultRow({
   };
 
   const handleRegister = async () => {
-    if (!selectedProductId) return;
+    if (!selectedProductId || !factorValid) return;
     setRegistering(true);
     try {
       await onRegister({
         productId: selectedProductId,
         priceCny: row.purchasePriceCny,
         purchaseQuantity: row.purchaseAmount,
+        conversionFactor: factor,
         purchaseNo: row.purchaseNo,
         purchaseDate: row.purchaseDate,
         thumbUrl: row.thumbUrl || undefined,
@@ -194,6 +215,29 @@ export default function ExtractedResultRow({
               isOptionEqualToValue={(opt, val) => opt.id === val.id}
               renderInput={(params) => <TextField {...params} label="商品" />}
             />
+            <Box sx={{ display: 'flex', gap: 1, alignItems: 'flex-start' }}>
+              <TextField
+                size="small"
+                type="number"
+                label="换算倍数(件/组)"
+                value={factorInput}
+                onChange={(e) => {
+                  setFactorTouched(true);
+                  setFactorInput(e.target.value);
+                }}
+                error={!factorValid}
+                inputProps={{ min: 0, step: 1, style: { width: 70 } }}
+              />
+              <Typography
+                variant="caption"
+                color={factorValid ? 'text.secondary' : 'error'}
+                sx={{ mt: 1, lineHeight: 1.3 }}
+              >
+                {factorValid
+                  ? `入库 ${previewPieces} 件 · 单价 ¥${previewUnitCny.toFixed(2)}`
+                  : '倍数需大于 0'}
+              </Typography>
+            </Box>
           </Stack>
         </TableCell>
         <TableCell>
@@ -201,7 +245,7 @@ export default function ExtractedResultRow({
             size="small"
             variant={isRegistered ? 'outlined' : 'contained'}
             color={isRegistered ? 'success' : 'primary'}
-            disabled={!selectedProductId || registering || isRegistered}
+            disabled={!selectedProductId || !factorValid || registering || isRegistered}
             onClick={handleRegister}
             sx={{ whiteSpace: 'nowrap' }}
           >

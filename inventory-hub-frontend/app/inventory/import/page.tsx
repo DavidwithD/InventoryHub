@@ -26,6 +26,10 @@ import { useInventory } from '../hooks/useInventory';
 import { fetchExchangeRate } from '@/lib/exchangeRate';
 import { fetchPinduoduoOrders, buildNextFetchCommand } from './pinduoduoService';
 import { fetchTaobaoOrders, buildNextTaobaoFetchCommand, detectPlatform } from './taobaoService';
+import FetchCommandGuide, {
+  getPlaceholderForPlatform,
+  validateFetchCommand,
+} from './FetchCommandGuide';
 
 function storageKey(platform: 'pinduoduo' | 'taobao'): string {
   return platform === 'taobao' ? 'taobao_fetch_command' : 'pinduoduo_fetch_command';
@@ -47,12 +51,19 @@ export default function InventoryImportPage() {
   const { products, loadProducts, createProduct, updateProduct } = useProducts();
   const { create: createInventory, loadAllInventories } = useInventory();
   const [registeredItems, setRegisteredItems] = useState<Set<string>>(new Set());
+  const [factorSuggestions, setFactorSuggestions] = useState<Record<number, number>>({});
 
   const selectedSupplier = useMemo(
     () => suppliers.find((s) => String(s.id) === supplierId)?.name ?? '',
     [supplierId, suppliers]
   );
   const platform = detectPlatform(selectedSupplier);
+
+  const validation = useMemo(
+    () => (fetchCommand.trim() ? validateFetchCommand(fetchCommand, platform) : null),
+    [fetchCommand, platform],
+  );
+  const inputError = validation !== null && !validation.ok;
 
   // Load per-platform saved fetch command when supplier changes
   useEffect(() => {
@@ -75,13 +86,16 @@ export default function InventoryImportPage() {
   };
 
   const handleRegister = async (payload: RegisterInventoryPayload) => {
-    const priceJpy = exchangeRate > 0 ? Math.round(payload.priceCny * exchangeRate) : 0;
+    const factor = payload.conversionFactor > 0 ? payload.conversionFactor : 1;
+    // priceCny on the row is per purchase unit (set); convert to a per-stock-unit price.
+    const unitPriceCny = payload.priceCny / factor;
+    const priceJpy = exchangeRate > 0 ? Math.round(unitPriceCny * exchangeRate) : 0;
     await createInventory({
       productId: payload.productId,
       purchaseQuantity: payload.purchaseQuantity,
-      stockQuantity: payload.purchaseQuantity,
+      stockQuantity: payload.purchaseQuantity * factor,
       priceJpy,
-      priceCny: payload.priceCny,
+      priceCny: Math.round(unitPriceCny * 100) / 100,
       supplierId: supplierId ? Number(supplierId) : undefined,
       purchaseDate: payload.purchaseDate || undefined,
       purchaseNo: payload.purchaseNo || undefined,
@@ -120,6 +134,23 @@ export default function InventoryImportPage() {
             .map((inv) => `${inv.purchaseNo}-${inv.productId}`)
         );
         setRegisteredItems(items);
+
+        // #3 Option B: derive a suggested conversion factor per product from its
+        // most recent inventory record (stockQuantity / purchaseQuantity).
+        const latest: Record<number, { createdAt: string; factor: number }> = {};
+        for (const inv of data ?? []) {
+          if (!inv.productId || inv.purchaseQuantity <= 0 || inv.stockQuantity <= 0) continue;
+          const factor = Math.round((inv.stockQuantity / inv.purchaseQuantity) * 100) / 100;
+          const prev = latest[inv.productId];
+          if (!prev || inv.createdAt > prev.createdAt) {
+            latest[inv.productId] = { createdAt: inv.createdAt, factor };
+          }
+        }
+        const suggestions: Record<number, number> = {};
+        for (const [productId, { factor }] of Object.entries(latest)) {
+          if (factor > 0 && factor !== 1) suggestions[Number(productId)] = factor;
+        }
+        setFactorSuggestions(suggestions);
       })
       .catch(() => {
         // non-critical, ignore
@@ -140,6 +171,10 @@ export default function InventoryImportPage() {
     }
     if (!fetchCommand.trim()) {
       setError('请粘贴 fetch 命令');
+      return;
+    }
+    if (validation && !validation.ok) {
+      setError(validation.message);
       return;
     }
 
@@ -198,7 +233,7 @@ export default function InventoryImportPage() {
           采购导入预览
         </Typography>
         <Typography variant="body2" color="text.secondary">
-          选择供应商并粘贴 fetch 命令，以获取并提取库存字段。供应商名称含"淘宝"时自动切换淘宝模式。
+          选择供应商后按下方步骤复制粘贴 fetch 命令，即可解析并提取库存字段。供应商名称含"淘宝"时自动切换淘宝模式。
         </Typography>
         <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
           当前汇率：1 CNY ≈ {exchangeRate > 0 ? exchangeRate.toFixed(2) : '加载中...'} JPY
@@ -231,35 +266,45 @@ export default function InventoryImportPage() {
             </Select>
           </FormControl>
 
-          <TextField
-            label={`fetch 命令（${platformLabel}）`}
-            multiline
-            minRows={1}
-            maxRows={5}
-            value={fetchCommand}
-            onChange={(e) => {
-              setFetchCommand(e.target.value);
-              localStorage.setItem(storageKey(platform), e.target.value);
-            }}
-            placeholder={
-              platform === 'taobao'
-                ? '粘贴淘宝买到的宝贝页面的 fetch 命令（注意：sign/token 有效期较短，过期需重新复制）'
-                : '粘贴从浏览器开发者工具复制的完整 fetch 命令'
-            }
-            disabled={loading}
-            fullWidth
-          />
+          {supplierId ? (
+            <>
+              <FetchCommandGuide platform={platform} />
 
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-            <Button
-              variant="contained"
-              onClick={handleParseFetch}
-              disabled={loading || supplierLoading}
-            >
-              {'解析并预览'}
-            </Button>
-            {loading && <CircularProgress size={22} />}
-          </Box>
+              <TextField
+                label={`fetch 命令（${platformLabel}）`}
+                multiline
+                minRows={1}
+                maxRows={5}
+                value={fetchCommand}
+                onChange={(e) => {
+                  setFetchCommand(e.target.value);
+                  localStorage.setItem(storageKey(platform), e.target.value);
+                }}
+                placeholder={getPlaceholderForPlatform(platform)}
+                disabled={loading}
+                fullWidth
+                error={inputError}
+                helperText={
+                  inputError && validation && !validation.ok ? validation.message : ' '
+                }
+              />
+
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                <Button
+                  variant="contained"
+                  onClick={handleParseFetch}
+                  disabled={loading || supplierLoading || inputError}
+                >
+                  {'解析并预览'}
+                </Button>
+                {loading && <CircularProgress size={22} />}
+              </Box>
+            </>
+          ) : (
+            <Typography variant="body2" color="text.secondary">
+              请先选择供应商以继续。
+            </Typography>
+          )}
         </Stack>
       </Paper>
 
@@ -277,6 +322,7 @@ export default function InventoryImportPage() {
           products={products}
           productMap={productMap}
           registeredItems={registeredItems}
+          factorSuggestions={factorSuggestions}
           loading={loading}
           hasMore={platform == 'pinduoduo' && !!nextOffset}
           onProductSelected={handleProductSelected}
