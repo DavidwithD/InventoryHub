@@ -12,10 +12,10 @@ import ProductPerformanceTab from './components/ProductPerformanceTab';
 import PurchaseSupplyTab from './components/PurchaseSupplyTab';
 
 const TABS = [
-  { label: 'Dashboard', icon: <DashboardIcon fontSize="small" /> },
-  { label: 'Inventory Health', icon: <InventoryIcon fontSize="small" /> },
-  { label: 'Product Performance', icon: <BarChartIcon fontSize="small" /> },
-  { label: 'Purchase & Supply', icon: <ShoppingBagIcon fontSize="small" /> },
+  { label: '总览', icon: <DashboardIcon fontSize="small" /> },
+  { label: '库存健康', icon: <InventoryIcon fontSize="small" /> },
+  { label: '商品表现', icon: <BarChartIcon fontSize="small" /> },
+  { label: '采购与供应', icon: <ShoppingBagIcon fontSize="small" /> },
 ];
 
 export default function StatsPage() {

@@ -75,9 +75,9 @@ export default function PurchaseSupplyTab() {
       {/* Header */}
       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 3, flexWrap: 'wrap', gap: 2 }}>
         <Box>
-          <Typography variant="h5" fontWeight={700}>Purchase &amp; Supply</Typography>
+          <Typography variant="h5" fontWeight={700}>采购与供应</Typography>
           <Typography variant="body2" color="text.secondary">
-            Spend history, cost trends, supplier concentration
+            支出历史、成本趋势、供应商集中度
           </Typography>
         </Box>
         <ToggleButtonGroup
@@ -96,8 +96,8 @@ export default function PurchaseSupplyTab() {
       <Paper sx={{ p: 2.5, borderRadius: 2, border: '1px solid', borderColor: 'divider', mb: 2 }}>
         <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 2 }}>
           <Box>
-            <Typography variant="subtitle1" fontWeight={700}>Spending Over Time — by Supplier</Typography>
-            <Typography variant="caption" color="text.secondary">Stacked bar; each color = one supplier</Typography>
+            <Typography variant="subtitle1" fontWeight={700}>支出趋势 —— 按供应商</Typography>
+            <Typography variant="caption" color="text.secondary">堆叠柱状图；每种颜色代表一家供应商</Typography>
           </Box>
           <ToggleButtonGroup
             value={granularity}
@@ -105,16 +105,16 @@ export default function PurchaseSupplyTab() {
             onChange={(_, v) => v && setGranularity(v)}
             size="small"
           >
-            <ToggleButton value="week" sx={{ px: 1.5, fontSize: 12 }}>Week</ToggleButton>
-            <ToggleButton value="month" sx={{ px: 1.5, fontSize: 12 }}>Month</ToggleButton>
-            <ToggleButton value="quarter" sx={{ px: 1.5, fontSize: 12 }}>Quarter</ToggleButton>
+            <ToggleButton value="week" sx={{ px: 1.5, fontSize: 12 }}>周</ToggleButton>
+            <ToggleButton value="month" sx={{ px: 1.5, fontSize: 12 }}>月</ToggleButton>
+            <ToggleButton value="quarter" sx={{ px: 1.5, fontSize: 12 }}>季度</ToggleButton>
           </ToggleButtonGroup>
         </Box>
         {loading && !purchasesPage ? (
           <Skeleton variant="rectangular" height={220} />
         ) : spendingData.length === 0 ? (
           <Box sx={{ height: 220, display: 'flex', alignItems: 'center', justifyContent: 'center', bgcolor: 'action.hover', borderRadius: 1 }}>
-            <Typography variant="body2" color="text.secondary">No purchase data for this period</Typography>
+            <Typography variant="body2" color="text.secondary">该时间段暂无采购数据</Typography>
           </Box>
         ) : (
           <ResponsiveContainer width="100%" height={220}>
@@ -137,14 +137,14 @@ export default function PurchaseSupplyTab() {
         {/* Exchange rate history */}
         <Paper sx={{ p: 2.5, borderRadius: 2, border: '1px solid', borderColor: 'divider' }}>
           <Box sx={{ mb: 2 }}>
-            <Typography variant="subtitle1" fontWeight={700}>Exchange Rate History</Typography>
-            <Typography variant="caption" color="text.secondary">JPY/CNY over time — cost trend context</Typography>
+            <Typography variant="subtitle1" fontWeight={700}>汇率历史</Typography>
+            <Typography variant="caption" color="text.secondary">日元/人民币随时间变化 —— 成本趋势参考</Typography>
           </Box>
           {loading && !purchasesPage ? (
             <Skeleton variant="rectangular" height={200} />
           ) : (purchasesPage?.exchangeRates ?? []).length === 0 ? (
             <Box sx={{ height: 200, display: 'flex', alignItems: 'center', justifyContent: 'center', bgcolor: 'action.hover', borderRadius: 1 }}>
-              <Typography variant="body2" color="text.secondary">No CNY purchase data</Typography>
+              <Typography variant="body2" color="text.secondary">暂无人民币采购数据</Typography>
             </Box>
           ) : (
             <ResponsiveContainer width="100%" height={200}>
@@ -153,7 +153,7 @@ export default function PurchaseSupplyTab() {
                 <XAxis dataKey="date" tick={{ fontSize: 10 }} />
                 <YAxis tick={{ fontSize: 11 }} />
                 <Tooltip />
-                <Line type="monotone" dataKey="rate" name="JPY/CNY" stroke="#4f46e5" strokeWidth={2} dot={false} />
+                <Line type="monotone" dataKey="rate" name="日元/人民币" stroke="#4f46e5" strokeWidth={2} dot={false} />
               </LineChart>
             </ResponsiveContainer>
           )}
@@ -163,18 +163,18 @@ export default function PurchaseSupplyTab() {
         <Paper sx={{ p: 2.5, borderRadius: 2, border: '1px solid', borderColor: 'divider' }}>
           <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 2 }}>
             <Box>
-              <Typography variant="subtitle1" fontWeight={700}>Avg Unit Cost Trend</Typography>
-              <Typography variant="caption" color="text.secondary">Per purchase lot — are costs rising?</Typography>
+              <Typography variant="subtitle1" fontWeight={700}>平均单位成本趋势</Typography>
+              <Typography variant="caption" color="text.secondary">按采购批次 —— 成本是否在上涨？</Typography>
             </Box>
             {(purchasesPage?.products?.length ?? 0) > 0 && (
               <FormControl size="small" sx={{ minWidth: 140 }}>
-                <InputLabel>Product</InputLabel>
+                <InputLabel>商品</InputLabel>
                 <Select
-                  label="Product"
+                  label="商品"
                   value={selectedProduct}
                   onChange={(e) => setSelectedProduct(e.target.value)}
                 >
-                  <MenuItem value="">All</MenuItem>
+                  <MenuItem value="">全部</MenuItem>
                   {(purchasesPage?.products ?? []).map((p) => (
                     <MenuItem key={p} value={p}>{p}</MenuItem>
                   ))}
@@ -186,7 +186,7 @@ export default function PurchaseSupplyTab() {
             <Skeleton variant="rectangular" height={200} />
           ) : filteredCostTrend.length === 0 ? (
             <Box sx={{ height: 200, display: 'flex', alignItems: 'center', justifyContent: 'center', bgcolor: 'action.hover', borderRadius: 1 }}>
-              <Typography variant="body2" color="text.secondary">No purchase lot data</Typography>
+              <Typography variant="body2" color="text.secondary">暂无采购批次数据</Typography>
             </Box>
           ) : (
             <ResponsiveContainer width="100%" height={200}>
@@ -195,7 +195,7 @@ export default function PurchaseSupplyTab() {
                 <XAxis dataKey="date" tick={{ fontSize: 10 }} />
                 <YAxis tick={{ fontSize: 11 }} tickFormatter={(v) => fmt(v)} />
                 <Tooltip formatter={(v) => fmt(Number(v))} />
-                <Line type="monotone" dataKey="unitCost" name="Unit Cost" stroke="#16a34a" strokeWidth={2} dot />
+                <Line type="monotone" dataKey="unitCost" name="单位成本" stroke="#16a34a" strokeWidth={2} dot />
               </LineChart>
             </ResponsiveContainer>
           )}
@@ -204,14 +204,14 @@ export default function PurchaseSupplyTab() {
 
       {/* Supplier concentration */}
       <Paper sx={{ p: 2.5, borderRadius: 2, border: '1px solid', borderColor: 'divider' }}>
-        <Typography variant="subtitle1" fontWeight={700} sx={{ mb: 0.5 }}>Supplier Concentration</Typography>
+        <Typography variant="subtitle1" fontWeight={700} sx={{ mb: 0.5 }}>供应商集中度</Typography>
         <Typography variant="caption" color="text.secondary" sx={{ mb: 2, display: 'block' }}>
-          % of total spend per supplier — high concentration = supply risk
+          各供应商占总支出的百分比 —— 集中度过高 = 供应风险
         </Typography>
         {loading && !purchasesPage ? (
           <Skeleton variant="rectangular" height={160} />
         ) : (purchasesPage?.supplierConcentration ?? []).length === 0 ? (
-          <Typography variant="body2" color="text.secondary">No data</Typography>
+          <Typography variant="body2" color="text.secondary">暂无数据</Typography>
         ) : (
           <Box>
             {(purchasesPage?.supplierConcentration ?? []).map((s, i) => (

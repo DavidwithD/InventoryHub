@@ -107,7 +107,7 @@ function KpiCard({ label, value, change, changeLabel, isLive, alert, loading }: 
           >
             {change > 0 ? '+' : ''}
             {change}
-            {changeLabel ?? '% vs prev period'}
+            {changeLabel ?? '% 较上期'}
           </Typography>
         </Box>
       )}
@@ -123,7 +123,7 @@ function KpiCard({ label, value, change, changeLabel, isLive, alert, loading }: 
       )}
       {isLive && !alert && !loading && (
         <Typography variant="caption" sx={{ color: 'text.disabled', display: 'block', mt: 0.5 }}>
-          Always live
+          实时数据
         </Typography>
       )}
     </Paper>
@@ -210,10 +210,10 @@ export default function DashboardTab({ onNavigateToProduct }: Props) {
       >
         <Box>
           <Typography variant="h5" fontWeight={700}>
-            Dashboard
+            总览
           </Typography>
           <Typography variant="body2" color="text.secondary">
-            Sales &amp; profit overview
+            销售与利润概览
           </Typography>
         </Box>
         <PeriodPicker value={period} onChange={setPeriod} />
@@ -221,12 +221,12 @@ export default function DashboardTab({ onNavigateToProduct }: Props) {
 
       {/* KPI row */}
       <Typography variant="caption" color="text.secondary" sx={{ mb: 1, display: 'block' }}>
-        Cards marked with ● are always live — they ignore the date filter.
+        标有 ● 的卡片为实时数据 —— 不受日期筛选影响。
       </Typography>
       <Grid container spacing={2} sx={{ mb: 3 }}>
         <Grid size={{ xs: 6, sm: 4, md: 3, lg: 2 }}>
           <KpiCard
-            label="Total Revenue"
+            label="总营收"
             value={kpi ? fmt(kpi.totalRevenue) : '—'}
             change={kpi?.revenuePctChange}
             loading={loading && !kpi}
@@ -234,7 +234,7 @@ export default function DashboardTab({ onNavigateToProduct }: Props) {
         </Grid>
         <Grid size={{ xs: 6, sm: 4, md: 3, lg: 2 }}>
           <KpiCard
-            label="Total Profit"
+            label="总利润"
             value={kpi ? fmt(kpi.totalProfit) : '—'}
             change={kpi?.profitPctChange}
             loading={loading && !kpi}
@@ -242,16 +242,16 @@ export default function DashboardTab({ onNavigateToProduct }: Props) {
         </Grid>
         <Grid size={{ xs: 6, sm: 4, md: 3, lg: 2 }}>
           <KpiCard
-            label="Avg Margin %"
+            label="平均毛利率 %"
             value={kpi ? `${kpi.avgMarginPct}%` : '—'}
             change={kpi?.marginPpChange}
-            changeLabel="pp vs prev period"
+            changeLabel="个百分点 较上期"
             loading={loading && !kpi}
           />
         </Grid>
         <Grid size={{ xs: 6, sm: 4, md: 3, lg: 2 }}>
           <KpiCard
-            label="Orders"
+            label="订单数"
             value={kpi ? kpi.ordersCount.toLocaleString() : '—'}
             change={kpi?.ordersCountPctChange}
             loading={loading && !kpi}
@@ -259,7 +259,7 @@ export default function DashboardTab({ onNavigateToProduct }: Props) {
         </Grid>
         <Grid size={{ xs: 6, sm: 4, md: 3, lg: 2 }}>
           <KpiCard
-            label="Avg Order Value"
+            label="平均客单价"
             value={kpi ? fmt(kpi.avgOrderValue) : '—'}
             change={kpi?.avgOrderValuePctChange}
             loading={loading && !kpi}
@@ -267,7 +267,7 @@ export default function DashboardTab({ onNavigateToProduct }: Props) {
         </Grid>
         <Grid size={{ xs: 6, sm: 4, md: 3, lg: 2 }}>
           <KpiCard
-            label="Stock Value"
+            label="库存价值"
             value={kpi ? fmt(kpi.stockValue) : '—'}
             isLive
             loading={loading && !kpi}
@@ -275,10 +275,10 @@ export default function DashboardTab({ onNavigateToProduct }: Props) {
         </Grid>
         <Grid size={{ xs: 6, sm: 4, md: 3, lg: 2 }}>
           <KpiCard
-            label="Low Stock Items"
+            label="低库存商品"
             value={kpi ? kpi.lowStockItems.toString() : '—'}
             isLive
-            alert={kpi && kpi.lowStockItems > 0 ? 'Needs reorder' : undefined}
+            alert={kpi && kpi.lowStockItems > 0 ? '需要补货' : undefined}
             loading={loading && !kpi}
           />
         </Grid>
@@ -294,10 +294,10 @@ export default function DashboardTab({ onNavigateToProduct }: Props) {
             >
               <Box>
                 <Typography variant="subtitle1" fontWeight={700}>
-                  Revenue vs. Profit
+                  营收 vs. 利润
                 </Typography>
                 <Typography variant="caption" color="text.secondary">
-                  Toggle granularity
+                  切换时间粒度
                 </Typography>
               </Box>
               <ToggleButtonGroup
@@ -306,9 +306,9 @@ export default function DashboardTab({ onNavigateToProduct }: Props) {
                 onChange={(_, v) => v && setTrendGranularity(v)}
                 size="small"
               >
-                <ToggleButton value="day" sx={{ px: 1.5, fontSize: 12 }}>Day</ToggleButton>
-                <ToggleButton value="week" sx={{ px: 1.5, fontSize: 12 }}>Week</ToggleButton>
-                <ToggleButton value="month" sx={{ px: 1.5, fontSize: 12 }}>Month</ToggleButton>
+                <ToggleButton value="day" sx={{ px: 1.5, fontSize: 12 }}>日</ToggleButton>
+                <ToggleButton value="week" sx={{ px: 1.5, fontSize: 12 }}>周</ToggleButton>
+                <ToggleButton value="month" sx={{ px: 1.5, fontSize: 12 }}>月</ToggleButton>
               </ToggleButtonGroup>
             </Box>
             {trend.length === 0 && loading ? (
@@ -325,7 +325,7 @@ export default function DashboardTab({ onNavigateToProduct }: Props) {
                 }}
               >
                 <Typography variant="body2" color="text.secondary">
-                  No data for this period
+                  该时间段暂无数据
                 </Typography>
               </Box>
             ) : (
@@ -339,7 +339,7 @@ export default function DashboardTab({ onNavigateToProduct }: Props) {
                   <Line
                     type="monotone"
                     dataKey="revenue"
-                    name="Revenue"
+                    name="营收"
                     stroke="#4f46e5"
                     strokeWidth={2}
                     dot={false}
@@ -347,7 +347,7 @@ export default function DashboardTab({ onNavigateToProduct }: Props) {
                   <Line
                     type="monotone"
                     dataKey="profit"
-                    name="Profit"
+                    name="利润"
                     stroke="#22c55e"
                     strokeWidth={2}
                     dot={false}
@@ -366,10 +366,10 @@ export default function DashboardTab({ onNavigateToProduct }: Props) {
             >
               <Box>
                 <Typography variant="subtitle1" fontWeight={700}>
-                  Sales by Category
+                  分类销售
                 </Typography>
                 <Typography variant="caption" color="text.secondary">
-                  Share of total revenue
+                  占总营收比例
                 </Typography>
               </Box>
               <ToggleButtonGroup
@@ -378,8 +378,8 @@ export default function DashboardTab({ onNavigateToProduct }: Props) {
                 onChange={(_, v) => v && setChartType(v)}
                 size="small"
               >
-                <ToggleButton value="donut" sx={{ px: 1.5, fontSize: 12 }}>Donut</ToggleButton>
-                <ToggleButton value="bar" sx={{ px: 1.5, fontSize: 12 }}>Bar</ToggleButton>
+                <ToggleButton value="donut" sx={{ px: 1.5, fontSize: 12 }}>环形图</ToggleButton>
+                <ToggleButton value="bar" sx={{ px: 1.5, fontSize: 12 }}>柱状图</ToggleButton>
               </ToggleButtonGroup>
             </Box>
 
@@ -397,7 +397,7 @@ export default function DashboardTab({ onNavigateToProduct }: Props) {
                 }}
               >
                 <Typography variant="body2" color="text.secondary">
-                  No data for this period
+                  该时间段暂无数据
                 </Typography>
               </Box>
             ) : chartType === 'donut' ? (
@@ -452,7 +452,7 @@ export default function DashboardTab({ onNavigateToProduct }: Props) {
                   <XAxis type="number" tick={{ fontSize: 11 }} tickFormatter={(v) => `¥${(v / 1000).toFixed(0)}k`} />
                   <YAxis type="category" dataKey="category" tick={{ fontSize: 11 }} width={90} />
                   <Tooltip formatter={(v) => `¥${Number(v).toLocaleString()}`} />
-                  <Bar dataKey="revenue" name="Revenue" radius={[0, 4, 4, 0]}>
+                  <Bar dataKey="revenue" name="营收" radius={[0, 4, 4, 0]}>
                     {categorySales.map((_, i) => (
                       <Cell key={i} fill={CATEGORY_COLORS[i % CATEGORY_COLORS.length]} />
                     ))}
@@ -467,10 +467,10 @@ export default function DashboardTab({ onNavigateToProduct }: Props) {
       {/* Top 5 Products */}
       <Paper sx={{ p: 2.5, borderRadius: 2, border: '1px solid', borderColor: 'divider' }}>
         <Typography variant="subtitle1" fontWeight={700} sx={{ mb: 0.5 }}>
-          Top 5 Products by Revenue
+          营收前 5 商品
         </Typography>
         <Typography variant="caption" color="text.secondary" sx={{ mb: 2, display: 'block' }}>
-          Click a bar to navigate to Product Performance
+          点击柱形可跳转至商品表现
         </Typography>
         {topProducts.length === 0 && loading ? (
           <Skeleton variant="rectangular" height={160} />
@@ -504,8 +504,8 @@ export default function DashboardTab({ onNavigateToProduct }: Props) {
               <XAxis type="number" tick={{ fontSize: 11 }} tickFormatter={(v) => `¥${(v / 1000).toFixed(0)}k`} />
               <YAxis type="category" dataKey="name" tick={{ fontSize: 11 }} width={120} />
               <Tooltip formatter={(v) => `¥${Number(v).toLocaleString()}`} />
-              <Bar dataKey="revenue" name="Revenue" fill="#4f46e5" radius={[0, 4, 4, 0]} cursor="pointer" />
-              <Bar dataKey="profit" name="Profit" fill="#22c55e" radius={[0, 4, 4, 0]} cursor="pointer" />
+              <Bar dataKey="revenue" name="营收" fill="#4f46e5" radius={[0, 4, 4, 0]} cursor="pointer" />
+              <Bar dataKey="profit" name="利润" fill="#22c55e" radius={[0, 4, 4, 0]} cursor="pointer" />
             </BarChart>
           </ResponsiveContainer>
         )}

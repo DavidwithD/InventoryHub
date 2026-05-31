@@ -64,6 +64,9 @@ export default function InventoryHealthTab() {
   const statusColor = (s: string) =>
     s === 'healthy' ? 'success' : s === 'low' ? 'warning' : 'error';
 
+  const statusLabel = (s: string) =>
+    s === 'healthy' ? '健康' : s === 'low' ? '偏低' : '告急';
+
   const fmt = (n: number) => `¥${n.toLocaleString()}`;
 
   return (
@@ -71,13 +74,13 @@ export default function InventoryHealthTab() {
       {/* Header */}
       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 3, flexWrap: 'wrap', gap: 2 }}>
         <Box>
-          <Typography variant="h5" fontWeight={700}>Inventory Health</Typography>
+          <Typography variant="h5" fontWeight={700}>库存健康</Typography>
           <Typography variant="body2" color="text.secondary">
-            Stock levels, dead stock, capital lock-up
+            库存水平、滞销库存、资金占用
           </Typography>
         </Box>
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-          <Typography variant="caption" color="text.secondary">Sales window:</Typography>
+          <Typography variant="caption" color="text.secondary">销售周期：</Typography>
           <ToggleButtonGroup
             value={window}
             exclusive
@@ -93,7 +96,12 @@ export default function InventoryHealthTab() {
 
       {/* Anchor links */}
       <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap', mb: 3 }}>
-        {['stock-levels', 'by-category', 'dead-stock', 'slow-movers'].map((id) => (
+        {([
+          { id: 'stock-levels', label: '库存水平' },
+          { id: 'by-category', label: '按分类' },
+          { id: 'dead-stock', label: '滞销库存' },
+          { id: 'slow-movers', label: '慢动销商品' },
+        ]).map(({ id, label }) => (
           <Link
             key={id}
             href={`#inv-${id}`}
@@ -108,7 +116,7 @@ export default function InventoryHealthTab() {
               bgcolor: 'background.paper',
             }}
           >
-            {id.replace(/-/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase())}
+            {label}
           </Link>
         ))}
       </Box>
@@ -117,17 +125,17 @@ export default function InventoryHealthTab() {
       <Box id="inv-stock-levels" sx={{ scrollMarginTop: 80 }}>
         <Paper sx={{ p: 2.5, borderRadius: 2, border: '1px solid', borderColor: 'divider', mb: 2 }}>
           <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
-            <Typography variant="subtitle1" fontWeight={700}>Stock Levels per Product</Typography>
+            <Typography variant="subtitle1" fontWeight={700}>各商品库存水平</Typography>
             {inventoryHealth && (
               <Chip
-                label={`${inventoryHealth.stockLevels.filter(s => s.status !== 'healthy').length} low/critical`}
+                label={`${inventoryHealth.stockLevels.filter(s => s.status !== 'healthy').length} 个偏低/告急`}
                 color="error"
                 size="small"
               />
             )}
           </Box>
           <Typography variant="caption" color="text.secondary" sx={{ mb: 1.5, display: 'block' }}>
-            Progress bar = current stock as % of original purchase quantity. Threshold: &lt;20% critical, &lt;50% low.
+            进度条 = 当前库存占原始采购数量的百分比。阈值：&lt;20% 告急，&lt;50% 偏低。
           </Typography>
           {loading && !inventoryHealth ? (
             <Skeleton variant="rectangular" height={200} />
@@ -144,9 +152,9 @@ export default function InventoryHealthTab() {
                             direction={stockSort.orderBy === col ? stockSort.dir : 'desc'}
                             onClick={() => stockSort.handleSort(col)}
                           >
-                            {col === 'stockQty' ? 'Stock Qty' : col.replace(/([A-Z])/g, ' $1').replace(/^./, s => s.toUpperCase())}
+                            {col === 'stockQty' ? '库存数量' : col === 'name' ? '商品' : col === 'category' ? '分类' : '状态'}
                           </TableSortLabel>
-                        ) : 'Stock Level'}
+                        ) : '库存水平'}
                       </TableCell>
                     ))}
                   </TableRow>
@@ -172,11 +180,11 @@ export default function InventoryHealthTab() {
                       </TableCell>
                       <TableCell>
                         <Chip
-                          label={row.status}
+                          label={statusLabel(row.status)}
                           size="small"
                           color={statusColor(row.status) as 'success' | 'warning' | 'error'}
                           variant="outlined"
-                          sx={{ textTransform: 'capitalize', fontSize: 11 }}
+                          sx={{ fontSize: 11 }}
                         />
                       </TableCell>
                     </TableRow>
@@ -184,7 +192,7 @@ export default function InventoryHealthTab() {
                   {stockSort.sorted.length === 0 && (
                     <TableRow>
                       <TableCell colSpan={5} align="center" sx={{ color: 'text.secondary', py: 3 }}>
-                        No inventory data
+                        暂无库存数据
                       </TableCell>
                     </TableRow>
                   )}
@@ -198,9 +206,9 @@ export default function InventoryHealthTab() {
       {/* ── By Category ── */}
       <Box id="inv-by-category" sx={{ scrollMarginTop: 80 }}>
         <Paper sx={{ p: 2.5, borderRadius: 2, border: '1px solid', borderColor: 'divider', mb: 2 }}>
-          <Typography variant="subtitle1" fontWeight={700} sx={{ mb: 0.5 }}>By Category</Typography>
+          <Typography variant="subtitle1" fontWeight={700} sx={{ mb: 0.5 }}>按分类</Typography>
           <Typography variant="caption" color="text.secondary" sx={{ mb: 1.5, display: 'block' }}>
-            Stock value = total inventory value. Capital lock-up = value of dead + slow stock only.
+            库存价值 = 全部库存价值。资金占用 = 仅滞销 + 慢动销库存的价值。
           </Typography>
           {loading && !inventoryHealth ? (
             <Skeleton variant="rectangular" height={160} />
@@ -216,7 +224,7 @@ export default function InventoryHealthTab() {
                           direction={catSort.orderBy === col ? catSort.dir : 'desc'}
                           onClick={() => catSort.handleSort(col)}
                         >
-                          {col === 'stockValue' ? 'Stock Value' : col === 'capitalLockup' ? 'Capital Lock-up' : col === 'turnoverRate' ? 'Turnover Rate' : 'Category'}
+                          {col === 'stockValue' ? '库存价值' : col === 'capitalLockup' ? '资金占用' : col === 'turnoverRate' ? '周转率' : '分类'}
                         </TableSortLabel>
                       </TableCell>
                     ))}
@@ -241,7 +249,7 @@ export default function InventoryHealthTab() {
                   {catSort.sorted.length === 0 && (
                     <TableRow>
                       <TableCell colSpan={4} align="center" sx={{ color: 'text.secondary', py: 3 }}>
-                        No data
+                        暂无数据
                       </TableCell>
                     </TableRow>
                   )}
@@ -255,9 +263,9 @@ export default function InventoryHealthTab() {
       {/* ── Dead Stock ── */}
       <Box id="inv-dead-stock" sx={{ scrollMarginTop: 80 }}>
         <Paper sx={{ p: 2.5, borderRadius: 2, border: '1px solid', borderColor: 'divider', mb: 2 }}>
-          <Typography variant="subtitle1" fontWeight={700} sx={{ mb: 0.5 }}>Dead Stock</Typography>
+          <Typography variant="subtitle1" fontWeight={700} sx={{ mb: 0.5 }}>滞销库存</Typography>
           <Typography variant="caption" color="text.secondary" sx={{ mb: 1.5, display: 'block' }}>
-            stock_quantity &gt; 0, but zero sales in the selected {window}-day window
+            库存数量 &gt; 0，但在所选的 {window} 天周期内零销量
           </Typography>
           {loading && !inventoryHealth ? (
             <Skeleton variant="rectangular" height={160} />
@@ -273,7 +281,7 @@ export default function InventoryHealthTab() {
                           direction={deadSort.orderBy === col ? deadSort.dir : 'desc'}
                           onClick={() => deadSort.handleSort(col)}
                         >
-                          {col === 'daysSinceLastSale' ? 'Days Since Last Sale' : col === 'qty' ? 'Qty' : col.replace(/([A-Z])/g, ' $1').replace(/^./, s => s.toUpperCase())}
+                          {col === 'daysSinceLastSale' ? '距上次销售天数' : col === 'qty' ? '数量' : col === 'value' ? '价值' : col === 'name' ? '商品' : '分类'}
                         </TableSortLabel>
                       </TableCell>
                     ))}
@@ -291,7 +299,7 @@ export default function InventoryHealthTab() {
                           variant="body2"
                           sx={{ color: row.daysSinceLastSale > 90 ? 'error.main' : 'warning.main', fontWeight: 600 }}
                         >
-                          {row.daysSinceLastSale}d
+                          {row.daysSinceLastSale}天
                         </Typography>
                       </TableCell>
                     </TableRow>
@@ -299,7 +307,7 @@ export default function InventoryHealthTab() {
                   {deadSort.sorted.length === 0 && (
                     <TableRow>
                       <TableCell colSpan={5} align="center" sx={{ color: 'text.secondary', py: 3 }}>
-                        No dead stock
+                        无滞销库存
                       </TableCell>
                     </TableRow>
                   )}
@@ -313,9 +321,9 @@ export default function InventoryHealthTab() {
       {/* ── Slow Movers ── */}
       <Box id="inv-slow-movers" sx={{ scrollMarginTop: 80 }}>
         <Paper sx={{ p: 2.5, borderRadius: 2, border: '1px solid', borderColor: 'divider', mb: 2 }}>
-          <Typography variant="subtitle1" fontWeight={700} sx={{ mb: 0.5 }}>Slow Movers</Typography>
+          <Typography variant="subtitle1" fontWeight={700} sx={{ mb: 0.5 }}>慢动销商品</Typography>
           <Typography variant="caption" color="text.secondary" sx={{ mb: 1.5, display: 'block' }}>
-            Has sales, but velocity is low relative to remaining stock (&gt;52 weeks to clear)
+            有销量，但相对剩余库存动销速度过慢（清空需 &gt;52 周）
           </Typography>
           {loading && !inventoryHealth ? (
             <Skeleton variant="rectangular" height={160} />
@@ -331,7 +339,7 @@ export default function InventoryHealthTab() {
                           direction={slowSort.orderBy === col ? slowSort.dir : 'desc'}
                           onClick={() => slowSort.handleSort(col)}
                         >
-                          {col === 'velocityPerWeek' ? 'Velocity (units/wk)' : col === 'weeksToClear' ? 'Weeks to Clear' : col === 'avgDaysToSell' ? 'Avg Days to Sell' : col === 'unitsSold' ? 'Units Sold' : col === 'remainingQty' ? 'Remaining Qty' : col.replace(/([A-Z])/g, ' $1').replace(/^./, s => s.toUpperCase())}
+                          {col === 'velocityPerWeek' ? '动销速度（件/周）' : col === 'weeksToClear' ? '清空所需周数' : col === 'avgDaysToSell' ? '平均售出天数' : col === 'unitsSold' ? '已售件数' : col === 'remainingQty' ? '剩余数量' : col === 'name' ? '商品' : '分类'}
                         </TableSortLabel>
                       </TableCell>
                     ))}
@@ -346,13 +354,13 @@ export default function InventoryHealthTab() {
                       <TableCell>{row.remainingQty}</TableCell>
                       <TableCell>{row.velocityPerWeek}</TableCell>
                       <TableCell>~{row.weeksToClear}</TableCell>
-                      <TableCell>{row.avgDaysToSell}d</TableCell>
+                      <TableCell>{row.avgDaysToSell}天</TableCell>
                     </TableRow>
                   ))}
                   {slowSort.sorted.length === 0 && (
                     <TableRow>
                       <TableCell colSpan={7} align="center" sx={{ color: 'text.secondary', py: 3 }}>
-                        No slow movers
+                        无慢动销商品
                       </TableCell>
                     </TableRow>
                   )}

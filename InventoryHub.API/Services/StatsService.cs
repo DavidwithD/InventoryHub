@@ -195,21 +195,24 @@ public class StatsService : IStatsService
             .Where(i => !i.IsDeleted)
             .ToListAsync();
 
-        // Stock levels
+        // Stock levels (aggregated per product across all inventory lots)
         var stockLevels = inventories
-            .Select(i =>
+            .GroupBy(i => new { i.ProductId, i.Product.Name, Category = i.Product.Category.Name })
+            .Select(g =>
             {
-                double pct = i.PurchaseQuantity > 0
-                    ? Math.Round((double)i.StockQuantity / i.PurchaseQuantity * 100, 1)
+                int stockQty = g.Sum(i => i.StockQuantity);
+                int purchaseQty = g.Sum(i => i.PurchaseQuantity);
+                double pct = purchaseQty > 0
+                    ? Math.Round((double)stockQty / purchaseQty * 100, 1)
                     : 0;
                 string status = pct >= 50 ? "healthy" : pct >= 20 ? "low" : "critical";
                 return new StatsStockLevelDto
                 {
-                    ProductId = i.ProductId,
-                    Name = i.Product.Name,
-                    Category = i.Product.Category.Name,
-                    StockQty = i.StockQuantity,
-                    PurchaseQty = i.PurchaseQuantity,
+                    ProductId = g.Key.ProductId,
+                    Name = g.Key.Name,
+                    Category = g.Key.Category,
+                    StockQty = stockQty,
+                    PurchaseQty = purchaseQty,
                     StockPct = pct,
                     Status = status,
                 };

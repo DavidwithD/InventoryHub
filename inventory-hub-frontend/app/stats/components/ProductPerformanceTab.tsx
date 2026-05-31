@@ -78,8 +78,8 @@ export default function ProductPerformanceTab() {
       {/* Header */}
       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 3, flexWrap: 'wrap', gap: 2 }}>
         <Box>
-          <Typography variant="h5" fontWeight={700}>Product Performance</Typography>
-          <Typography variant="body2" color="text.secondary">Per-product deep dive</Typography>
+          <Typography variant="h5" fontWeight={700}>商品表现</Typography>
+          <Typography variant="body2" color="text.secondary">单品深度分析</Typography>
         </Box>
         <ToggleButtonGroup
           value={period}
@@ -102,7 +102,7 @@ export default function ProductPerformanceTab() {
           }}
         >
           <Typography variant="caption" fontWeight={700} textTransform="uppercase" color="text.secondary">
-            Best Margin
+            最高毛利率
           </Typography>
           {loading && !productsPage ? (
             <Skeleton width="60%" height={32} />
@@ -110,11 +110,11 @@ export default function ProductPerformanceTab() {
             <>
               <Typography variant="h6" fontWeight={700}>{best.name}</Typography>
               <Typography variant="body2" color="text.secondary">
-                {best.marginPct}% margin · {fmt(best.revenue)} revenue
+                {best.marginPct}% 毛利率 · {fmt(best.revenue)} 营收
               </Typography>
             </>
           ) : (
-            <Typography variant="body2" color="text.secondary">No data</Typography>
+            <Typography variant="body2" color="text.secondary">暂无数据</Typography>
           )}
         </Paper>
         <Paper
@@ -124,7 +124,7 @@ export default function ProductPerformanceTab() {
           }}
         >
           <Typography variant="caption" fontWeight={700} textTransform="uppercase" color="text.secondary">
-            Worst Margin
+            最低毛利率
           </Typography>
           {loading && !productsPage ? (
             <Skeleton width="60%" height={32} />
@@ -132,11 +132,11 @@ export default function ProductPerformanceTab() {
             <>
               <Typography variant="h6" fontWeight={700}>{worst.name}</Typography>
               <Typography variant="body2" color="text.secondary">
-                {worst.marginPct}% margin · {fmt(worst.revenue)} revenue
+                {worst.marginPct}% 毛利率 · {fmt(worst.revenue)} 营收
               </Typography>
             </>
           ) : (
-            <Typography variant="body2" color="text.secondary">No data</Typography>
+            <Typography variant="body2" color="text.secondary">暂无数据</Typography>
           )}
         </Paper>
       </Box>
@@ -145,20 +145,20 @@ export default function ProductPerformanceTab() {
       <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap', alignItems: 'center', mb: 2 }}>
         <TextField
           size="small"
-          placeholder="Search product name…"
+          placeholder="搜索商品名称…"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           sx={{ width: 220 }}
         />
         <FormControl size="small" sx={{ minWidth: 160 }}>
-          <InputLabel>Category</InputLabel>
+          <InputLabel>分类</InputLabel>
           <Select
-            label="Category"
+            label="分类"
             value={categoryFilter}
             onChange={(e) => setCategoryFilter(e.target.value)}
           >
             {categories.map((c) => (
-              <MenuItem key={c} value={c}>{c}</MenuItem>
+              <MenuItem key={c} value={c}>{c === 'All' ? '全部' : c}</MenuItem>
             ))}
           </Select>
         </FormControl>
@@ -166,9 +166,9 @@ export default function ProductPerformanceTab() {
 
       {/* Product table */}
       <Paper sx={{ p: 2.5, borderRadius: 2, border: '1px solid', borderColor: 'divider', mb: 2 }}>
-        <Typography variant="subtitle1" fontWeight={700} sx={{ mb: 0.5 }}>All Products</Typography>
+        <Typography variant="subtitle1" fontWeight={700} sx={{ mb: 0.5 }}>全部商品</Typography>
         <Typography variant="caption" color="text.secondary" sx={{ mb: 1.5, display: 'block' }}>
-          Sortable by any column
+          可按任意列排序
         </Typography>
         {loading && !productsPage ? (
           <Skeleton variant="rectangular" height={200} />
@@ -178,12 +178,12 @@ export default function ProductPerformanceTab() {
               <TableHead>
                 <TableRow>
                   {([
-                    { key: 'name', label: 'Product' },
-                    { key: 'category', label: 'Category' },
-                    { key: 'revenue', label: 'Revenue' },
-                    { key: 'profit', label: 'Profit' },
-                    { key: 'marginPct', label: 'Margin %' },
-                    { key: 'unitsSold', label: 'Units Sold' },
+                    { key: 'name', label: '商品' },
+                    { key: 'category', label: '分类' },
+                    { key: 'revenue', label: '营收' },
+                    { key: 'profit', label: '利润' },
+                    { key: 'marginPct', label: '毛利率 %' },
+                    { key: 'unitsSold', label: '已售件数' },
                   ] as const).map((col) => (
                     <TableCell key={col.key} sx={{ fontWeight: 700, whiteSpace: 'nowrap' }}>
                       <TableSortLabel
@@ -221,7 +221,7 @@ export default function ProductPerformanceTab() {
                 {filteredProducts.length === 0 && (
                   <TableRow>
                     <TableCell colSpan={6} align="center" sx={{ color: 'text.secondary', py: 3 }}>
-                      No products match your filter
+                      没有符合筛选条件的商品
                     </TableCell>
                   </TableRow>
                 )}
@@ -233,9 +233,9 @@ export default function ProductPerformanceTab() {
 
       {/* Unsold products */}
       <Paper sx={{ p: 2.5, borderRadius: 2, border: '1px solid', borderColor: 'divider' }}>
-        <Typography variant="subtitle1" fontWeight={700} sx={{ mb: 0.5 }}>Unsold Products</Typography>
+        <Typography variant="subtitle1" fontWeight={700} sx={{ mb: 0.5 }}>未售出商品</Typography>
         <Typography variant="caption" color="text.secondary" sx={{ mb: 1.5, display: 'block' }}>
-          In inventory but never appeared in an order — may need pricing or promotion review
+          有库存但从未出现在订单中 —— 可能需要调整定价或促销策略
         </Typography>
         {loading && !productsPage ? (
           <Skeleton variant="rectangular" height={160} />
@@ -244,11 +244,11 @@ export default function ProductPerformanceTab() {
             <Table size="small">
               <TableHead>
                 <TableRow>
-                  <TableCell sx={{ fontWeight: 700 }}>Product</TableCell>
-                  <TableCell sx={{ fontWeight: 700 }}>Category</TableCell>
-                  <TableCell sx={{ fontWeight: 700 }}>Stock Qty</TableCell>
-                  <TableCell sx={{ fontWeight: 700 }}>Stock Value</TableCell>
-                  <TableCell sx={{ fontWeight: 700 }}>Purchased</TableCell>
+                  <TableCell sx={{ fontWeight: 700 }}>商品</TableCell>
+                  <TableCell sx={{ fontWeight: 700 }}>分类</TableCell>
+                  <TableCell sx={{ fontWeight: 700 }}>库存数量</TableCell>
+                  <TableCell sx={{ fontWeight: 700 }}>库存价值</TableCell>
+                  <TableCell sx={{ fontWeight: 700 }}>采购日期</TableCell>
                 </TableRow>
               </TableHead>
               <TableBody>
@@ -264,7 +264,7 @@ export default function ProductPerformanceTab() {
                 {(productsPage?.unsoldProducts ?? []).length === 0 && (
                   <TableRow>
                     <TableCell colSpan={5} align="center" sx={{ color: 'text.secondary', py: 3 }}>
-                      All stocked products have had at least one sale
+                      所有有库存的商品都至少有过一次销售
                     </TableCell>
                   </TableRow>
                 )}

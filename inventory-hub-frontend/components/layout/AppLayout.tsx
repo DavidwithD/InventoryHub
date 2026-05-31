@@ -36,7 +36,7 @@ interface MenuItem {
 
 const menuItems: MenuItem[] = [
   { title: '主页', path: '/', icon: <HomeIcon /> },
-  { title: 'Stats', path: '/stats', icon: <BarChartIcon /> },
+  { title: '数据统计', path: '/stats', icon: <BarChartIcon /> },
   { title: '订单管理', path: '/orders', icon: <ShoppingCartIcon /> },
   { title: '商品管理', path: '/products', icon: <CategoryIcon /> },
   { title: '库存管理', path: '/inventory', icon: <InventoryIcon /> },
