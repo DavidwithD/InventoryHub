@@ -17,7 +17,12 @@ import {
 import Image from 'next/image';
 import api from '@/lib/api';
 import { Category, Inventory, Product } from '@/types';
+import { usePickHistoryStore } from '@/lib/stores/pickHistoryStore';
 import { totalStockForProduct } from '../utils/fifoPick';
+
+// Sentinel category values. Real category ids are positive.
+const CATEGORY_HISTORY = -1; // 选择历史 — only previously picked products
+const CATEGORY_ALL = 0; // 全部分类 — every product
 
 interface ProductPickerProps {
   inventories: Inventory[];
@@ -41,10 +46,12 @@ export default function ProductPicker({
   onPick,
   mode = 'grid',
 }: ProductPickerProps) {
-  const [categoryId, setCategoryId] = useState<number>(0);
+  const [categoryId, setCategoryId] = useState<number>(CATEGORY_HISTORY);
   const [search, setSearch] = useState<string>('');
   const [products, setProducts] = useState<Product[]>([]);
   const fetchedRef = useRef<boolean>(false);
+  const history = usePickHistoryStore((s) => s.history);
+  const addToHistory = usePickHistoryStore((s) => s.addToHistory);
 
   useEffect(() => {
     if (fetchedRef.current) return;
@@ -79,13 +86,31 @@ export default function ProductPicker({
     }
     const excluded = new Set(excludeProductIds);
     const term = search.trim().toLowerCase();
-    return Array.from(byProduct.values())
+    const historyRank = new Map(history.map((id, i) => [id, i]));
+
+    const result = Array.from(byProduct.values())
       .filter((it) => it.totalStock > 0)
       .filter((it) => !excluded.has(it.productId))
-      .filter((it) => categoryId === 0 || it.categoryId === categoryId)
       .filter((it) => term === '' || it.productName.toLowerCase().includes(term))
-      .sort((a, b) => a.productName.localeCompare(b.productName));
-  }, [inventories, excludeProductIds, categoryId, search]);
+      .filter((it) => {
+        if (categoryId === CATEGORY_HISTORY) return historyRank.has(it.productId);
+        if (categoryId === CATEGORY_ALL) return true;
+        return it.categoryId === categoryId;
+      });
+
+    // History view keeps most-recent-first; other views sort alphabetically.
+    if (categoryId === CATEGORY_HISTORY) {
+      result.sort((a, b) => historyRank.get(a.productId)! - historyRank.get(b.productId)!);
+    } else {
+      result.sort((a, b) => a.productName.localeCompare(b.productName));
+    }
+    return result;
+  }, [inventories, excludeProductIds, search, categoryId, history]);
+
+  const pick = (productId: number) => {
+    addToHistory(productId);
+    onPick(productId);
+  };
 
   const handleCategoryChange = (e: SelectChangeEvent<number>) => {
     setCategoryId(Number(e.target.value));
@@ -103,7 +128,8 @@ export default function ProductPicker({
         <FormControl size="small" sx={{ minWidth: 150 }}>
           <InputLabel>商品分类</InputLabel>
           <Select value={categoryId} label="商品分类" onChange={handleCategoryChange}>
-            <MenuItem value={0}>全部分类</MenuItem>
+            <MenuItem value={CATEGORY_HISTORY}>选择历史</MenuItem>
+            <MenuItem value={CATEGORY_ALL}>全部分类</MenuItem>
             {categories.map((cat) => (
               <MenuItem key={cat.id} value={cat.id}>
                 {cat.name}
@@ -123,7 +149,7 @@ export default function ProductPicker({
       <Box sx={{ maxHeight: gridMaxHeight, overflowY: 'auto', pr: 1 }}>
         {items.length === 0 ? (
           <Typography color="text.secondary" sx={{ textAlign: 'center', py: 4 }}>
-            没有可用商品
+            {categoryId === CATEGORY_HISTORY ? '暂无选择历史' : '没有可用商品'}
           </Typography>
         ) : (
           <Grid container spacing={1.5}>
@@ -133,7 +159,7 @@ export default function ProductPicker({
                 <Grid key={item.productId} size={gridSize}>
                   <Card variant="outlined">
                     <CardActionArea
-                      onClick={() => onPick(item.productId)}
+                      onClick={() => pick(item.productId)}
                       sx={{ p: 1, display: 'flex', flexDirection: 'column', alignItems: 'stretch' }}
                     >
                       <Box
