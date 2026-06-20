@@ -24,6 +24,7 @@ import CategoryIcon from '@mui/icons-material/Category';
 import LabelIcon from '@mui/icons-material/Label';
 import StoreIcon from '@mui/icons-material/Store';
 import InventoryIcon from '@mui/icons-material/Inventory';
+import BarChartIcon from '@mui/icons-material/BarChart';
 
 const drawerWidth = 240;
 
@@ -35,6 +36,7 @@ interface MenuItem {
 
 const menuItems: MenuItem[] = [
   { title: '主页', path: '/', icon: <HomeIcon /> },
+  { title: '数据统计', path: '/stats', icon: <BarChartIcon /> },
   { title: '订单管理', path: '/orders', icon: <ShoppingCartIcon /> },
   { title: '商品管理', path: '/products', icon: <CategoryIcon /> },
   { title: '库存管理', path: '/inventory', icon: <InventoryIcon /> },
@@ -48,6 +50,7 @@ interface AppLayoutProps {
 
 export default function AppLayout({ children }: AppLayoutProps) {
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [desktopOpen, setDesktopOpen] = useState(true);
   const pathname = usePathname();
   const router = useRouter();
   const theme = useTheme();
@@ -55,6 +58,7 @@ export default function AppLayout({ children }: AppLayoutProps) {
 
   const handleDrawerToggle = () => {
     if (isMobile) setMobileOpen(!mobileOpen);
+    else setDesktopOpen(!desktopOpen);
   };
 
   const handleNavigation = (path: string) => {
@@ -73,7 +77,9 @@ export default function AppLayout({ children }: AppLayoutProps) {
 
   // 获取当前页面标题
   const getCurrentPageTitle = () => {
-    const currentItem = menuItems.find((item) => item.path === pathname);
+    const currentItem = menuItems.find(
+      (item) => item.path === pathname || (item.path !== '/' && pathname.startsWith(item.path))
+    );
     return currentItem ? currentItem.title : 'InventoryHub';
   };
 
@@ -96,7 +102,7 @@ export default function AppLayout({ children }: AppLayoutProps) {
         {menuItems.map((item) => (
           <ListItem key={item.path} disablePadding>
             <ListItemButton
-              selected={pathname === item.path}
+              selected={pathname === item.path || (item.path !== '/' && pathname.startsWith(item.path))}
               onClick={() => handleNavigation(item.path)}
               sx={{
                 '&.Mui-selected': {
@@ -113,7 +119,7 @@ export default function AppLayout({ children }: AppLayoutProps) {
             >
               <ListItemIcon
                 sx={{
-                  color: pathname === item.path ? 'white' : 'inherit',
+                  color: (pathname === item.path || (item.path !== '/' && pathname.startsWith(item.path))) ? 'white' : 'inherit',
                 }}
               >
                 {item.icon}
@@ -187,12 +193,12 @@ export default function AppLayout({ children }: AppLayoutProps) {
 
         {/* Desktop drawer */}
         <Drawer
-          variant="permanent"
+          variant="persistent"
+          open={desktopOpen}
           sx={{
             display: { xs: 'none', md: 'block' },
             '& .MuiDrawer-paper': { boxSizing: 'border-box', width: drawerWidth },
           }}
-          open
         >
           {drawer}
         </Drawer>
@@ -204,9 +210,15 @@ export default function AppLayout({ children }: AppLayoutProps) {
         sx={{
           flexGrow: 1,
           p: 3,
-          width: { md: `calc(100% - ${drawerWidth}px)` },
           minHeight: '100vh',
           backgroundColor: '#f5f5f5',
+          ml: { md: desktopOpen ? 0 : `-${drawerWidth}px` },
+          transition: theme.transitions.create('margin', {
+            easing: theme.transitions.easing.sharp,
+            duration: desktopOpen
+              ? theme.transitions.duration.enteringScreen
+              : theme.transitions.duration.leavingScreen,
+          }),
         }}
       >
         <Toolbar /> {/* Spacer for AppBar */}

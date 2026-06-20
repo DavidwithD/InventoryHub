@@ -8,10 +8,6 @@ import {
   DialogActions,
   Button,
   TextField,
-  FormControl,
-  InputLabel,
-  Select,
-  MenuItem,
   Alert,
   Box,
   Table,
@@ -22,26 +18,17 @@ import {
   TableContainer,
   IconButton,
   Typography,
-  SelectChangeEvent,
 } from '@mui/material';
-import ReactSelect from 'react-select';
 import DeleteIcon from '@mui/icons-material/Delete';
 import api from '@/lib/api';
 import { Inventory, Category, CreateOrderDetail } from '@/types';
+import ProductPicker from './ProductPicker';
+import { pickBatchesFIFO, totalStockForProduct } from '../utils/fifoPick';
 
-interface InventoryOption {
-  value: number;
-  label: string;
-  inventory: Inventory;
-}
-
-interface BulkDetailRow {
-  inventoryId: number;
+interface BulkRow {
   productId: number;
-  categoryName: string;
   productName: string;
-  unitPrice: number;
-  stockQuantity: number;
+  totalStock: number;
   quantity: number;
 }
 
@@ -50,6 +37,7 @@ interface Props {
   orderId: number;
   inventories: Inventory[];
   categories: Category[];
+  saleDate?: string;
   onClose: () => void;
   onSaved: () => void;
 }
@@ -59,117 +47,110 @@ export default function OrderDetailBulkCreateDialog({
   orderId,
   inventories,
   categories,
+  saleDate,
   onClose,
   onSaved,
 }: Props) {
-  const [categoryId, setCategoryId] = useState<number>(0);
-  const [rows, setRows] = useState<BulkDetailRow[]>([]);
+  const [rows, setRows] = useState<BulkRow[]>([]);
   const [error, setError] = useState<string>('');
   const [saving, setSaving] = useState<boolean>(false);
 
   useEffect(() => {
     if (open) {
-      setCategoryId(0);
       setRows([]);
       setError('');
     }
   }, [open]);
 
-  const handleCategoryChange = (e: SelectChangeEvent<number>) => {
-    setCategoryId(Number(e.target.value));
-  };
+  const excludeProductIds = useMemo(() => rows.map((r) => r.productId), [rows]);
 
-  const inventoryOptions = useMemo((): InventoryOption[] => {
-    const addedInventoryIds = rows.map((r) => r.inventoryId);
-    return inventories
-      .filter(
-        (inv) =>
-          inv.stockQuantity > 0 &&
-          (categoryId === 0 || inv.categoryId === categoryId) &&
-          !addedInventoryIds.includes(inv.id)
-      )
-      .map((inv) => ({
-        value: inv.id,
-        label: `${inv.productName}（库存：${inv.stockQuantity}）`,
-        inventory: inv,
-      }));
-  }, [inventories, categoryId, rows]);
-
-  const handleInventorySelect = (option: InventoryOption | null) => {
-    if (!option) return;
-
-    const inventory = option.inventory;
-    const newRow: BulkDetailRow = {
-      inventoryId: inventory.id,
-      productId: inventory.productId,
-      categoryName: inventory.categoryName || '',
-      productName: inventory.productName,
-      unitPrice: inventory.priceJpy,
-      stockQuantity: inventory.stockQuantity,
-      quantity: 1,
-    };
-
-    setRows([...rows, newRow]);
+  const handleProductPick = (productId: number) => {
+    if (rows.some((r) => r.productId === productId)) return;
+    const sample = inventories.find((inv) => inv.productId === productId);
+    if (!sample) return;
+    const totalStock = totalStockForProduct(productId, inventories, saleDate);
+    setRows((prev) => [
+      ...prev,
+      {
+        productId,
+        productName: sample.productName,
+        totalStock,
+        quantity: 1,
+      },
+    ]);
     setError('');
   };
 
   const handleDeleteRow = (index: number) => {
-    setRows(rows.filter((_, i) => i !== index));
+    setRows((prev) => prev.filter((_, i) => i !== index));
   };
 
-  const handleRowChange = (index: number, field: 'quantity', value: number) => {
-    const newRows = [...rows];
-    newRows[index] = { ...newRows[index], [field]: value };
-    setRows(newRows);
+  const handleQuantityChange = (index: number, value: number) => {
+    setRows((prev) => {
+      const next = [...prev];
+      next[index] = { ...next[index], quantity: value };
+      return next;
+    });
   };
 
-  const calculateRowSubtotal = (row: BulkDetailRow): number => {
-    return row.unitPrice * row.quantity;
+  const rowAllocations = useMemo(() => {
+    return rows.map((row) => pickBatchesFIFO(row.productId, row.quantity, inventories, saleDate));
+  }, [rows, inventories, saleDate]);
+
+  const rowSubtotal = (index: number): number => {
+    return rowAllocations[index].allocations.reduce(
+      (sum, a) => sum + a.unitPrice * a.quantity,
+      0,
+    );
   };
 
-  const calculateTotal = (): number => {
-    return rows.reduce((sum, row) => sum + calculateRowSubtotal(row), 0);
-  };
+  const total = useMemo(() => {
+    return rowAllocations.reduce(
+      (sum, r) => sum + r.allocations.reduce((s, a) => s + a.unitPrice * a.quantity, 0),
+      0,
+    );
+  }, [rowAllocations]);
 
   const validate = (): boolean => {
     if (rows.length === 0) {
       setError('请至少添加一个商品');
       return false;
     }
-
     for (let i = 0; i < rows.length; i++) {
       const row = rows[i];
       if (row.quantity <= 0) {
         setError(`第${i + 1}行：数量必须大于0`);
         return false;
       }
-      if (row.quantity > row.stockQuantity) {
-        setError(`第${i + 1}行：数量超过可用库存（${row.stockQuantity}）`);
+      const { shortfall } = rowAllocations[i];
+      if (shortfall > 0) {
+        setError(`${row.productName} 库存不足，缺 ${shortfall} 件`);
         return false;
       }
     }
-
     return true;
   };
 
   const handleSave = async () => {
     if (!validate()) return;
-
     setSaving(true);
     setError('');
 
     try {
-      for (const row of rows) {
-        const createData: CreateOrderDetail = {
-          orderId,
-          inventoryId: row.inventoryId,
-          productId: row.productId,
-          unitPrice: row.unitPrice,
-          quantity: row.quantity,
-          packagingCost: 0,
-          otherCost: 0,
-        };
-        await api.post('/orders/details', createData);
+      for (let i = 0; i < rows.length; i++) {
+        const { allocations } = rowAllocations[i];
+        for (const a of allocations) {
+          const createData: CreateOrderDetail = {
+            orderId,
+            inventoryId: a.inventoryId,
+            productId: a.productId,
+            unitPrice: a.unitPrice,
+            quantity: a.quantity,
+            packagingCost: 0,
+            otherCost: 0,
+          };
+          await api.post('/orders/details', createData);
+        }
       }
       onSaved();
       onClose();
@@ -193,7 +174,6 @@ export default function OrderDetailBulkCreateDialog({
 
   const handleClose = () => {
     setRows([]);
-    setCategoryId(0);
     setError('');
     onClose();
   };
@@ -209,116 +189,106 @@ export default function OrderDetailBulkCreateDialog({
             </Alert>
           )}
 
-          {/* Selection Area */}
-          <Box sx={{ display: 'flex', gap: 2, mb: 3, alignItems: 'flex-start' }}>
-            <FormControl size="small" sx={{ minWidth: 150 }}>
-              <InputLabel>商品分类</InputLabel>
-              <Select value={categoryId} label="商品分类" onChange={handleCategoryChange}>
-                <MenuItem value={0}>全部分类</MenuItem>
-                {categories.map((cat) => (
-                  <MenuItem key={cat.id} value={cat.id}>
-                    {cat.name}
-                  </MenuItem>
-                ))}
-              </Select>
-            </FormControl>
+          <ProductPicker
+            inventories={inventories}
+            categories={categories}
+            excludeProductIds={excludeProductIds}
+            onPick={handleProductPick}
+            mode="grid"
+            saleDate={saleDate}
+          />
 
-            <Box sx={{ minWidth: 350, flex: 1 }}>
-              <Typography
-                variant="caption"
-                color="text.secondary"
-                sx={{ mb: 0.5, display: 'block' }}
-              >
-                库存商品（点击添加，可连续选择）
-              </Typography>
-              <ReactSelect<InventoryOption>
-                options={inventoryOptions}
-                onChange={handleInventorySelect}
-                value={null}
-                placeholder="选择商品..."
-                noOptionsMessage={() => '没有可用商品'}
-                closeMenuOnSelect={false}
-                isClearable={false}
-                styles={{
-                  control: (base) => ({
-                    ...base,
-                    minHeight: 40,
-                  }),
-                  menu: (base) => ({
-                    ...base,
-                    zIndex: 9999,
-                  }),
-                }}
-              />
-            </Box>
-          </Box>
-
-          {/* Selected Products Table */}
           {rows.length > 0 ? (
             <>
-              <Typography variant="subtitle2" sx={{ mb: 1 }}>
+              <Typography variant="subtitle2" sx={{ mt: 3, mb: 1 }}>
                 已选商品：
               </Typography>
               <TableContainer sx={{ mb: 2 }}>
                 <Table size="small">
                   <TableHead>
                     <TableRow>
-                      <TableCell>分类</TableCell>
                       <TableCell>商品名</TableCell>
-                      <TableCell>单价（¥）</TableCell>
-                      <TableCell>库存</TableCell>
-                      <TableCell sx={{ width: 100 }}>数量</TableCell>
+                      <TableCell>总库存</TableCell>
+                      <TableCell sx={{ width: 110 }}>数量</TableCell>
+                      <TableCell>批次分配（FIFO）</TableCell>
                       <TableCell>小计（¥）</TableCell>
                       <TableCell sx={{ width: 60 }}>操作</TableCell>
                     </TableRow>
                   </TableHead>
                   <TableBody>
-                    {rows.map((row, index) => (
-                      <TableRow key={row.inventoryId}>
-                        <TableCell>{row.categoryName || '-'}</TableCell>
-                        <TableCell>{row.productName}</TableCell>
-                        <TableCell>{row.unitPrice.toFixed(2)}</TableCell>
-                        <TableCell>{row.stockQuantity}</TableCell>
-                        <TableCell>
-                          <TextField
-                            size="small"
-                            type="number"
-                            value={row.quantity}
-                            onChange={(e) =>
-                              handleRowChange(index, 'quantity', Number(e.target.value))
-                            }
-                            slotProps={{ htmlInput: { min: 1, max: row.stockQuantity } }}
-                            sx={{ width: 80 }}
-                          />
-                        </TableCell>
-                        <TableCell>{calculateRowSubtotal(row).toFixed(2)}</TableCell>
-                        <TableCell>
-                          <IconButton
-                            size="small"
-                            color="error"
-                            onClick={() => handleDeleteRow(index)}
-                          >
-                            <DeleteIcon />
-                          </IconButton>
-                        </TableCell>
-                      </TableRow>
-                    ))}
+                    {rows.map((row, index) => {
+                      const { allocations, shortfall } = rowAllocations[index];
+                      return (
+                        <TableRow key={row.productId}>
+                          <TableCell>{row.productName}</TableCell>
+                          <TableCell>{row.totalStock}</TableCell>
+                          <TableCell>
+                            <TextField
+                              size="small"
+                              type="number"
+                              value={row.quantity}
+                              onChange={(e) =>
+                                handleQuantityChange(index, Number(e.target.value))
+                              }
+                              slotProps={{ htmlInput: { min: 1, max: row.totalStock } }}
+                              sx={{ width: 90 }}
+                            />
+                          </TableCell>
+                          <TableCell>
+                            {allocations.length === 0 ? (
+                              <Typography variant="caption" color="text.disabled">
+                                —
+                              </Typography>
+                            ) : (
+                              <Box>
+                                {allocations.map((a) => (
+                                  <Typography
+                                    key={a.inventoryId}
+                                    variant="caption"
+                                    sx={{ display: 'block' }}
+                                  >
+                                    {a.quantity} 件 · ¥{a.unitPrice.toFixed(2)} ·{' '}
+                                    {a.purchaseDate
+                                      ? new Date(a.purchaseDate).toLocaleDateString('zh-CN')
+                                      : '无日期'}
+                                  </Typography>
+                                ))}
+                                {shortfall > 0 && (
+                                  <Typography variant="caption" color="error">
+                                    缺 {shortfall} 件
+                                  </Typography>
+                                )}
+                              </Box>
+                            )}
+                          </TableCell>
+                          <TableCell>{rowSubtotal(index).toFixed(2)}</TableCell>
+                          <TableCell>
+                            <IconButton
+                              size="small"
+                              color="error"
+                              onClick={() => handleDeleteRow(index)}
+                            >
+                              <DeleteIcon />
+                            </IconButton>
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })}
                   </TableBody>
                 </Table>
               </TableContainer>
 
-              {/* Total */}
               <Box sx={{ display: 'flex', justifyContent: 'flex-end', mb: 2 }}>
                 <Box sx={{ p: 2, bgcolor: 'grey.100', borderRadius: 1 }}>
                   <Typography variant="h6">
-                    合计：¥{calculateTotal().toFixed(2)}（{rows.length}件商品）
+                    合计：¥{total.toFixed(2)}（{rows.length}件商品）
                   </Typography>
                 </Box>
               </Box>
             </>
           ) : (
             <Typography color="text.secondary" sx={{ textAlign: 'center', py: 4 }}>
-              请从上方选择商品添加
+              点击上方商品图片添加
             </Typography>
           )}
         </Box>

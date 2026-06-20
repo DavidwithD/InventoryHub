@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import {
   Dialog,
   DialogTitle,
@@ -11,12 +11,49 @@ import {
   Alert,
   Typography,
   Box,
+  Stepper,
+  Step,
+  StepLabel,
+  StepContent,
+  Accordion,
+  AccordionSummary,
+  AccordionDetails,
+  Link,
 } from '@mui/material';
+import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 
 interface Props {
   open: boolean;
   onClose: () => void;
   onImport: (curlCommand: string) => Promise<any>;
+}
+
+const MERCARI_SOLD_URL = 'https://jp.mercari.com/mypage/listings/sold';
+const EXPECTED_ENDPOINT = 'api.mercari.jp/sold_histories/list';
+
+type ValidationResult = { ok: true } | { ok: false; message: string };
+
+function validateCurl(curl: string): ValidationResult {
+  const trimmed = curl.trim();
+  if (!trimmed.toLowerCase().startsWith('curl ')) {
+    return { ok: false, message: '内容不是有效的 cURL 命令（应以 "curl" 开头）' };
+  }
+  const urlMatch = trimmed.match(/curl\s+'([^']+)'/);
+  if (!urlMatch) {
+    return {
+      ok: false,
+      message: '无法在 cURL 中找到 URL，请确认使用 Chrome 的 "Copy as cURL (bash)"',
+    };
+  }
+  const url = urlMatch[1];
+  if (!url.includes(EXPECTED_ENDPOINT)) {
+    const wrongEndpoint = url.match(/api\.mercari\.jp\/[^?\s]+/)?.[0] ?? url;
+    return {
+      ok: false,
+      message: `检测到错误的接口 (${wrongEndpoint})。请在「販売履歴」页面的 Network 面板中过滤 "sold_histories" 后复制该请求。`,
+    };
+  }
+  return { ok: true };
 }
 
 export default function ImportDialog({ open, onClose, onImport }: Props) {
@@ -26,9 +63,19 @@ export default function ImportDialog({ open, onClose, onImport }: Props) {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
 
+  const validation = useMemo<ValidationResult | null>(
+    () => (curlCommand.trim() ? validateCurl(curlCommand) : null),
+    [curlCommand],
+  );
+  const inputError = validation !== null && !validation.ok;
+
   const handleImport = async () => {
     if (!curlCommand.trim()) {
       setError('请粘贴 cURL 命令');
+      return;
+    }
+    if (validation && !validation.ok) {
+      setError(validation.message);
       return;
     }
 
@@ -39,8 +86,10 @@ export default function ImportDialog({ open, onClose, onImport }: Props) {
 
     try {
       const result = await onImport(curlCommand);
-      setProgress(`导入完成！总计: ${result.total}, 成功: ${result.success}, 跳过: ${result.skipped}, 失败: ${result.failed}`);
-      
+      setProgress(
+        `导入完成！总计: ${result.total}, 成功: ${result.success}, 跳过: ${result.skipped}, 失败: ${result.failed}`,
+      );
+
       if (result.errors && result.errors.length > 0) {
         setError(`部分错误: ${result.errors.slice(0, 3).join('; ')}`);
       } else {
@@ -82,26 +131,73 @@ export default function ImportDialog({ open, onClose, onImport }: Props) {
       <DialogTitle>批量导入订单</DialogTitle>
       <DialogContent>
         <Box sx={{ pt: 1 }}>
-          <Alert severity="info" sx={{ mb: 2 }}>
-            <Typography variant="body2" sx={{ mb: 1 }}>
-              请从浏览器开发者工具的 Network 标签中复制 Mercari API 的 cURL 命令。
-            </Typography>
-            <Typography variant="body2" sx={{ mb: 1 }}>
-              系统将自动：
-            </Typography>
-            <Typography variant="body2" component="div">
-              • 解析 cURL 并调用 Mercari API<br />
-              • 获取所有销售历史记录<br />
-              • 根据订单号去重（跳过已存在的订单）<br />
-              • 批量创建订单
-            </Typography>
-            <Typography variant="body2" sx={{ mt: 1, fontWeight: 'bold', color: 'warning.main' }}>
-              ⚠️ 注意：cURL 中的 token 仅用于本次导入，不会被保存
-            </Typography>
+          <Stepper orientation="vertical" activeStep={-1} sx={{ mb: 2 }}>
+            <Step expanded>
+              <StepLabel>打开 Mercari 销售历史页面</StepLabel>
+              <StepContent>
+                <Typography variant="body2">
+                  <Link href={MERCARI_SOLD_URL} target="_blank" rel="noopener noreferrer">
+                    {MERCARI_SOLD_URL}
+                  </Link>
+                </Typography>
+              </StepContent>
+            </Step>
+            <Step expanded>
+              <StepLabel>打开开发者工具(F12) → Network 面板，过滤 "sold_histories"</StepLabel>
+              <StepContent>
+                <Accordion
+                  disableGutters
+                  elevation={0}
+                  sx={{ '&:before': { display: 'none' }, bgcolor: 'transparent' }}
+                >
+                  <AccordionSummary expandIcon={<ExpandMoreIcon />} sx={{ px: 0 }}>
+                    <Typography variant="body2">查看示例截图</Typography>
+                  </AccordionSummary>
+                  <AccordionDetails sx={{ px: 0 }}>
+                    <Box
+                      component="a"
+                      href="/import-guides/mercari-curl.png"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      sx={{ display: 'block' }}
+                    >
+                      <Box
+                        component="img"
+                        src="/import-guides/mercari-curl.png"
+                        alt="DevTools Network 面板示例"
+                        sx={{
+                          width: '100%',
+                          height: 'auto',
+                          border: 1,
+                          borderColor: 'divider',
+                          borderRadius: 1,
+                          cursor: 'zoom-in',
+                        }}
+                      />
+                    </Box>
+                  </AccordionDetails>
+                </Accordion>
+              </StepContent>
+            </Step>
+            <Step expanded>
+              <StepLabel>右键该请求 → Copy → Copy as cURL (bash)，粘贴到下方</StepLabel>
+            </Step>
+          </Stepper>
+
+          <Alert severity="warning" sx={{ mb: 2 }}>
+            cURL 中的 token 仅用于本次导入，不会被保存
           </Alert>
 
-          {error && <Alert severity="error" sx={{ mb: 2 }} onClose={() => setError('')}>{error}</Alert>}
-          {success && <Alert severity="success" sx={{ mb: 2 }} onClose={() => setSuccess('')}>{success}</Alert>}
+          {error && (
+            <Alert severity="error" sx={{ mb: 2 }} onClose={() => setError('')}>
+              {error}
+            </Alert>
+          )}
+          {success && (
+            <Alert severity="success" sx={{ mb: 2 }} onClose={() => setSuccess('')}>
+              {success}
+            </Alert>
+          )}
 
           <TextField
             label="粘贴 cURL 命令"
@@ -110,8 +206,10 @@ export default function ImportDialog({ open, onClose, onImport }: Props) {
             fullWidth
             value={curlCommand}
             onChange={(e) => setCurlCommand(e.target.value)}
-            placeholder="curl 'https://api.mercari.jp/sold_histories/list?limit=20&offset=0' ..."
+            placeholder="curl 'https://api.mercari.jp/sold_histories/list?limit=20&offset=0' -H 'authorization: ...' -H 'dpop: ...' ..."
             disabled={importing}
+            error={inputError}
+            helperText={inputError && validation && !validation.ok ? validation.message : ' '}
           />
 
           {progress && (
@@ -127,10 +225,10 @@ export default function ImportDialog({ open, onClose, onImport }: Props) {
         <Button onClick={handleClose} disabled={importing}>
           {progress ? '关闭' : '取消'}
         </Button>
-        <Button 
-          onClick={handleImport} 
-          variant="contained" 
-          disabled={importing || !curlCommand.trim()}
+        <Button
+          onClick={handleImport}
+          variant="contained"
+          disabled={importing || !curlCommand.trim() || inputError}
         >
           {importing ? '导入中...' : '开始导入'}
         </Button>

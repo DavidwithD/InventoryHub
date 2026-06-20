@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useMemo } from 'react';
 import {
+  Alert,
   Box,
   Button,
   Chip,
@@ -10,6 +11,7 @@ import {
   InputLabel,
   MenuItem,
   Select,
+  Snackbar,
   Stack,
   TextField,
   ToggleButton,
@@ -20,31 +22,74 @@ import { Search as SearchIcon } from '@mui/icons-material';
 import { useRouter } from 'next/navigation';
 import { useInventory } from './hooks/useInventory';
 import { useCategories } from '../products/hooks/useCategories';
-import InventoryTable, { SortField, SortOrder } from './components/InventoryTable';
-import { Inventory } from '@/types';
-
-type StockFilter = 'all' | 'low' | 'out';
+import InventoryTable, { SortField } from './components/InventoryTable';
+import FactorAdjustDialog from './components/FactorAdjustDialog';
+import { Inventory, CreateInventory } from '@/types';
+import { useInventoryFilterStore } from '@/lib/stores/filterStore';
 
 export default function InventoryPage() {
   const router = useRouter();
-  const { inventories, loadAllInventories } = useInventory();
+  const { inventories, loadAllInventories, updateInventory } = useInventory();
   const { categories, loadCategories } = useCategories();
 
   const [loading, setLoading] = useState(false);
-  const [search, setSearch] = useState('');
-  const [categoryId, setCategoryId] = useState<number | ''>('');
-  const [stockFilter, setStockFilter] = useState<StockFilter>('all');
-  const [sortField, setSortField] = useState<SortField>('id');
-  const [sortOrder, setSortOrder] = useState<SortOrder>('asc');
+  const [adjustTarget, setAdjustTarget] = useState<Inventory | null>(null);
+  const [adjusting, setAdjusting] = useState(false);
+  const [adjustError, setAdjustError] = useState('');
+
+  // Filters persist across visits via localStorage (zustand persist).
+  const {
+    search,
+    categoryId,
+    stockFilter,
+    sortField,
+    sortOrder,
+    setSearch,
+    setCategoryId,
+    setStockFilter,
+    setSortField,
+    setSortOrder,
+  } = useInventoryFilterStore();
+
+  useEffect(() => {
+    useInventoryFilterStore.persist.rehydrate();
+  }, []);
 
   useEffect(() => {
     setLoading(true);
     Promise.all([loadAllInventories(), loadCategories()]).finally(() => setLoading(false));
   }, [loadAllInventories, loadCategories]);
 
+  const handleConfirmFactor = async (factor: number) => {
+    if (!adjustTarget) return;
+    setAdjusting(true);
+    setAdjustError('');
+    const payload: CreateInventory = {
+      productId: adjustTarget.productId,
+      purchaseQuantity: adjustTarget.purchaseQuantity,
+      stockQuantity: adjustTarget.purchaseQuantity * factor,
+      priceJpy: Math.round(adjustTarget.priceJpy / factor),
+      priceCny:
+        adjustTarget.priceCny != null
+          ? Math.round((adjustTarget.priceCny / factor) * 100) / 100
+          : undefined,
+      supplierId: adjustTarget.supplierId,
+      purchaseDate: adjustTarget.purchaseDate,
+      purchaseNo: adjustTarget.purchaseNo,
+    };
+    try {
+      await updateInventory(adjustTarget.id, payload);
+      setAdjustTarget(null);
+    } catch {
+      setAdjustError('调整失败，该库存可能已被订单引用');
+    } finally {
+      setAdjusting(false);
+    }
+  };
+
   const handleSort = (field: SortField) => {
     if (field === sortField) {
-      setSortOrder((prev) => (prev === 'asc' ? 'desc' : 'asc'));
+      setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
     } else {
       setSortField(field);
       setSortOrder('asc');
@@ -236,7 +281,28 @@ export default function InventoryPage() {
         sortField={sortField}
         sortOrder={sortOrder}
         onSort={handleSort}
+        onAdjustFactor={setAdjustTarget}
       />
+
+      <FactorAdjustDialog
+        key={adjustTarget?.id ?? 'none'}
+        open={adjustTarget !== null}
+        inventory={adjustTarget}
+        submitting={adjusting}
+        onClose={() => setAdjustTarget(null)}
+        onConfirm={handleConfirmFactor}
+      />
+
+      <Snackbar
+        open={!!adjustError}
+        autoHideDuration={4000}
+        onClose={() => setAdjustError('')}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+      >
+        <Alert severity="error" onClose={() => setAdjustError('')}>
+          {adjustError}
+        </Alert>
+      </Snackbar>
     </Stack>
   );
 }

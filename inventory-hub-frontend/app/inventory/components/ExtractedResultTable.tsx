@@ -19,7 +19,8 @@ interface Props {
   categories: Category[];
   products: Product[];
   productMap: Record<string, number>;
-  registeredPurchaseNos: Set<string>;
+  registeredItems: Set<string>;
+  factorSuggestions: Record<number, number>;
   loading: boolean;
   hasMore: boolean;
   onProductSelected: (productName: string, productId: number) => void;
@@ -33,7 +34,8 @@ export default function ExtractedResultTable({
   categories,
   products,
   productMap,
-  registeredPurchaseNos,
+  registeredItems,
+  factorSuggestions,
   loading,
   hasMore,
   onProductSelected,
@@ -55,8 +57,7 @@ export default function ExtractedResultTable({
         <Table size="small">
           <TableHead>
             <TableRow>
-              <TableCell>缩略图</TableCell>
-              <TableCell>采购单号</TableCell>
+              <TableCell></TableCell>
               <TableCell>采购日期</TableCell>
               <TableCell>商品名称</TableCell>
               <TableCell align="right">价格（元）</TableCell>
@@ -73,7 +74,8 @@ export default function ExtractedResultTable({
                 categories={categories}
                 products={products}
                 selectedProductId={productMap[row.productName] ?? null}
-                alreadyRegistered={!!row.purchaseNo && registeredPurchaseNos.has(row.purchaseNo)}
+                registeredItems={registeredItems}
+                factorSuggestions={factorSuggestions}
                 onProductSelected={onProductSelected}
                 onProductCreated={onProductCreated}
                 onRegister={onRegister}

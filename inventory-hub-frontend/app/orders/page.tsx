@@ -12,6 +12,7 @@ import OrderFilters from './components/OrderFilters';
 import OrderFormDialog from './components/OrderFormDialog';
 import OrderDetailsDialog from './components/OrderDetailsDialog';
 import ImportDialog from './components/ImportDialog';
+import { useOrderFilterStore } from '@/lib/stores/filterStore';
 
 export default function OrdersPage() {
   const { orders, loadOrders, createOrder, updateOrder, deleteOrder, importFromCurl } = useOrders();
@@ -26,14 +27,26 @@ export default function OrdersPage() {
   const [editingOrder, setEditingOrder] = useState<Order | null>(null);
   const [viewingOrderId, setViewingOrderId] = useState<number | null>(null);
 
-  // 筛选状态
-  const [searchOrderNo, setSearchOrderNo] = useState('');
-  const [costStatus, setCostStatus] = useState<'all' | 'null' | 'hasValue'>('all');
-  const [startDate, setStartDate] = useState('');
-  const [endDate, setEndDate] = useState('');
+  // 筛选状态 — persisted across visits via localStorage (zustand persist).
+  const {
+    searchOrderNo,
+    costStatus,
+    startDate,
+    endDate,
+    setSearchOrderNo,
+    setCostStatus,
+    setStartDate,
+    setEndDate,
+    reset: resetFilters,
+  } = useOrderFilterStore();
 
   useEffect(() => {
-    loadOrders().catch(() => setError('加载订单列表失败'));
+    // Load persisted filters first, then fetch using any saved date range.
+    useOrderFilterStore.persist.rehydrate();
+    const { startDate: sd, endDate: ed } = useOrderFilterStore.getState();
+    loadOrders(sd || ed ? { startDate: sd, endDate: ed } : undefined).catch(() =>
+      setError('加载订单列表失败')
+    );
     loadAllInventories().catch(() => setError('加载库存列表失败'));
     loadCategories().catch(() => setError('加载分类列表失败'));
   }, [loadOrders, loadAllInventories, loadCategories]);
@@ -134,10 +147,7 @@ export default function OrdersPage() {
   };
 
   const handleClearFilter = () => {
-    setSearchOrderNo('');
-    setCostStatus('all');
-    setStartDate('');
-    setEndDate('');
+    resetFilters();
     loadOrders().catch(() => setError('加载订单列表失败'));
   };
 
@@ -226,6 +236,7 @@ export default function OrdersPage() {
         orderId={viewingOrderId}
         inventories={inventories}
         categories={categories}
+        saleDate={orders.find((o) => o.id === viewingOrderId)?.transactionTime}
         onClose={handleCloseDetailsDialog}
         onSaved={handleDetailsSaved}
       />

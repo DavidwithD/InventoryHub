@@ -32,6 +32,7 @@ interface Props {
   orderId: number | null;
   inventories: Inventory[];
   categories: Category[];
+  saleDate?: string;
   onClose: () => void;
   onSaved: () => void;
 }
@@ -41,6 +42,7 @@ export default function OrderDetailsDialog({
   orderId,
   inventories,
   categories,
+  saleDate,
   onClose,
   onSaved,
 }: Props) {
@@ -237,6 +239,7 @@ export default function OrderDetailsDialog({
           orderId={orderId}
           inventories={inventories}
           categories={categories}
+          saleDate={saleDate}
           onClose={() => setBulkCreateDialogOpen(false)}
           onSaved={handleBulkCreateDialogSaved}
         />

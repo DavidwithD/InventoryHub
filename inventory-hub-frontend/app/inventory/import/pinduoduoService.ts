@@ -2,7 +2,7 @@ import { PreviewRow } from '@/types';
 import {
   PINDUODUO_ORDER_LIST_URL,
   PinduoduoRequestConfig,
-} from '@/data/pinduoduo/order_list/defaultFetchCommand';
+} from './pinduoduoConfig';
 
 type PinduoduoGoods = {
   goods_name?: string;
