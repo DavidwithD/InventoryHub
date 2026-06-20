@@ -37,6 +37,7 @@ interface Props {
   orderId: number;
   inventories: Inventory[];
   categories: Category[];
+  saleDate?: string;
   onClose: () => void;
   onSaved: () => void;
 }
@@ -46,6 +47,7 @@ export default function OrderDetailBulkCreateDialog({
   orderId,
   inventories,
   categories,
+  saleDate,
   onClose,
   onSaved,
 }: Props) {
@@ -66,7 +68,7 @@ export default function OrderDetailBulkCreateDialog({
     if (rows.some((r) => r.productId === productId)) return;
     const sample = inventories.find((inv) => inv.productId === productId);
     if (!sample) return;
-    const totalStock = totalStockForProduct(productId, inventories);
+    const totalStock = totalStockForProduct(productId, inventories, saleDate);
     setRows((prev) => [
       ...prev,
       {
@@ -92,8 +94,8 @@ export default function OrderDetailBulkCreateDialog({
   };
 
   const rowAllocations = useMemo(() => {
-    return rows.map((row) => pickBatchesFIFO(row.productId, row.quantity, inventories));
-  }, [rows, inventories]);
+    return rows.map((row) => pickBatchesFIFO(row.productId, row.quantity, inventories, saleDate));
+  }, [rows, inventories, saleDate]);
 
   const rowSubtotal = (index: number): number => {
     return rowAllocations[index].allocations.reduce(
@@ -193,6 +195,7 @@ export default function OrderDetailBulkCreateDialog({
             excludeProductIds={excludeProductIds}
             onPick={handleProductPick}
             mode="grid"
+            saleDate={saleDate}
           />
 
           {rows.length > 0 ? (

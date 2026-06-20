@@ -236,6 +236,7 @@ export default function OrdersPage() {
         orderId={viewingOrderId}
         inventories={inventories}
         categories={categories}
+        saleDate={orders.find((o) => o.id === viewingOrderId)?.transactionTime}
         onClose={handleCloseDetailsDialog}
         onSaved={handleDetailsSaved}
       />
