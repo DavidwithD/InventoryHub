@@ -23,7 +23,6 @@ import DeleteIcon from '@mui/icons-material/Delete';
 import api from '@/lib/api';
 import { Inventory, Category, CreateOrderDetail } from '@/types';
 import ProductPicker from './ProductPicker';
-import { pickBatchesFIFO, totalStockForProduct } from '../utils/fifoPick';
 
 interface BulkRow {
   productId: number;
@@ -37,7 +36,6 @@ interface Props {
   orderId: number;
   inventories: Inventory[];
   categories: Category[];
-  saleDate?: string;
   onClose: () => void;
   onSaved: () => void;
 }
@@ -47,7 +45,6 @@ export default function OrderDetailBulkCreateDialog({
   orderId,
   inventories,
   categories,
-  saleDate,
   onClose,
   onSaved,
 }: Props) {
@@ -66,15 +63,14 @@ export default function OrderDetailBulkCreateDialog({
 
   const handleProductPick = (productId: number) => {
     if (rows.some((r) => r.productId === productId)) return;
-    const sample = inventories.find((inv) => inv.productId === productId);
-    if (!sample) return;
-    const totalStock = totalStockForProduct(productId, inventories, saleDate);
+    const batches = inventories.filter((inv) => inv.productId === productId);
+    if (batches.length === 0) return;
     setRows((prev) => [
       ...prev,
       {
         productId,
-        productName: sample.productName,
-        totalStock,
+        productName: batches[0].productName,
+        totalStock: batches.reduce((sum, inv) => sum + inv.stockQuantity, 0),
         quantity: 1,
       },
     ]);
@@ -93,38 +89,14 @@ export default function OrderDetailBulkCreateDialog({
     });
   };
 
-  const rowAllocations = useMemo(() => {
-    return rows.map((row) => pickBatchesFIFO(row.productId, row.quantity, inventories, saleDate));
-  }, [rows, inventories, saleDate]);
-
-  const rowSubtotal = (index: number): number => {
-    return rowAllocations[index].allocations.reduce(
-      (sum, a) => sum + a.unitPrice * a.quantity,
-      0,
-    );
-  };
-
-  const total = useMemo(() => {
-    return rowAllocations.reduce(
-      (sum, r) => sum + r.allocations.reduce((s, a) => s + a.unitPrice * a.quantity, 0),
-      0,
-    );
-  }, [rowAllocations]);
-
   const validate = (): boolean => {
     if (rows.length === 0) {
       setError('请至少添加一个商品');
       return false;
     }
     for (let i = 0; i < rows.length; i++) {
-      const row = rows[i];
-      if (row.quantity <= 0) {
+      if (rows[i].quantity <= 0) {
         setError(`第${i + 1}行：数量必须大于0`);
-        return false;
-      }
-      const { shortfall } = rowAllocations[i];
-      if (shortfall > 0) {
-        setError(`${row.productName} 库存不足，缺 ${shortfall} 件`);
         return false;
       }
     }
@@ -137,20 +109,15 @@ export default function OrderDetailBulkCreateDialog({
     setError('');
 
     try {
-      for (let i = 0; i < rows.length; i++) {
-        const { allocations } = rowAllocations[i];
-        for (const a of allocations) {
-          const createData: CreateOrderDetail = {
-            orderId,
-            inventoryId: a.inventoryId,
-            productId: a.productId,
-            unitPrice: a.unitPrice,
-            quantity: a.quantity,
-            packagingCost: 0,
-            otherCost: 0,
-          };
-          await api.post('/orders/details', createData);
-        }
+      for (const row of rows) {
+        const createData: CreateOrderDetail = {
+          orderId,
+          productId: row.productId,
+          quantity: row.quantity,
+          packagingCost: 0,
+          otherCost: 0,
+        };
+        await api.post('/orders/details', createData);
       }
       onSaved();
       onClose();
@@ -195,13 +162,12 @@ export default function OrderDetailBulkCreateDialog({
             excludeProductIds={excludeProductIds}
             onPick={handleProductPick}
             mode="grid"
-            saleDate={saleDate}
           />
 
           {rows.length > 0 ? (
             <>
               <Typography variant="subtitle2" sx={{ mt: 3, mb: 1 }}>
-                已选商品：
+                已选商品（成本按 FIFO 自动计算）：
               </Typography>
               <TableContainer sx={{ mb: 2 }}>
                 <Table size="small">
@@ -210,81 +176,39 @@ export default function OrderDetailBulkCreateDialog({
                       <TableCell>商品名</TableCell>
                       <TableCell>总库存</TableCell>
                       <TableCell sx={{ width: 110 }}>数量</TableCell>
-                      <TableCell>批次分配（FIFO）</TableCell>
-                      <TableCell>小计（¥）</TableCell>
                       <TableCell sx={{ width: 60 }}>操作</TableCell>
                     </TableRow>
                   </TableHead>
                   <TableBody>
-                    {rows.map((row, index) => {
-                      const { allocations, shortfall } = rowAllocations[index];
-                      return (
-                        <TableRow key={row.productId}>
-                          <TableCell>{row.productName}</TableCell>
-                          <TableCell>{row.totalStock}</TableCell>
-                          <TableCell>
-                            <TextField
-                              size="small"
-                              type="number"
-                              value={row.quantity}
-                              onChange={(e) =>
-                                handleQuantityChange(index, Number(e.target.value))
-                              }
-                              slotProps={{ htmlInput: { min: 1, max: row.totalStock } }}
-                              sx={{ width: 90 }}
-                            />
-                          </TableCell>
-                          <TableCell>
-                            {allocations.length === 0 ? (
-                              <Typography variant="caption" color="text.disabled">
-                                —
-                              </Typography>
-                            ) : (
-                              <Box>
-                                {allocations.map((a) => (
-                                  <Typography
-                                    key={a.inventoryId}
-                                    variant="caption"
-                                    sx={{ display: 'block' }}
-                                  >
-                                    {a.quantity} 件 · ¥{a.unitPrice.toFixed(2)} ·{' '}
-                                    {a.purchaseDate
-                                      ? new Date(a.purchaseDate).toLocaleDateString('zh-CN')
-                                      : '无日期'}
-                                  </Typography>
-                                ))}
-                                {shortfall > 0 && (
-                                  <Typography variant="caption" color="error">
-                                    缺 {shortfall} 件
-                                  </Typography>
-                                )}
-                              </Box>
-                            )}
-                          </TableCell>
-                          <TableCell>{rowSubtotal(index).toFixed(2)}</TableCell>
-                          <TableCell>
-                            <IconButton
-                              size="small"
-                              color="error"
-                              onClick={() => handleDeleteRow(index)}
-                            >
-                              <DeleteIcon />
-                            </IconButton>
-                          </TableCell>
-                        </TableRow>
-                      );
-                    })}
+                    {rows.map((row, index) => (
+                      <TableRow key={row.productId}>
+                        <TableCell>{row.productName}</TableCell>
+                        <TableCell>{row.totalStock}</TableCell>
+                        <TableCell>
+                          <TextField
+                            size="small"
+                            type="number"
+                            value={row.quantity}
+                            onChange={(e) => handleQuantityChange(index, Number(e.target.value))}
+                            slotProps={{ htmlInput: { min: 1 } }}
+                            sx={{ width: 90 }}
+                            helperText={row.quantity > row.totalStock ? '超出库存，成本可能未知' : ''}
+                          />
+                        </TableCell>
+                        <TableCell>
+                          <IconButton
+                            size="small"
+                            color="error"
+                            onClick={() => handleDeleteRow(index)}
+                          >
+                            <DeleteIcon />
+                          </IconButton>
+                        </TableCell>
+                      </TableRow>
+                    ))}
                   </TableBody>
                 </Table>
               </TableContainer>
-
-              <Box sx={{ display: 'flex', justifyContent: 'flex-end', mb: 2 }}>
-                <Box sx={{ p: 2, bgcolor: 'grey.100', borderRadius: 1 }}>
-                  <Typography variant="h6">
-                    合计：¥{total.toFixed(2)}（{rows.length}件商品）
-                  </Typography>
-                </Box>
-              </Box>
             </>
           ) : (
             <Typography color="text.secondary" sx={{ textAlign: 'center', py: 4 }}>

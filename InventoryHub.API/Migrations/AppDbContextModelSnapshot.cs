@@ -79,6 +79,10 @@ namespace InventoryHub.API.Migrations
                         .HasColumnName("created_at")
                         .HasDefaultValueSql("CURRENT_TIMESTAMP");
 
+                    b.Property<int>("InitialStock")
+                        .HasColumnType("int")
+                        .HasColumnName("initial_stock");
+
                     b.Property<bool>("IsDeleted")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("tinyint(1)")
@@ -109,10 +113,6 @@ namespace InventoryHub.API.Migrations
                     b.Property<int>("PurchaseQuantity")
                         .HasColumnType("int")
                         .HasColumnName("purchase_quantity");
-
-                    b.Property<int>("StockQuantity")
-                        .HasColumnType("int")
-                        .HasColumnName("stock_quantity");
 
                     b.Property<int?>("SupplierId")
                         .HasColumnType("int")
@@ -215,10 +215,6 @@ namespace InventoryHub.API.Migrations
                         .HasColumnName("created_at")
                         .HasDefaultValueSql("CURRENT_TIMESTAMP");
 
-                    b.Property<int>("InventoryId")
-                        .HasColumnType("int")
-                        .HasColumnName("inventory_id");
-
                     b.Property<bool>("IsDeleted")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("tinyint(1)")
@@ -253,14 +249,6 @@ namespace InventoryHub.API.Migrations
                         .HasColumnType("int")
                         .HasColumnName("quantity");
 
-                    b.Property<decimal>("SubtotalCost")
-                        .HasColumnType("decimal(15,2)")
-                        .HasColumnName("subtotal_cost");
-
-                    b.Property<decimal>("UnitPrice")
-                        .HasColumnType("decimal(15,2)")
-                        .HasColumnName("unit_price");
-
                     b.Property<DateTime>("UpdatedAt")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("datetime")
@@ -269,17 +257,11 @@ namespace InventoryHub.API.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("InventoryId")
-                        .HasDatabaseName("idx_inventory_id");
-
                     b.HasIndex("OrderId")
                         .HasDatabaseName("idx_order_id");
 
                     b.HasIndex("ProductId")
                         .HasDatabaseName("idx_product_id");
-
-                    b.HasIndex("OrderId", "InventoryId")
-                        .HasDatabaseName("idx_order_details_order_inventory");
 
                     b.ToTable("order_details", (string)null);
                 });
@@ -457,12 +439,6 @@ namespace InventoryHub.API.Migrations
 
             modelBuilder.Entity("InventoryHub.API.Models.OrderDetail", b =>
                 {
-                    b.HasOne("InventoryHub.API.Models.Inventory", "Inventory")
-                        .WithMany("OrderDetails")
-                        .HasForeignKey("InventoryId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
                     b.HasOne("InventoryHub.API.Models.Order", "Order")
                         .WithMany("OrderDetails")
                         .HasForeignKey("OrderId")
@@ -474,8 +450,6 @@ namespace InventoryHub.API.Migrations
                         .HasForeignKey("ProductId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
-
-                    b.Navigation("Inventory");
 
                     b.Navigation("Order");
 
@@ -507,11 +481,6 @@ namespace InventoryHub.API.Migrations
             modelBuilder.Entity("InventoryHub.API.Models.Category", b =>
                 {
                     b.Navigation("Products");
-                });
-
-            modelBuilder.Entity("InventoryHub.API.Models.Inventory", b =>
-                {
-                    b.Navigation("OrderDetails");
                 });
 
             modelBuilder.Entity("InventoryHub.API.Models.Order", b =>

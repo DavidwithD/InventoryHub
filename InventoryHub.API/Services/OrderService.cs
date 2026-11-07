@@ -10,17 +10,85 @@ public class OrderService : IOrderService
 {
     private readonly AppDbContext _context;
     private readonly IMapper _mapper;
+    private readonly IFifoService _fifoService;
 
-    public OrderService(AppDbContext context, IMapper mapper)
+    public OrderService(AppDbContext context, IMapper mapper, IFifoService fifoService)
     {
         _context = context;
         _mapper = mapper;
+        _fifoService = fifoService;
+    }
+
+    private static OrderDto ToOrderDto(Order order, FifoResult fifo)
+    {
+        var details = order.OrderDetails.Where(d => !d.IsDeleted).ToList();
+        return new OrderDto
+        {
+            Id = order.Id,
+            OrderNo = order.OrderNo,
+            Name = order.Name,
+            ImageUrl = order.ImageUrl,
+            Revenue = order.Revenue,
+            TotalCost = details.Sum(fifo.LineCost),
+            HasDetails = details.Count > 0,
+            HasUnknownCost = details.Any(d => fifo.Unmatched(d.Id) > 0),
+            ShippingFee = order.ShippingFee,
+            TransactionTime = order.TransactionTime,
+            CreatedAt = order.CreatedAt,
+            UpdatedAt = order.UpdatedAt
+        };
+    }
+
+    private static OrderDetailDto ToOrderDetailDto(OrderDetail detail, FifoResult fifo)
+    {
+        return new OrderDetailDto
+        {
+            Id = detail.Id,
+            OrderId = detail.OrderId,
+            ProductId = detail.ProductId,
+            ProductName = detail.Product?.Name ?? "",
+            Quantity = detail.Quantity,
+            PackagingCost = detail.PackagingCost,
+            OtherCost = detail.OtherCost,
+            SubtotalCost = fifo.LineCost(detail),
+            UnmatchedQuantity = fifo.Unmatched(detail.Id),
+            Allocations = fifo.Allocations(detail.Id)
+                .Select(a => new OrderDetailAllocationDto
+                {
+                    InventoryId = a.InventoryId,
+                    Quantity = a.Quantity,
+                    UnitCost = a.UnitCost,
+                    PurchaseDate = a.PurchaseDate
+                })
+                .ToList(),
+            Notes = detail.Notes,
+            CreatedAt = detail.CreatedAt,
+            UpdatedAt = detail.UpdatedAt
+        };
+    }
+
+    // 验证商品和数量
+    private async Task ValidateDetailAsync(int productId, int quantity)
+    {
+        var productExists = await _context.Products
+            .AnyAsync(p => p.Id == productId && !p.IsDeleted);
+
+        if (!productExists)
+        {
+            throw new InvalidOperationException($"商品 ID {productId} 不存在");
+        }
+
+        if (quantity <= 0)
+        {
+            throw new InvalidOperationException("数量必须大于 0");
+        }
     }
 
     // 订单 CRUD
     public async Task<IEnumerable<OrderDto>> GetAllOrdersAsync(DateTime? startDate = null, DateTime? endDate = null)
     {
         var query = _context.Orders
+            .Include(o => o.OrderDetails)
             .Where(o => !o.IsDeleted);
 
         if (startDate.HasValue)
@@ -33,118 +101,57 @@ public class OrderService : IOrderService
             query = query.Where(o => o.TransactionTime <= endDate.Value);
         }
 
-        return await query
+        var orders = await query
             .OrderByDescending(o => o.TransactionTime)
-            .Select(o => new OrderDto
-            {
-                Id = o.Id,
-                OrderNo = o.OrderNo,
-                Name = o.Name,
-                ImageUrl = o.ImageUrl,
-                Revenue = o.Revenue,
-                TotalCost = o.OrderDetails.Where(d => !d.IsDeleted).Sum(d => d.SubtotalCost),
-                HasDetails = o.OrderDetails.Any(d => !d.IsDeleted),
-                ShippingFee = o.ShippingFee,
-                TransactionTime = o.TransactionTime,
-                CreatedAt = o.CreatedAt,
-                UpdatedAt = o.UpdatedAt
-            })
             .ToListAsync();
+
+        var fifo = await _fifoService.CalculateAsync();
+
+        return orders.Select(o => ToOrderDto(o, fifo)).ToList();
     }
 
     public async Task<OrderDto?> GetOrderByIdAsync(int id)
     {
-        return await _context.Orders
-            .Where(o => o.Id == id && !o.IsDeleted)
-            .Select(o => new OrderDto
-            {
-                Id = o.Id,
-                OrderNo = o.OrderNo,
-                Name = o.Name,
-                ImageUrl = o.ImageUrl,
-                Revenue = o.Revenue,
-                TotalCost = o.OrderDetails.Where(d => !d.IsDeleted).Sum(d => d.SubtotalCost),
-                HasDetails = o.OrderDetails.Any(d => !d.IsDeleted),
-                ShippingFee = o.ShippingFee,
-                TransactionTime = o.TransactionTime,
-                CreatedAt = o.CreatedAt,
-                UpdatedAt = o.UpdatedAt
-            })
-            .FirstOrDefaultAsync();
+        var order = await _context.Orders
+            .Include(o => o.OrderDetails)
+            .FirstOrDefaultAsync(o => o.Id == id && !o.IsDeleted);
+
+        if (order == null) return null;
+
+        var fifo = await _fifoService.CalculateAsync();
+
+        return ToOrderDto(order, fifo);
     }
 
     public async Task<OrderDto> CreateOrderWithDetailsAsync(CreateOrderWithDetailsDto dto)
     {
-        using var transaction = await _context.Database.BeginTransactionAsync();
-        try
+        foreach (var detailDto in dto.Details)
         {
-            // 1. 创建订单
-            var order = new Order
-            {
-                OrderNo = dto.OrderNo,
-                ImageUrl = dto.ImageUrl,
-                Revenue = dto.Revenue,
-                TransactionTime = dto.TransactionTime
-            };
-
-            _context.Orders.Add(order);
-            await _context.SaveChangesAsync();
-
-            // 2. 创建订单详细并扣减库存
-            foreach (var detailDto in dto.Details)
-            {
-                // 验证库存
-                var inventory = await _context.Inventory
-                    .FirstOrDefaultAsync(i => i.Id == detailDto.InventoryId && !i.IsDeleted);
-
-                if (inventory == null)
-                {
-                    throw new InvalidOperationException($"库存记录 ID {detailDto.InventoryId} 不存在");
-                }
-
-                if (inventory.StockQuantity < detailDto.Quantity)
-                {
-                    throw new InvalidOperationException(
-                        $"库存不足：商品 ID {detailDto.ProductId}，可用库存 {inventory.StockQuantity}，需要 {detailDto.Quantity}");
-                }
-
-                // 计算小计成本：(库存日元单价 * 数量) + 包装成本 + 其他成本
-                var subtotalCost = (inventory.PriceJpy * detailDto.Quantity)
-                                 + detailDto.PackagingCost
-                                 + detailDto.OtherCost;
-
-                // 创建订单详细
-                var orderDetail = new OrderDetail
-                {
-                    OrderId = order.Id,
-                    InventoryId = detailDto.InventoryId,
-                    ProductId = detailDto.ProductId,
-                    UnitPrice = detailDto.UnitPrice,
-                    Quantity = detailDto.Quantity,
-                    PackagingCost = detailDto.PackagingCost,
-                    OtherCost = detailDto.OtherCost,
-                    SubtotalCost = subtotalCost,
-                    Notes = detailDto.Notes
-                };
-
-                _context.OrderDetails.Add(orderDetail);
-
-                // 扣减库存
-                inventory.StockQuantity -= detailDto.Quantity;
-                inventory.UpdatedAt = DateTime.UtcNow;
-            }
-
-            await _context.SaveChangesAsync();
-            await transaction.CommitAsync();
-
-            // Reload with OrderDetails to calculate TotalCost
-            return (await GetOrderByIdAsync(order.Id))!;
+            await ValidateDetailAsync(detailDto.ProductId, detailDto.Quantity);
         }
-        catch
+
+        var order = new Order
         {
-            await transaction.RollbackAsync();
-            throw;
-        }
+            OrderNo = dto.OrderNo,
+            ImageUrl = dto.ImageUrl,
+            Revenue = dto.Revenue,
+            TransactionTime = dto.TransactionTime,
+            OrderDetails = dto.Details
+                .Select(d => new OrderDetail
+                {
+                    ProductId = d.ProductId,
+                    Quantity = d.Quantity,
+                    PackagingCost = d.PackagingCost,
+                    OtherCost = d.OtherCost,
+                    Notes = d.Notes
+                })
+                .ToList()
+        };
+
+        _context.Orders.Add(order);
+        await _context.SaveChangesAsync();
+
+        return (await GetOrderByIdAsync(order.Id))!;
     }
 
     public async Task<OrderDto?> UpdateOrderAsync(int id, UpdateOrderDto dto)
@@ -170,47 +177,27 @@ public class OrderService : IOrderService
 
     public async Task<bool> DeleteOrderAsync(int id)
     {
-        using var transaction = await _context.Database.BeginTransactionAsync();
-        try
+        var order = await _context.Orders
+            .Include(o => o.OrderDetails)
+            .FirstOrDefaultAsync(o => o.Id == id && !o.IsDeleted);
+
+        if (order == null)
         {
-            var order = await _context.Orders
-                .Include(o => o.OrderDetails)
-                .FirstOrDefaultAsync(o => o.Id == id && !o.IsDeleted);
-
-            if (order == null)
-            {
-                return false;
-            }
-
-            // 恢复库存
-            foreach (var detail in order.OrderDetails.Where(d => !d.IsDeleted))
-            {
-                var inventory = await _context.Inventory
-                    .FirstOrDefaultAsync(i => i.Id == detail.InventoryId && !i.IsDeleted);
-
-                if (inventory != null)
-                {
-                    inventory.StockQuantity += detail.Quantity;
-                    inventory.UpdatedAt = DateTime.UtcNow;
-                }
-
-                detail.IsDeleted = true;
-                detail.UpdatedAt = DateTime.UtcNow;
-            }
-
-            order.IsDeleted = true;
-            order.UpdatedAt = DateTime.UtcNow;
-
-            await _context.SaveChangesAsync();
-            await transaction.CommitAsync();
-
-            return true;
+            return false;
         }
-        catch
+
+        foreach (var detail in order.OrderDetails.Where(d => !d.IsDeleted))
         {
-            await transaction.RollbackAsync();
-            throw;
+            detail.IsDeleted = true;
+            detail.UpdatedAt = DateTime.UtcNow;
         }
+
+        order.IsDeleted = true;
+        order.UpdatedAt = DateTime.UtcNow;
+
+        await _context.SaveChangesAsync();
+
+        return true;
     }
 
     // 订单详细 CRUD
@@ -222,22 +209,9 @@ public class OrderService : IOrderService
             .OrderBy(d => d.Id)
             .ToListAsync();
 
-        return details.Select(d => new OrderDetailDto
-        {
-            Id = d.Id,
-            OrderId = d.OrderId,
-            InventoryId = d.InventoryId,
-            ProductId = d.ProductId,
-            ProductName = d.Product?.Name ?? "",
-            UnitPrice = d.UnitPrice,
-            Quantity = d.Quantity,
-            PackagingCost = d.PackagingCost,
-            OtherCost = d.OtherCost,
-            SubtotalCost = d.SubtotalCost,
-            Notes = d.Notes,
-            CreatedAt = d.CreatedAt,
-            UpdatedAt = d.UpdatedAt
-        });
+        var fifo = await _fifoService.CalculateAsync();
+
+        return details.Select(d => ToOrderDetailDto(d, fifo)).ToList();
     }
 
     public async Task<OrderDetailDto?> GetOrderDetailByIdAsync(int id)
@@ -248,182 +222,78 @@ public class OrderService : IOrderService
 
         if (detail == null) return null;
 
-        return new OrderDetailDto
-        {
-            Id = detail.Id,
-            OrderId = detail.OrderId,
-            InventoryId = detail.InventoryId,
-            ProductId = detail.ProductId,
-            ProductName = detail.Product?.Name ?? "",
-            UnitPrice = detail.UnitPrice,
-            Quantity = detail.Quantity,
-            PackagingCost = detail.PackagingCost,
-            OtherCost = detail.OtherCost,
-            SubtotalCost = detail.SubtotalCost,
-            Notes = detail.Notes,
-            CreatedAt = detail.CreatedAt,
-            UpdatedAt = detail.UpdatedAt
-        };
+        var fifo = await _fifoService.CalculateAsync();
+
+        return ToOrderDetailDto(detail, fifo);
     }
 
     public async Task<OrderDetailDto> CreateOrderDetailAsync(CreateOrderDetailDto dto)
     {
-        using var transaction = await _context.Database.BeginTransactionAsync();
-        try
+        await ValidateDetailAsync(dto.ProductId, dto.Quantity);
+
+        var orderExists = await _context.Orders
+            .AnyAsync(o => o.Id == dto.OrderId && !o.IsDeleted);
+
+        if (!orderExists)
         {
-            // 验证库存
-            var inventory = await _context.Inventory
-                .FirstOrDefaultAsync(i => i.Id == dto.InventoryId && !i.IsDeleted);
-
-            if (inventory == null)
-            {
-                throw new InvalidOperationException($"库存记录 ID {dto.InventoryId} 不存在");
-            }
-
-            if (inventory.StockQuantity < dto.Quantity)
-            {
-                throw new InvalidOperationException(
-                    $"库存不足：可用库存 {inventory.StockQuantity}，需要 {dto.Quantity}");
-            }
-
-            // 计算小计成本
-            var subtotalCost = (inventory.PriceJpy * dto.Quantity)
-                             + dto.PackagingCost
-                             + dto.OtherCost;
-
-            var orderDetail = new OrderDetail
-            {
-                OrderId = dto.OrderId,
-                InventoryId = dto.InventoryId,
-                ProductId = dto.ProductId,
-                UnitPrice = dto.UnitPrice,
-                Quantity = dto.Quantity,
-                PackagingCost = dto.PackagingCost,
-                OtherCost = dto.OtherCost,
-                SubtotalCost = subtotalCost,
-                Notes = dto.Notes
-            };
-
-            _context.OrderDetails.Add(orderDetail);
-
-            // 扣减库存
-            inventory.StockQuantity -= dto.Quantity;
-            inventory.UpdatedAt = DateTime.UtcNow;
-
-            await _context.SaveChangesAsync();
-            await transaction.CommitAsync();
-
-            return (await GetOrderDetailByIdAsync(orderDetail.Id))!;
+            throw new InvalidOperationException($"订单 ID {dto.OrderId} 不存在");
         }
-        catch
+
+        var orderDetail = new OrderDetail
         {
-            await transaction.RollbackAsync();
-            throw;
-        }
+            OrderId = dto.OrderId,
+            ProductId = dto.ProductId,
+            Quantity = dto.Quantity,
+            PackagingCost = dto.PackagingCost,
+            OtherCost = dto.OtherCost,
+            Notes = dto.Notes
+        };
+
+        _context.OrderDetails.Add(orderDetail);
+        await _context.SaveChangesAsync();
+
+        return (await GetOrderDetailByIdAsync(orderDetail.Id))!;
     }
 
     public async Task<OrderDetailDto?> UpdateOrderDetailAsync(int id, UpdateOrderDetailDto dto)
     {
-        using var transaction = await _context.Database.BeginTransactionAsync();
-        try
+        var orderDetail = await _context.OrderDetails
+            .FirstOrDefaultAsync(d => d.Id == id && !d.IsDeleted);
+
+        if (orderDetail == null)
         {
-            var orderDetail = await _context.OrderDetails
-                .FirstOrDefaultAsync(d => d.Id == id && !d.IsDeleted);
-
-            if (orderDetail == null)
-            {
-                return null;
-            }
-
-            // 恢复旧的库存
-            var oldInventory = await _context.Inventory
-                .FirstOrDefaultAsync(i => i.Id == orderDetail.InventoryId && !i.IsDeleted);
-            if (oldInventory != null)
-            {
-                oldInventory.StockQuantity += orderDetail.Quantity;
-            }
-
-            // 扣减新的库存
-            var newInventory = await _context.Inventory
-                .FirstOrDefaultAsync(i => i.Id == dto.InventoryId && !i.IsDeleted);
-
-            if (newInventory == null)
-            {
-                throw new InvalidOperationException($"库存记录 ID {dto.InventoryId} 不存在");
-            }
-
-            if (newInventory.StockQuantity < dto.Quantity)
-            {
-                throw new InvalidOperationException(
-                    $"库存不足：可用库存 {newInventory.StockQuantity}，需要 {dto.Quantity}");
-            }
-
-            newInventory.StockQuantity -= dto.Quantity;
-            newInventory.UpdatedAt = DateTime.UtcNow;
-
-            // 计算新的小计成本
-            var newSubtotalCost = (newInventory.PriceJpy * dto.Quantity)
-                                + dto.PackagingCost
-                                + dto.OtherCost;
-
-            // 更新订单详细
-            orderDetail.SubtotalCost = newSubtotalCost;
-            orderDetail.InventoryId = dto.InventoryId;
-            orderDetail.ProductId = dto.ProductId;
-            orderDetail.UnitPrice = dto.UnitPrice;
-            orderDetail.Quantity = dto.Quantity;
-            orderDetail.PackagingCost = dto.PackagingCost;
-            orderDetail.OtherCost = dto.OtherCost;
-            orderDetail.Notes = dto.Notes;
-            orderDetail.UpdatedAt = DateTime.UtcNow;
-
-            await _context.SaveChangesAsync();
-            await transaction.CommitAsync();
-
-            return await GetOrderDetailByIdAsync(id);
+            return null;
         }
-        catch
-        {
-            await transaction.RollbackAsync();
-            throw;
-        }
+
+        await ValidateDetailAsync(dto.ProductId, dto.Quantity);
+
+        orderDetail.ProductId = dto.ProductId;
+        orderDetail.Quantity = dto.Quantity;
+        orderDetail.PackagingCost = dto.PackagingCost;
+        orderDetail.OtherCost = dto.OtherCost;
+        orderDetail.Notes = dto.Notes;
+        orderDetail.UpdatedAt = DateTime.UtcNow;
+
+        await _context.SaveChangesAsync();
+
+        return await GetOrderDetailByIdAsync(id);
     }
 
     public async Task<bool> DeleteOrderDetailAsync(int id)
     {
-        using var transaction = await _context.Database.BeginTransactionAsync();
-        try
+        var orderDetail = await _context.OrderDetails
+            .FirstOrDefaultAsync(d => d.Id == id && !d.IsDeleted);
+
+        if (orderDetail == null)
         {
-            var orderDetail = await _context.OrderDetails
-                .FirstOrDefaultAsync(d => d.Id == id && !d.IsDeleted);
-
-            if (orderDetail == null)
-            {
-                return false;
-            }
-
-            // 恢复库存
-            var inventory = await _context.Inventory
-                .FirstOrDefaultAsync(i => i.Id == orderDetail.InventoryId && !i.IsDeleted);
-
-            if (inventory != null)
-            {
-                inventory.StockQuantity += orderDetail.Quantity;
-                inventory.UpdatedAt = DateTime.UtcNow;
-            }
-
-            orderDetail.IsDeleted = true;
-            orderDetail.UpdatedAt = DateTime.UtcNow;
-
-            await _context.SaveChangesAsync();
-            await transaction.CommitAsync();
-
-            return true;
+            return false;
         }
-        catch
-        {
-            await transaction.RollbackAsync();
-            throw;
-        }
+
+        orderDetail.IsDeleted = true;
+        orderDetail.UpdatedAt = DateTime.UtcNow;
+
+        await _context.SaveChangesAsync();
+
+        return true;
     }
 }

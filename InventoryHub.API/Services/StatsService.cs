@@ -18,10 +18,12 @@ public interface IStatsService
 public class StatsService : IStatsService
 {
     private readonly AppDbContext _db;
+    private readonly IFifoService _fifoService;
 
-    public StatsService(AppDbContext db)
+    public StatsService(AppDbContext db, IFifoService fifoService)
     {
         _db = db;
+        _fifoService = fifoService;
     }
 
     // ── helpers ──────────────────────────────────────────────────────────────
@@ -54,6 +56,7 @@ public class StatsService : IStatsService
 
     public async Task<StatsDashboardKpiDto> GetDashboardKpiAsync(DateTime start, DateTime end)
     {
+        var fifo = await _fifoService.CalculateAsync();
         var periodLen = end - start;
         var prevStart = start - periodLen;
         var prevEnd = start;
@@ -69,24 +72,24 @@ public class StatsService : IStatsService
             .ToListAsync();
 
         decimal revenue = orders.Sum(o => o.Revenue);
-        decimal profit = orders.Sum(o => OrderProfit(o.Revenue, o.OrderDetails.Select(d => d.SubtotalCost)));
+        decimal profit = orders.Sum(o => OrderProfit(o.Revenue, o.OrderDetails.Select(fifo.LineCost)));
         decimal margin = revenue > 0 ? Math.Round(profit / revenue * 100, 1) : 0;
         int count = orders.Count;
         decimal aov = count > 0 ? Math.Round(revenue / count, 0) : 0;
 
         decimal prevRevenue = prevOrders.Sum(o => o.Revenue);
-        decimal prevProfit = prevOrders.Sum(o => OrderProfit(o.Revenue, o.OrderDetails.Select(d => d.SubtotalCost)));
+        decimal prevProfit = prevOrders.Sum(o => OrderProfit(o.Revenue, o.OrderDetails.Select(fifo.LineCost)));
         decimal prevMargin = prevRevenue > 0 ? Math.Round(prevProfit / prevRevenue * 100, 1) : 0;
         int prevCount = prevOrders.Count;
         decimal prevAov = prevCount > 0 ? Math.Round(prevRevenue / prevCount, 0) : 0;
 
-        var stockValue = await _db.Inventory
+        var batches = await _db.Inventory
             .Where(i => !i.IsDeleted)
-            .SumAsync(i => i.StockQuantity * i.PriceJpy);
+            .Select(i => new { i.Id, i.PriceJpy })
+            .ToListAsync();
 
-        var lowStockItems = await _db.Inventory
-            .Where(i => !i.IsDeleted && i.StockQuantity > 0 && i.StockQuantity < 5)
-            .CountAsync();
+        var stockValue = batches.Sum(i => fifo.Remaining(i.Id) * i.PriceJpy);
+        var lowStockItems = batches.Count(i => fifo.Remaining(i.Id) > 0 && fifo.Remaining(i.Id) < 5);
 
         return new StatsDashboardKpiDto
         {
@@ -109,6 +112,7 @@ public class StatsService : IStatsService
 
     public async Task<List<StatsTrendPointDto>> GetRevenueProfitTrendAsync(DateTime start, DateTime end, string granularity)
     {
+        var fifo = await _fifoService.CalculateAsync();
         var orders = await _db.Orders
             .Include(o => o.OrderDetails.Where(d => !d.IsDeleted))
             .Where(o => !o.IsDeleted && o.TransactionTime >= start && o.TransactionTime < end)
@@ -121,7 +125,7 @@ public class StatsService : IStatsService
             {
                 Label = PeriodLabel(g.Key, granularity),
                 Revenue = g.Sum(o => o.Revenue),
-                Profit = g.Sum(o => OrderProfit(o.Revenue, o.OrderDetails.Select(d => d.SubtotalCost))),
+                Profit = g.Sum(o => OrderProfit(o.Revenue, o.OrderDetails.Select(fifo.LineCost))),
             })
             .ToList();
 
@@ -132,14 +136,20 @@ public class StatsService : IStatsService
 
     public async Task<List<StatsCategorySalesDto>> GetCategorySalesAsync(DateTime start, DateTime end)
     {
-        var data = await _db.OrderDetails
+        var fifo = await _fifoService.CalculateAsync();
+
+        var details = await _db.OrderDetails
             .Include(d => d.Product).ThenInclude(p => p.Category)
             .Include(d => d.Order)
             .Where(d => !d.IsDeleted && !d.Order.IsDeleted
                      && d.Order.TransactionTime >= start && d.Order.TransactionTime < end)
-            .GroupBy(d => d.Product.Category.Name)
-            .Select(g => new { Category = g.Key, Revenue = g.Sum(d => d.UnitPrice * d.Quantity) })
             .ToListAsync();
+
+        // Revenue here equals batch cost. This keeps the old values until the stats revenue fix lands.
+        var data = details
+            .GroupBy(d => d.Product.Category.Name)
+            .Select(g => new { Category = g.Key, Revenue = g.Sum(d => fifo.BatchCost(d.Id)) })
+            .ToList();
 
         var total = data.Sum(x => x.Revenue);
         return data
@@ -157,24 +167,30 @@ public class StatsService : IStatsService
 
     public async Task<List<StatsTopProductDto>> GetTopProductsAsync(DateTime start, DateTime end, int count = 5)
     {
-        var data = await _db.OrderDetails
+        var fifo = await _fifoService.CalculateAsync();
+
+        var details = await _db.OrderDetails
             .Include(d => d.Product).ThenInclude(p => p.Category)
             .Include(d => d.Order)
             .Where(d => !d.IsDeleted && !d.Order.IsDeleted
                      && d.Order.TransactionTime >= start && d.Order.TransactionTime < end)
+            .ToListAsync();
+
+        // Revenue here equals batch cost. This keeps the old values until the stats revenue fix lands.
+        var data = details
             .GroupBy(d => new { d.ProductId, d.Product.Name, Category = d.Product.Category.Name })
             .Select(g => new StatsTopProductDto
             {
                 ProductId = g.Key.ProductId,
                 Name = g.Key.Name,
                 Category = g.Key.Category,
-                Revenue = g.Sum(d => d.UnitPrice * d.Quantity),
-                Profit = g.Sum(d => d.UnitPrice * d.Quantity - d.SubtotalCost),
+                Revenue = g.Sum(d => fifo.BatchCost(d.Id)),
+                Profit = g.Sum(d => fifo.BatchCost(d.Id) - fifo.LineCost(d)),
                 UnitsSold = g.Sum(d => d.Quantity),
             })
             .OrderByDescending(x => x.Revenue)
             .Take(count)
-            .ToListAsync();
+            .ToList();
 
         foreach (var item in data)
             item.MarginPct = item.Revenue > 0 ? Math.Round(item.Profit / item.Revenue * 100, 1) : 0;
@@ -188,11 +204,16 @@ public class StatsService : IStatsService
     {
         var cutoff = DateTime.Now.AddDays(-windowDays);
 
+        var fifo = await _fifoService.CalculateAsync();
+
         var inventories = await _db.Inventory
             .Include(i => i.Product).ThenInclude(p => p.Category)
-            .Include(i => i.OrderDetails.Where(d => !d.IsDeleted))
-                .ThenInclude(d => d.Order)
             .Where(i => !i.IsDeleted)
+            .ToListAsync();
+
+        var sales = await _db.OrderDetails
+            .Where(d => !d.IsDeleted && !d.Order.IsDeleted)
+            .Select(d => new { d.Id, d.ProductId, d.Quantity, d.Order.TransactionTime })
             .ToListAsync();
 
         // Stock levels (aggregated per product across all inventory lots)
@@ -200,7 +221,7 @@ public class StatsService : IStatsService
             .GroupBy(i => new { i.ProductId, i.Product.Name, Category = i.Product.Category.Name })
             .Select(g =>
             {
-                int stockQty = g.Sum(i => i.StockQuantity);
+                int stockQty = g.Sum(i => fifo.Remaining(i.Id));
                 int purchaseQty = g.Sum(i => i.PurchaseQuantity);
                 double pct = purchaseQty > 0
                     ? Math.Round((double)stockQty / purchaseQty * 100, 1)
@@ -221,42 +242,33 @@ public class StatsService : IStatsService
             .ToList();
 
         // Dead stock per product (no sales in window, but has stock)
-        var salesInWindow = inventories
-            .ToDictionary(
-                i => i.Id,
-                i => i.OrderDetails
-                    .Where(d => d.Order != null && !d.Order.IsDeleted && d.Order.TransactionTime >= cutoff)
-                    .Sum(d => d.Quantity)
-            );
+        var salesInWindow = sales
+            .Where(d => d.TransactionTime >= cutoff)
+            .GroupBy(d => d.ProductId)
+            .ToDictionary(g => g.Key, g => g.Sum(d => d.Quantity));
 
-        var lastSaleDateById = inventories
-            .ToDictionary(
-                i => i.Id,
-                i => i.OrderDetails
-                    .Where(d => d.Order != null && !d.Order.IsDeleted)
-                    .Select(d => (DateTime?)d.Order.TransactionTime)
-                    .Max()
-            );
+        var lastSaleDateByProduct = sales
+            .GroupBy(d => d.ProductId)
+            .ToDictionary(g => g.Key, g => g.Max(d => d.TransactionTime));
 
         // Aggregate by product for dead stock
         var byProduct = inventories.GroupBy(i => new { i.ProductId, i.Product.Name, Category = i.Product.Category.Name });
 
         var deadStock = byProduct
-            .Where(g => g.Sum(i => i.StockQuantity) > 0
-                     && g.All(i => salesInWindow[i.Id] == 0))
+            .Where(g => g.Sum(i => fifo.Remaining(i.Id)) > 0
+                     && salesInWindow.GetValueOrDefault(g.Key.ProductId) == 0)
             .Select(g =>
             {
-                var lastSale = g.Select(i => lastSaleDateById[i.Id]).Where(d => d != null).Max();
-                int daysSince = lastSale.HasValue
-                    ? (int)(DateTime.Now - lastSale.Value).TotalDays
+                int daysSince = lastSaleDateByProduct.TryGetValue(g.Key.ProductId, out var lastSale)
+                    ? (int)(DateTime.Now - lastSale).TotalDays
                     : windowDays + 1;
                 return new StatsDeadStockDto
                 {
                     ProductId = g.Key.ProductId,
                     Name = g.Key.Name,
                     Category = g.Key.Category,
-                    Qty = g.Sum(i => i.StockQuantity),
-                    Value = g.Sum(i => i.StockQuantity * i.PriceJpy),
+                    Qty = g.Sum(i => fifo.Remaining(i.Id)),
+                    Value = g.Sum(i => fifo.Remaining(i.Id) * i.PriceJpy),
                     DaysSinceLastSale = daysSince,
                 };
             })
@@ -269,8 +281,8 @@ public class StatsService : IStatsService
         var slowMovers = byProduct
             .Where(g =>
             {
-                int sold = g.Sum(i => salesInWindow[i.Id]);
-                int remaining = g.Sum(i => i.StockQuantity);
+                int sold = salesInWindow.GetValueOrDefault(g.Key.ProductId);
+                int remaining = g.Sum(i => fifo.Remaining(i.Id));
                 double velocity = windowWeeks > 0 ? sold / windowWeeks : 0;
                 double weeksToClear = velocity > 0 ? remaining / velocity : double.MaxValue;
                 // "slow" = has some sales AND >52 weeks to clear
@@ -278,18 +290,17 @@ public class StatsService : IStatsService
             })
             .Select(g =>
             {
-                int sold = g.Sum(i => salesInWindow[i.Id]);
-                int remaining = g.Sum(i => i.StockQuantity);
+                int sold = salesInWindow.GetValueOrDefault(g.Key.ProductId);
+                int remaining = g.Sum(i => fifo.Remaining(i.Id));
                 double velocity = windowWeeks > 0 ? Math.Round(sold / windowWeeks, 1) : 0;
                 double weeksToClear = velocity > 0 ? Math.Round(remaining / velocity, 0) : 9999;
 
                 // Avg days to sell: avg days from purchase_date to sale date
-                var avgDays = g
-                    .Where(i => i.PurchaseDate.HasValue)
-                    .SelectMany(i =>
-                        i.OrderDetails
-                            .Where(d => d.Order != null && !d.Order.IsDeleted)
-                            .Select(d => (d.Order.TransactionTime - i.PurchaseDate!.Value).TotalDays))
+                var avgDays = sales
+                    .Where(d => d.ProductId == g.Key.ProductId)
+                    .SelectMany(d => fifo.Allocations(d.Id)
+                        .Where(a => a.PurchaseDate.HasValue)
+                        .Select(a => (d.TransactionTime - a.PurchaseDate!.Value).TotalDays))
                     .DefaultIfEmpty(0)
                     .Average();
 
@@ -316,13 +327,13 @@ public class StatsService : IStatsService
             .GroupBy(i => i.Product.Category.Name)
             .Select(g =>
             {
-                decimal stockVal = g.Sum(i => i.StockQuantity * i.PriceJpy);
+                decimal stockVal = g.Sum(i => fifo.Remaining(i.Id) * i.PriceJpy);
                 decimal lockup = g
                     .Where(i => deadProductIds.Contains(i.ProductId) || slowProductIds.Contains(i.ProductId))
-                    .Sum(i => i.StockQuantity * i.PriceJpy);
+                    .Sum(i => fifo.Remaining(i.Id) * i.PriceJpy);
 
-                int totalSold = g.Sum(i => salesInWindow[i.Id]);
-                decimal avgStock = g.Average(i => (decimal)(i.PurchaseQuantity + i.StockQuantity) / 2);
+                int totalSold = g.Select(i => i.ProductId).Distinct().Sum(id => salesInWindow.GetValueOrDefault(id));
+                decimal avgStock = g.Average(i => (decimal)(i.PurchaseQuantity + fifo.Remaining(i.Id)) / 2);
                 double turnover = avgStock > 0 ? Math.Round(totalSold / (double)avgStock, 2) : 0;
 
                 return new StatsCategoryStockDto
@@ -349,6 +360,8 @@ public class StatsService : IStatsService
 
     public async Task<StatsProductsPageDto> GetProductsPageAsync(DateTime start, DateTime end)
     {
+        var fifo = await _fifoService.CalculateAsync();
+
         var details = await _db.OrderDetails
             .Include(d => d.Product).ThenInclude(p => p.Category)
             .Include(d => d.Order)
@@ -360,8 +373,9 @@ public class StatsService : IStatsService
             .GroupBy(d => new { d.ProductId, d.Product.Name, Category = d.Product.Category.Name })
             .Select(g =>
             {
-                decimal rev = g.Sum(d => d.UnitPrice * d.Quantity);
-                decimal cost = g.Sum(d => d.SubtotalCost);
+                // Revenue here equals batch cost. This keeps the old values until the stats revenue fix lands.
+                decimal rev = g.Sum(d => fifo.BatchCost(d.Id));
+                decimal cost = g.Sum(fifo.LineCost);
                 decimal profit = rev - cost;
                 return new StatsProductPerformanceDto
                 {
@@ -386,21 +400,25 @@ public class StatsService : IStatsService
 
         var soldSet = soldProductIds.ToHashSet();
 
-        var unsold = await _db.Inventory
+        var unsoldBatches = await _db.Inventory
             .Include(i => i.Product).ThenInclude(p => p.Category)
-            .Where(i => !i.IsDeleted && i.StockQuantity > 0 && !soldSet.Contains(i.ProductId))
+            .Where(i => !i.IsDeleted && !soldSet.Contains(i.ProductId))
+            .ToListAsync();
+
+        var unsold = unsoldBatches
+            .Where(i => fifo.Remaining(i.Id) > 0)
             .GroupBy(i => new { i.ProductId, i.Product.Name, Category = i.Product.Category.Name })
             .Select(g => new StatsUnsoldProductDto
             {
                 ProductId = g.Key.ProductId,
                 Name = g.Key.Name,
                 Category = g.Key.Category,
-                StockQty = g.Sum(i => i.StockQuantity),
-                StockValue = g.Sum(i => i.StockQuantity * i.PriceJpy),
+                StockQty = g.Sum(i => fifo.Remaining(i.Id)),
+                StockValue = g.Sum(i => fifo.Remaining(i.Id) * i.PriceJpy),
                 PurchaseDate = g.Min(i => i.PurchaseDate),
             })
             .OrderByDescending(x => x.StockValue)
-            .ToListAsync();
+            .ToList();
 
         return new StatsProductsPageDto { Products = products, UnsoldProducts = unsold };
     }

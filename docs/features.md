@@ -25,11 +25,11 @@ The dashboard provides an at-a-glance view of your business metrics.
 
 | Metric                | Description                      | Calculation                                  |
 | --------------------- | -------------------------------- | -------------------------------------------- |
-| Total Inventory Value | Total value of current inventory | Sum of (stock_quantity × unit_cost)          |
+| Total Inventory Value | Total value of current inventory | Sum of (stock × JPY unit price)              |
 | Monthly Profit        | Profit for current month         | Sum of (revenue - total_cost - shipping_fee) |
 | Total Orders          | Total number of orders           | Count of all orders                          |
-| Orders Without Cost   | Orders missing cost data         | Count where total_cost is NULL               |
-| Low Stock Products    | Products with low inventory      | Count where stock_quantity < 5               |
+| Orders Without Cost   | Orders missing cost data         | Orders with no lines or unknown cost         |
+| Low Stock Products    | Products with low inventory      | Batches with 1 to 4 units in stock           |
 | Monthly Orders        | Orders this month                | Count of orders in current month             |
 
 ### Quick Navigation
@@ -80,10 +80,6 @@ When creating inventory, you specify:
 | Currency Type  | Currency code (JPY, CNY, etc.)    | No       |
 | Exchange Rate  | Exchange rate at time of purchase | No       |
 
-**Stock behavior:**
-
-- `stock_quantity` starts equal to `purchase_quantity` and decreases as order details are created.
-
 ### Batch Creation
 
 For bulk entries with the same purchase details:
@@ -94,20 +90,11 @@ For bulk entries with the same purchase details:
 
 ### Stock Updates
 
-Stock is automatically updated when:
-
-- Order details are created (stock decreases)
-- Order details are updated (stock adjusts)
-- Order details are deleted (stock restores)
-- Orders are deleted (all detail stock restores)
+The app calculates stock from each batch's starting stock and the recorded sales. Adding, changing or deleting a sale updates stock on the next read.
 
 ### Reference Protection
 
-Inventory items referenced by order details have restrictions:
-
-- Cannot be deleted
-- Stock cannot be reduced below used amount
-- Warning displayed on edit
+You can edit a batch that has sales. The app recalculates the related costs. You cannot delete a batch that has sales assigned to it.
 
 ---
 
@@ -153,7 +140,6 @@ Each order can have multiple line items:
 | -------------- | ------------------------------ |
 | Category       | Filter products by category    |
 | Product        | Select the product             |
-| Inventory      | Select specific inventory item |
 | Quantity       | Number of units                |
 | Packaging Cost | Additional packaging cost      |
 | Other Cost     | Miscellaneous costs            |
@@ -161,8 +147,8 @@ Each order can have multiple line items:
 
 **Automatic Values:**
 
-- `unit_price`: Snapshot from inventory.unit_cost
-- `subtotal_cost`: (unit_price × quantity) + packaging_cost + other_cost
+- Batch allocation: the app uses the oldest batches first.
+- Subtotal: batch cost + packaging cost + other cost.
 
 ### Order Detail Editor
 
@@ -176,19 +162,15 @@ The order detail editor provides:
 
 **Validation Rules:**
 
-- Quantity cannot exceed available stock
 - At least one detail required
-- Inventory item must be selected
+- A product must be selected
+- Quantity must be at least 1
 
-### Stock Deduction
+### Unknown Cost
 
-When order details are saved:
+An order shows "未知" for cost and profit when a sold unit has no matching batch. This happens when stock is short, or when every batch with stock was purchased after the sale. Add the missing purchase or correct the date to fix it.
 
-1. System validates stock availability
-2. Deducts quantity from inventory
-3. Snapshots unit cost to unit price
-4. Calculates subtotal
-5. Updates order total cost
+Past costs can change when you add, edit or delete an earlier sale or purchase of the same product.
 
 ---
 

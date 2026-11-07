@@ -127,7 +127,6 @@ POST /api/orders
   "transactionTime": "2024-01-15T10:30:00",
   "details": [
     {
-      "inventoryId": 1,
       "productId": 1,
       "quantity": 2,
       "packagingCost": 50.0,
@@ -184,17 +183,22 @@ GET /api/orders/{orderId}/details
   {
     "id": 1,
     "orderId": 1,
-    "inventoryId": 5,
     "productId": 3,
     "productName": "Wireless Earbuds",
-    "categoryName": "Electronics",
-    "unitPrice": 537.5,
     "quantity": 2,
     "packagingCost": 50.0,
     "otherCost": 0,
     "subtotalCost": 1125.0,
-    "notes": null,
-    "availableStock": 8
+    "unmatchedQuantity": 0,
+    "allocations": [
+      {
+        "inventoryId": 5,
+        "quantity": 2,
+        "unitCost": 537.5,
+        "purchaseDate": "2024-01-15T00:00:00"
+      }
+    ],
+    "notes": null
   }
 ]
 ```
@@ -212,7 +216,6 @@ POST /api/orders/details
 ```json
 {
   "orderId": 1,
-  "inventoryId": 5,
   "productId": 3,
   "quantity": 2,
   "packagingCost": 50.0,
@@ -223,12 +226,7 @@ POST /api/orders/details
 
 **Response:** `201 Created` with created detail
 
-**Note:** This will automatically:
-
-- Snapshot `unit_price` from inventory
-- Calculate `subtotal_cost`
-- Deduct `stock_quantity` from inventory
-- Update order's `total_cost`
+**Note:** The API calculates `subtotalCost` and `allocations` with FIFO. It saves a sale even when stock is short. `unmatchedQuantity` then shows the units with no batch.
 
 ---
 
@@ -242,7 +240,6 @@ PUT /api/orders/details/{id}
 
 ```json
 {
-  "inventoryId": 5,
   "productId": 3,
   "quantity": 3,
   "packagingCost": 75.0,
@@ -253,7 +250,7 @@ PUT /api/orders/details/{id}
 
 **Response:** Updated detail object
 
-**Note:** Stock will be adjusted (rollback old quantity, apply new quantity)
+**Note:** A change can also change the calculated cost of later sales of the same product.
 
 ---
 
@@ -321,6 +318,7 @@ GET /api/inventory
     "purchaseQuantity": 10,
     "priceJpy": 537.5,
     "priceCny": 25.0,
+    "initialStock": 10,
     "stockQuantity": 8,
     "supplierId": 1,
     "purchaseDate": "2024-01-15T00:00:00",
@@ -357,7 +355,7 @@ POST /api/inventory
 {
   "productId": 3,
   "purchaseQuantity": 10,
-  "stockQuantity": 10,
+  "initialStock": 10,
   "priceJpy": 537.5,
   "priceCny": 25.0,
   "supplierId": 1,
@@ -386,14 +384,14 @@ POST /api/inventory/batch
     {
       "productId": 3,
       "purchaseQuantity": 10,
-      "stockQuantity": 10,
+      "initialStock": 10,
       "priceJpy": 537.5,
       "purchaseNo": "PO-2024-001"
     },
     {
       "productId": 4,
       "purchaseQuantity": 5,
-      "stockQuantity": 5,
+      "initialStock": 5,
       "priceJpy": 430.0
     }
   ]
@@ -416,7 +414,7 @@ PUT /api/inventory/{id}
 {
   "productId": 3,
   "purchaseQuantity": 10,
-  "stockQuantity": 7,
+  "initialStock": 10,
   "priceJpy": 550.0,
   "priceCny": 26.0
 }
@@ -424,7 +422,9 @@ PUT /api/inventory/{id}
 
 **Response:** Updated inventory object
 
-**Note:** Updates may be restricted if the item is referenced in order details
+**Note:** A change can also change the calculated cost of sales of the same product.
+
+`stockQuantity` and `isReferenced` are read-only values. `isReferenced` is true when FIFO assigned sales to the batch. The API rejects a delete for such a batch.
 
 ---
 
@@ -790,9 +790,9 @@ GET /api/dashboard/stats
 
 **Calculations:**
 
-- `totalInventoryValue`: Sum of (stock_quantity × unit_cost) for all inventory
+- `totalInventoryValue`: Sum of (calculated stock × `priceJpy`) for all batches
 - `monthlyProfit`: Sum of (revenue - total_cost - shipping_fee) for current month orders
-- `lowStockProductsCount`: Products with stock_quantity < 5
+- `lowStockProductsCount`: Batches with calculated stock from 1 to 4
 
 ---
 

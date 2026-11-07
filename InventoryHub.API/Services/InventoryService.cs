@@ -10,11 +10,13 @@ public class InventoryService : IInventoryService
 {
     private readonly AppDbContext _context;
     private readonly IMapper _mapper;
+    private readonly IFifoService _fifoService;
 
-    public InventoryService(AppDbContext context, IMapper mapper)
+    public InventoryService(AppDbContext context, IMapper mapper, IFifoService fifoService)
     {
         _context = context;
         _mapper = mapper;
+        _fifoService = fifoService;
     }
 
     public async Task<IEnumerable<InventoryDto>> GetAllAsync()
@@ -26,13 +28,7 @@ public class InventoryService : IInventoryService
             .OrderByDescending(i => i.CreatedAt)
             .ToListAsync();
 
-        // 获取所有被订单引用的库存 ID
-        var inventoryIds = inventories.Select(i => i.Id).ToList();
-        var referencedIds = await _context.OrderDetails
-            .Where(od => inventoryIds.Contains(od.InventoryId) && !od.IsDeleted)
-            .Select(od => od.InventoryId)
-            .Distinct()
-            .ToListAsync();
+        var fifo = await _fifoService.CalculateAsync();
 
         return inventories.Select(i => new InventoryDto
         {
@@ -47,8 +43,9 @@ public class InventoryService : IInventoryService
             PurchaseQuantity = i.PurchaseQuantity,
             PriceJpy = i.PriceJpy,
             PriceCny = i.PriceCny,
-            StockQuantity = i.StockQuantity,
-            IsReferenced = referencedIds.Contains(i.Id),
+            InitialStock = i.InitialStock,
+            StockQuantity = fifo.Remaining(i.Id),
+            IsReferenced = fifo.Remaining(i.Id) < i.InitialStock,
             CreatedAt = i.CreatedAt,
             UpdatedAt = i.UpdatedAt
         });
@@ -63,9 +60,7 @@ public class InventoryService : IInventoryService
 
         if (inventory == null) return null;
 
-        // 检查是否被订单引用
-        var isReferenced = await _context.OrderDetails
-            .AnyAsync(od => od.InventoryId == id && !od.IsDeleted);
+        var fifo = await _fifoService.CalculateAsync();
 
         return new InventoryDto
         {
@@ -80,8 +75,9 @@ public class InventoryService : IInventoryService
             PurchaseQuantity = inventory.PurchaseQuantity,
             PriceJpy = inventory.PriceJpy,
             PriceCny = inventory.PriceCny,
-            StockQuantity = inventory.StockQuantity,
-            IsReferenced = isReferenced,
+            InitialStock = inventory.InitialStock,
+            StockQuantity = fifo.Remaining(inventory.Id),
+            IsReferenced = fifo.Remaining(inventory.Id) < inventory.InitialStock,
             CreatedAt = inventory.CreatedAt,
             UpdatedAt = inventory.UpdatedAt
         };
@@ -102,7 +98,7 @@ public class InventoryService : IInventoryService
         {
             throw new InvalidOperationException("进货数量必须大于 0");
         }
-        if (dto.StockQuantity < 0)
+        if (dto.InitialStock < 0)
         {
             throw new InvalidOperationException("库存数量不能为负数");
         }
@@ -112,7 +108,7 @@ public class InventoryService : IInventoryService
         {
             ProductId = dto.ProductId,
             PurchaseQuantity = dto.PurchaseQuantity,
-            StockQuantity = dto.StockQuantity,
+            InitialStock = dto.InitialStock,
             PriceJpy = dto.PriceJpy,
             PriceCny = dto.PriceCny,
             SupplierId = dto.SupplierId,
@@ -148,15 +144,6 @@ public class InventoryService : IInventoryService
             return null;
         }
 
-        // 检查是否被订单引用
-        var isReferenced = await _context.OrderDetails
-            .AnyAsync(od => od.InventoryId == id && !od.IsDeleted);
-
-        if (isReferenced)
-        {
-            throw new InvalidOperationException("该库存已被订单引用，无法修改");
-        }
-
         // 验证商品是否存在
         var productExists = await _context.Products
             .AnyAsync(p => p.Id == dto.ProductId && !p.IsDeleted);
@@ -170,7 +157,7 @@ public class InventoryService : IInventoryService
         {
             throw new InvalidOperationException("进货数量必须大于 0");
         }
-        if (dto.StockQuantity < 0)
+        if (dto.InitialStock < 0)
         {
             throw new InvalidOperationException("库存数量不能为负数");
         }
@@ -178,7 +165,7 @@ public class InventoryService : IInventoryService
         // 更新库存记录
         inventory.ProductId = dto.ProductId;
         inventory.PurchaseQuantity = dto.PurchaseQuantity;
-        inventory.StockQuantity = dto.StockQuantity;
+        inventory.InitialStock = dto.InitialStock;
         inventory.PriceJpy = dto.PriceJpy;
         inventory.PriceCny = dto.PriceCny;
         inventory.SupplierId = dto.SupplierId;
@@ -200,11 +187,9 @@ public class InventoryService : IInventoryService
             return false;
         }
 
-        // 检查是否被订单引用
-        var isReferenced = await _context.OrderDetails
-            .AnyAsync(od => od.InventoryId == id && !od.IsDeleted);
-
-        if (isReferenced)
+        // 检查是否已有销售分配到该批次
+        var fifo = await _fifoService.CalculateAsync();
+        if (fifo.Remaining(id) < inventory.InitialStock)
         {
             throw new InvalidOperationException("该库存已被订单引用，无法删除");
         }

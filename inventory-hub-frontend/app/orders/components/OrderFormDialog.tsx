@@ -66,15 +66,10 @@ export default function OrderFormDialog({
 
   const createEmptyRow = (): OrderDetailRow => ({
     tempId: `new-${Date.now()}`,
-    inventoryId: 0,
     productId: 0,
-    productName: '',
-    unitPrice: 0,
     quantity: 1,
     packagingCost: 0,
     otherCost: 0,
-    availableStock: 0,
-    priceJpy: 0,
     notes: '',
   });
 
@@ -88,35 +83,8 @@ export default function OrderFormDialog({
 
   const updateDetailRow = (tempId: string, field: keyof OrderDetailRow, value: any) => {
     setDetailRows(
-      detailRows.map((row) => {
-        if (row.tempId !== tempId) return row;
-
-        const updated = { ...row, [field]: value };
-
-        if (field === 'inventoryId') {
-          const inventory = inventories.find((inv) => inv.id === value);
-          if (inventory) {
-            updated.productId = inventory.productId;
-            updated.productName = inventory.productName;
-            updated.priceJpy = inventory.priceJpy;
-            updated.availableStock = inventory.stockQuantity;
-            updated.unitPrice = inventory.priceJpy;
-          }
-        }
-
-        return updated;
-      })
+      detailRows.map((row) => (row.tempId === tempId ? { ...row, [field]: value } : row))
     );
-  };
-
-  const calculateTotalCost = (): number => {
-    return detailRows.reduce((sum, row) => {
-      return sum + row.unitPrice * row.quantity + row.packagingCost + row.otherCost;
-    }, 0);
-  };
-
-  const calculateProfit = (): number => {
-    return revenue - calculateTotalCost();
   };
 
   const validate = (): boolean => {
@@ -138,20 +106,12 @@ export default function OrderFormDialog({
     }
 
     for (const row of detailRows) {
-      if (row.inventoryId === 0) {
-        setError('请选择库存商品');
+      if (row.productId === 0) {
+        setError('请选择商品');
         return false;
       }
       if (row.quantity <= 0) {
         setError('数量必须大于0');
-        return false;
-      }
-      if (row.unitPrice <= 0) {
-        setError('单价必须大于0');
-        return false;
-      }
-      if (row.availableStock !== undefined && row.quantity > row.availableStock) {
-        setError(`${row.productName} 库存不足（可用：${row.availableStock}）`);
         return false;
       }
     }
@@ -179,9 +139,7 @@ export default function OrderFormDialog({
         // 创建订单
         const details: CreateOrderDetail[] = detailRows.map((row) => ({
           orderId: 0,
-          inventoryId: row.inventoryId,
           productId: row.productId,
-          unitPrice: row.unitPrice,
           quantity: row.quantity,
           packagingCost: row.packagingCost,
           otherCost: row.otherCost,
@@ -306,10 +264,7 @@ export default function OrderFormDialog({
 
             <Box sx={{ mt: 2, p: 2, bgcolor: 'grey.100', borderRadius: 1 }}>
               <Typography variant="body2">营业额：¥ {revenue.toFixed(2)}</Typography>
-              <Typography variant="body2">总成本：¥ {calculateTotalCost().toFixed(2)}</Typography>
-              <Typography variant="body2" sx={{ fontWeight: 'bold' }}>
-                利润：¥ {calculateProfit().toFixed(2)}
-              </Typography>
+              <Typography variant="body2">保存后按 FIFO 自动计算成本和利润。</Typography>
             </Box>
           </Box>
         </Box>

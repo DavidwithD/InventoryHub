@@ -8,14 +8,9 @@ import {
   DialogActions,
   Button,
   TextField,
-  FormControl,
-  InputLabel,
-  Select,
-  MenuItem,
   Alert,
   Box,
   Grid,
-  SelectChangeEvent,
 } from '@mui/material';
 import api from '@/lib/api';
 import { OrderDetail, Inventory, Category, CreateOrderDetail, UpdateOrderDetail } from '@/types';
@@ -40,15 +35,12 @@ export default function OrderDetailEditDialog({
   onClose,
   onSaved,
 }: Props) {
-  const [inventoryId, setInventoryId] = useState<number>(0);
   const [productId, setProductId] = useState<number>(0);
   const [productName, setProductName] = useState<string>('');
-  const [unitPrice, setUnitPrice] = useState<number>(0);
   const [quantity, setQuantity] = useState<number>(1);
   const [packagingCost, setPackagingCost] = useState<number>(0);
   const [otherCost, setOtherCost] = useState<number>(0);
   const [notes, setNotes] = useState<string>('');
-  const [availableStock, setAvailableStock] = useState<number>(0);
   const [error, setError] = useState<string>('');
   const [saving, setSaving] = useState<boolean>(false);
 
@@ -57,96 +49,50 @@ export default function OrderDetailEditDialog({
   useEffect(() => {
     if (open) {
       if (detail) {
-        const inventory = inventories.find((inv) => inv.id === detail.inventoryId);
-        setInventoryId(detail.inventoryId);
         setProductId(detail.productId);
         setProductName(detail.productName);
-        setUnitPrice(detail.unitPrice);
         setQuantity(detail.quantity);
         setPackagingCost(detail.packagingCost);
         setOtherCost(detail.otherCost);
         setNotes(detail.notes || '');
-        setAvailableStock(inventory?.stockQuantity || 0);
       } else {
         resetForm();
       }
       setError('');
     }
-  }, [open, detail, inventories]);
+  }, [open, detail]);
 
   const resetForm = () => {
-    setInventoryId(0);
     setProductId(0);
     setProductName('');
-    setUnitPrice(0);
     setQuantity(1);
     setPackagingCost(0);
     setOtherCost(0);
     setNotes('');
-    setAvailableStock(0);
   };
 
-  const productBatches = useMemo(() => {
-    if (productId === 0) return [];
-    return inventories
-      .filter((inv) => inv.productId === productId && inv.stockQuantity > 0)
-      .slice()
-      .sort((a, b) => {
-        const aTime = a.purchaseDate ? new Date(a.purchaseDate).getTime() : Number.POSITIVE_INFINITY;
-        const bTime = b.purchaseDate ? new Date(b.purchaseDate).getTime() : Number.POSITIVE_INFINITY;
-        if (aTime !== bTime) return aTime - bTime;
-        return a.id - b.id;
-      });
-  }, [productId, inventories]);
+  const totalStock = useMemo(
+    () =>
+      inventories
+        .filter((inv) => inv.productId === productId)
+        .reduce((sum, inv) => sum + inv.stockQuantity, 0),
+    [productId, inventories]
+  );
 
   const handleProductPick = (pickedProductId: number) => {
-    const batches = inventories
-      .filter((inv) => inv.productId === pickedProductId && inv.stockQuantity > 0)
-      .slice()
-      .sort((a, b) => {
-        const aTime = a.purchaseDate ? new Date(a.purchaseDate).getTime() : Number.POSITIVE_INFINITY;
-        const bTime = b.purchaseDate ? new Date(b.purchaseDate).getTime() : Number.POSITIVE_INFINITY;
-        if (aTime !== bTime) return aTime - bTime;
-        return a.id - b.id;
-      });
-    const oldest = batches[0];
-    if (!oldest) return;
+    const batch = inventories.find((inv) => inv.productId === pickedProductId);
+    if (!batch) return;
     setProductId(pickedProductId);
-    setProductName(oldest.productName);
-    setInventoryId(oldest.id);
-    setUnitPrice(oldest.priceJpy);
-    setAvailableStock(oldest.stockQuantity);
-  };
-
-  const handleBatchChange = (e: SelectChangeEvent<number>) => {
-    const newInventoryId = Number(e.target.value);
-    setInventoryId(newInventoryId);
-    const inventory = inventories.find((inv) => inv.id === newInventoryId);
-    if (inventory) {
-      setUnitPrice(inventory.priceJpy);
-      setAvailableStock(inventory.stockQuantity);
-    }
-  };
-
-  const calculateSubtotal = (): number => {
-    return unitPrice * quantity + packagingCost + otherCost;
+    setProductName(batch.productName);
   };
 
   const validate = (): boolean => {
-    if (inventoryId === 0) {
+    if (productId === 0) {
       setError('请选择商品');
       return false;
     }
     if (quantity <= 0) {
       setError('数量必须大于0');
-      return false;
-    }
-    if (unitPrice <= 0) {
-      setError('单价必须大于0');
-      return false;
-    }
-    if (!isEditMode && quantity > availableStock) {
-      setError(`库存不足（可用：${availableStock}）`);
       return false;
     }
     return true;
@@ -161,9 +107,7 @@ export default function OrderDetailEditDialog({
     try {
       if (isEditMode && detail) {
         const updateData: UpdateOrderDetail = {
-          inventoryId,
           productId,
-          unitPrice,
           quantity,
           packagingCost,
           otherCost,
@@ -173,9 +117,7 @@ export default function OrderDetailEditDialog({
       } else {
         const createData: CreateOrderDetail = {
           orderId,
-          inventoryId,
           productId,
-          unitPrice,
           quantity,
           packagingCost,
           otherCost,
@@ -209,13 +151,6 @@ export default function OrderDetailEditDialog({
     onClose();
   };
 
-  const currentBatch = inventories.find((inv) => inv.id === inventoryId);
-  const batchOptions = useMemo(() => {
-    if (!currentBatch) return productBatches;
-    if (productBatches.some((b) => b.id === currentBatch.id)) return productBatches;
-    return [currentBatch, ...productBatches];
-  }, [currentBatch, productBatches]);
-
   return (
     <Dialog
       open={open}
@@ -248,40 +183,6 @@ export default function OrderDetailEditDialog({
             )}
 
             <Grid size={12}>
-              <FormControl fullWidth size="small" disabled={productId === 0}>
-                <InputLabel>批次（最早优先）</InputLabel>
-                <Select
-                  value={inventoryId || 0}
-                  label="批次（最早优先）"
-                  onChange={handleBatchChange}
-                >
-                  <MenuItem value={0}>请选择批次</MenuItem>
-                  {batchOptions.map((b) => (
-                    <MenuItem key={b.id} value={b.id}>
-                      {b.purchaseDate
-                        ? new Date(b.purchaseDate).toLocaleDateString('zh-CN')
-                        : '无日期'}{' '}
-                      · 库存 {b.stockQuantity} · ¥{b.priceJpy.toFixed(2)}
-                      {b.purchaseNo ? ` · ${b.purchaseNo}` : ''}
-                    </MenuItem>
-                  ))}
-                </Select>
-              </FormControl>
-            </Grid>
-
-            <Grid size={{ xs: 12, sm: 6 }}>
-              <TextField
-                fullWidth
-                size="small"
-                label="单价（¥）"
-                type="number"
-                value={unitPrice}
-                onChange={(e) => setUnitPrice(Number(e.target.value))}
-                slotProps={{ htmlInput: { min: 0, step: 0.01 } }}
-              />
-            </Grid>
-
-            <Grid size={{ xs: 12, sm: 6 }}>
               <TextField
                 fullWidth
                 size="small"
@@ -290,14 +191,8 @@ export default function OrderDetailEditDialog({
                 value={quantity}
                 onChange={(e) => setQuantity(Number(e.target.value))}
                 slotProps={{ htmlInput: { min: 1 } }}
-                helperText={availableStock > 0 ? `可用库存：${availableStock}` : ''}
+                helperText={productId > 0 ? `当前库存：${totalStock}。成本按 FIFO 自动计算。` : ''}
               />
-            </Grid>
-
-            <Grid size={12}>
-              <Box sx={{ p: 2, bgcolor: 'grey.100', borderRadius: 1 }}>
-                <strong>小计：¥{calculateSubtotal().toFixed(2)}</strong>
-              </Box>
             </Grid>
           </Grid>
         </Box>

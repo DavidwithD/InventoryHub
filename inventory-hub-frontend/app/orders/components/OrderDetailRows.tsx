@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useMemo, useState } from 'react';
 import {
   Table,
   TableHead,
@@ -14,7 +14,6 @@ import {
   Select,
   MenuItem,
   SelectChangeEvent,
-  Box,
 } from '@mui/material';
 import DeleteIcon from '@mui/icons-material/Delete';
 import { OrderDetailRow, Inventory, Category } from '@/types';
@@ -27,6 +26,13 @@ interface Props {
   onRemoveRow: (tempId: string) => void;
 }
 
+interface ProductOption {
+  productId: number;
+  productName: string;
+  categoryId?: number;
+  totalStock: number;
+}
+
 export default function OrderDetailRows({
   rows,
   inventories,
@@ -37,31 +43,23 @@ export default function OrderDetailRows({
   // 为每一行维护分类选择状态
   const [categorySelections, setCategorySelections] = useState<Record<string, number>>({});
 
-  const calculateSubtotal = (row: OrderDetailRow): number => {
-    return row.unitPrice * row.quantity + row.packagingCost + row.otherCost;
-  };
-
-  // 当选择商品后，自动设置该行的分类
-  useEffect(() => {
-    const newSelections: Record<string, number> = { ...categorySelections };
-    let changed = false;
-
-    rows.forEach((row) => {
-      if (row.inventoryId > 0) {
-        const inventory = inventories.find((inv) => inv.id === row.inventoryId);
-        if (inventory && inventory.categoryId) {
-          if (newSelections[row.tempId] !== inventory.categoryId) {
-            newSelections[row.tempId] = inventory.categoryId;
-            changed = true;
-          }
-        }
+  const productOptions = useMemo(() => {
+    const byProduct = new Map<number, ProductOption>();
+    for (const inv of inventories) {
+      const existing = byProduct.get(inv.productId);
+      if (existing) {
+        existing.totalStock += inv.stockQuantity;
+      } else {
+        byProduct.set(inv.productId, {
+          productId: inv.productId,
+          productName: inv.productName,
+          categoryId: inv.categoryId,
+          totalStock: inv.stockQuantity,
+        });
       }
-    });
-
-    if (changed) {
-      setCategorySelections(newSelections);
     }
-  }, [rows, inventories]);
+    return Array.from(byProduct.values());
+  }, [inventories]);
 
   // 处理分类选择变化
   const handleCategoryChange = (tempId: string, categoryId: number) => {
@@ -70,15 +68,7 @@ export default function OrderDetailRows({
       [tempId]: categoryId,
     });
     // 清空该行的商品选择
-    onUpdateRow(tempId, 'inventoryId', 0);
-  };
-
-  // 获取指定分类下的库存商品
-  const getFilteredInventories = (selectedCategoryId: number) => {
-    return inventories.filter(
-      (inv) =>
-        inv.stockQuantity > 0 && (selectedCategoryId === 0 || inv.categoryId === selectedCategoryId)
-    );
+    onUpdateRow(tempId, 'productId', 0);
   };
 
   return (
@@ -87,18 +77,17 @@ export default function OrderDetailRows({
         <TableHead>
           <TableRow>
             <TableCell>商品分类</TableCell>
-            <TableCell>库存商品</TableCell>
-            <TableCell>单价（¥）</TableCell>
+            <TableCell>商品</TableCell>
             <TableCell>数量</TableCell>
-            <TableCell>可用库存</TableCell>
-            <TableCell>小计（¥）</TableCell>
             <TableCell>操作</TableCell>
           </TableRow>
         </TableHead>
         <TableBody>
           {rows.map((row) => {
             const selectedCategoryId = categorySelections[row.tempId] || 0;
-            const filteredInventories = getFilteredInventories(selectedCategoryId);
+            const filteredOptions = productOptions.filter(
+              (option) => selectedCategoryId === 0 || option.categoryId === selectedCategoryId
+            );
 
             return (
               <TableRow key={row.tempId}>
@@ -122,28 +111,19 @@ export default function OrderDetailRows({
                 <TableCell>
                   <FormControl size="small" sx={{ minWidth: 200 }}>
                     <Select
-                      value={row.inventoryId}
+                      value={row.productId}
                       onChange={(e: SelectChangeEvent<number>) =>
-                        onUpdateRow(row.tempId, 'inventoryId', Number(e.target.value))
+                        onUpdateRow(row.tempId, 'productId', Number(e.target.value))
                       }
                     >
                       <MenuItem value={0}>请选择商品</MenuItem>
-                      {filteredInventories.map((inv) => (
-                        <MenuItem key={inv.id} value={inv.id}>
-                          {inv.productName}（库存：{inv.stockQuantity}）
+                      {filteredOptions.map((option) => (
+                        <MenuItem key={option.productId} value={option.productId}>
+                          {option.productName}（库存：{option.totalStock}）
                         </MenuItem>
                       ))}
                     </Select>
                   </FormControl>
-                </TableCell>
-                <TableCell>
-                  <TextField
-                    type="number"
-                    value={row.unitPrice}
-                    onChange={(e) => onUpdateRow(row.tempId, 'unitPrice', Number(e.target.value))}
-                    size="small"
-                    sx={{ width: 100 }}
-                  />
                 </TableCell>
                 <TableCell>
                   <TextField
@@ -154,8 +134,6 @@ export default function OrderDetailRows({
                     sx={{ width: 80 }}
                   />
                 </TableCell>
-                <TableCell>{row.availableStock || 0}</TableCell>
-                <TableCell>{calculateSubtotal(row).toFixed(2)}</TableCell>
                 <TableCell>
                   <IconButton size="small" onClick={() => onRemoveRow(row.tempId)} color="error">
                     <DeleteIcon />

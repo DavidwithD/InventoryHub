@@ -140,7 +140,7 @@ export default function InventoryImportPage() {
     await createInventory({
       productId: payload.productId,
       purchaseQuantity: payload.purchaseQuantity,
-      stockQuantity: payload.purchaseQuantity * factor,
+      initialStock: payload.purchaseQuantity * factor,
       priceJpy,
       priceCny: Math.round(unitPriceCny * 100) / 100,
       supplierId: supplierId ? Number(supplierId) : undefined,
@@ -183,11 +183,11 @@ export default function InventoryImportPage() {
         setRegisteredItems(items);
 
         // #3 Option B: derive a suggested conversion factor per product from its
-        // most recent inventory record (stockQuantity / purchaseQuantity).
+        // most recent inventory record (initialStock / purchaseQuantity).
         const latest: Record<number, { createdAt: string; factor: number }> = {};
         for (const inv of data ?? []) {
-          if (!inv.productId || inv.purchaseQuantity <= 0 || inv.stockQuantity <= 0) continue;
-          const factor = Math.round((inv.stockQuantity / inv.purchaseQuantity) * 100) / 100;
+          if (!inv.productId || inv.purchaseQuantity <= 0 || inv.initialStock <= 0) continue;
+          const factor = Math.round((inv.initialStock / inv.purchaseQuantity) * 100) / 100;
           const prev = latest[inv.productId];
           if (!prev || inv.createdAt > prev.createdAt) {
             latest[inv.productId] = { createdAt: inv.createdAt, factor };

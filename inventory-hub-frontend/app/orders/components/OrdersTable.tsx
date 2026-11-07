@@ -179,9 +179,13 @@ export default function OrdersTable({ orders, onEdit, onDelete, onViewDetails }:
                 </TableCell>
                 <TableCell>{order.orderNo}</TableCell>
                 <TableCell>{order.revenue.toFixed(2)}</TableCell>
-                <TableCell>{order.totalCost?.toFixed(2) || '0.00'}</TableCell>
+                <TableCell>
+                  {order.hasUnknownCost ? '未知' : order.totalCost?.toFixed(2) || '0.00'}
+                </TableCell>
                 <TableCell>{order.shippingFee.toFixed(2)}</TableCell>
-                <TableCell>{(order.revenue - (order.totalCost || 0)).toFixed(2)}</TableCell>
+                <TableCell>
+                  {order.hasUnknownCost ? '未知' : (order.revenue - (order.totalCost || 0)).toFixed(2)}
+                </TableCell>
                 <TableCell>{new Date(order.transactionTime).toLocaleDateString('zh-CN')}</TableCell>
                 <TableCell align="center">
                   <IconButton

@@ -67,7 +67,7 @@ export default function InventoryPage() {
     const payload: CreateInventory = {
       productId: adjustTarget.productId,
       purchaseQuantity: adjustTarget.purchaseQuantity,
-      stockQuantity: adjustTarget.purchaseQuantity * factor,
+      initialStock: adjustTarget.purchaseQuantity * factor,
       priceJpy: Math.round(adjustTarget.priceJpy / factor),
       priceCny:
         adjustTarget.priceCny != null
@@ -81,7 +81,7 @@ export default function InventoryPage() {
       await updateInventory(adjustTarget.id, payload);
       setAdjustTarget(null);
     } catch {
-      setAdjustError('调整失败，该库存可能已被订单引用');
+      setAdjustError('调整失败');
     } finally {
       setAdjusting(false);
     }

@@ -150,18 +150,14 @@ refactor(services): extract common validation logic
 ```csharp
 // Unit test example
 [Fact]
-public async Task CreateOrder_ShouldDeductStock()
+public void Sale_takes_the_oldest_batch_first()
 {
-    // Arrange
-    var service = new OrderService(_context, _mapper);
-    var dto = new CreateOrderDto { /* ... */ };
+    var result = FifoCalculator.Calculate(
+        new[] { new FifoBatch(1, 1, new DateTime(2026, 1, 1), 5, 100m) },
+        new[] { new FifoSale(10, 1, new DateTime(2026, 2, 1), 2) });
 
-    // Act
-    var result = await service.CreateOrderWithDetailsAsync(dto);
-
-    // Assert
-    var inventory = await _context.Inventory.FindAsync(1);
-    Assert.Equal(expectedStock, inventory.StockQuantity);
+    Assert.Equal(200m, result.BatchCost(10));
+    Assert.Equal(3, result.Remaining(1));
 }
 ```
 
@@ -217,16 +213,11 @@ public async Task<OrderDto> CreateOrderAsync(CreateOrderDto dto)
     if (dto.Details.Count == 0)
         throw new InvalidOperationException("Order must have at least one detail");
 
-    // Check stock availability
+    // Check each quantity
     foreach (var detail in dto.Details)
     {
-        var inventory = await _context.Inventory.FindAsync(detail.InventoryId);
-        if (inventory == null)
-            throw new InvalidOperationException($"Inventory {detail.InventoryId} not found");
-
-        if (inventory.StockQuantity < detail.Quantity)
-            throw new InvalidOperationException(
-                $"Insufficient stock. Available: {inventory.StockQuantity}");
+        if (detail.Quantity <= 0)
+            throw new InvalidOperationException("Quantity must be greater than 0");
     }
 
     // Proceed with creation...

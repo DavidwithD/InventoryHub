@@ -14,6 +14,7 @@ Welcome to the InventoryHub documentation. InventoryHub is a comprehensive inven
 | [Backend Guide](backend-guide.md)     | Backend services, controllers, and business logic    |
 | [Features](features.md)               | Detailed feature descriptions and usage              |
 | [Development](development.md)         | Development guidelines and best practices            |
+| [Calculated FIFO Rollout](calculated-fifo-rollout.md) | Steps to apply the calculated FIFO migration |
 
 ## Project Overview
 
@@ -84,8 +85,8 @@ InventoryHub/
 | Feature                  | Description                                                               |
 | ------------------------ | ------------------------------------------------------------------------- |
 | Multi-Currency Support   | Handle purchases in JPY, CNY, USD with automatic exchange rate conversion |
-| Real-time Stock Tracking | Track inventory levels with automatic updates on order placement          |
-| Cost Snapshots           | Preserve historical cost data for accurate profit calculations            |
+| Calculated Stock         | Calculate stock from purchases and sold quantities                        |
+| FIFO Costing             | Calculate each sale's cost from the oldest available batches              |
 | Batch Import             | Import orders from Mercari via cURL command parsing                       |
 | Dashboard Analytics      | View inventory value, monthly profits, and low stock alerts               |
 | Responsive Design        | Mobile-friendly interface with adaptive layouts                           |

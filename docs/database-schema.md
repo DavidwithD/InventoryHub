@@ -35,29 +35,24 @@ This document describes the database structure, tables, relationships, and const
                        │ │    price_jpy  (unit price in JPY)      │
                        │ │    price_cny  (unit price in CNY, opt) │
                        │ │    purchase_quantity                   │
-                       │ │    stock_quantity                      │
+                       │ │    initial_stock                       │
                        │ │ -- denormalized purchase fields --     │
                        └─┤    supplier_id (nullable)              │
                          │    purchase_date (nullable)            │
                          │    purchase_no   (nullable)            │
-                         └──────────────────┬─────────────────────┘
-                                            │
-                                            │ inventory_id (FK)
-                                            │
-┌──────────────┐                            ▼
+                         └────────────────────────────────────────┘
+
+┌──────────────┐
 │    Orders    │         ┌────────────────────────────────────────┐
 ├──────────────┤         │            OrderDetails                │
 │ PK id        │◄────────┤────────────────────────────────────────┤
 │    order_no  │         │ PK id                                  │
 │    name      │         │ FK order_id                            │
-│    image_url │         │ FK inventory_id                        │
-│    revenue   │         │ FK product_id                          │
-│    total_cost│         │    unit_price (snapshot)               │
-│    shipping  │         │    quantity                            │
-│    trans_time│         │    packaging_cost                      │
-└──────────────┘         │    other_cost                          │
-                         │    subtotal_cost                       │
-                         │    notes                               │
+│    image_url │         │ FK product_id                          │
+│    revenue   │         │    quantity                            │
+│    shipping  │         │    packaging_cost                      │
+│    trans_time│         │    other_cost                          │
+└──────────────┘         │    notes                               │
                          └────────────────────────────────────────┘
 ```
 
@@ -166,7 +161,7 @@ Inventory items linked to products. Purchase-level fields are denormalized here 
 | `price_jpy`         | DECIMAL(15,2) | NOT NULL                    | Unit price in JPY                     |
 | `price_cny`         | DECIMAL(15,2) | NULL                        | Unit price in CNY                     |
 | `purchase_quantity` | INT           | NOT NULL                    | Quantity purchased                    |
-| `stock_quantity`    | INT           | NOT NULL, CHECK >= 0        | Current available stock               |
+| `initial_stock`     | INT           | NOT NULL                    | Sellable units at purchase            |
 | `supplier_id`       | INT           | NULL                        | Supplier (denormalized from purchase) |
 | `purchase_date`     | DATETIME      | NULL                        | Purchase date (denormalized)          |
 | `purchase_no`       | VARCHAR(100)  | NULL                        | Purchase order number (denormalized)  |
@@ -182,6 +177,8 @@ Inventory items linked to products. Purchase-level fields are denormalized here 
 **Foreign Keys:**
 
 - `product_id` → `products.id` (ON DELETE RESTRICT)
+
+Current stock is not stored. See [FIFO Calculation](architecture.md#6-fifo-calculation).
 
 ---
 
@@ -225,13 +222,10 @@ Line items for orders with cost breakdown.
 | ---------------- | ------------- | --------------------------- | --------------------- |
 | `id`             | INT           | PRIMARY KEY, AUTO_INCREMENT | Unique identifier     |
 | `order_id`       | INT           | FOREIGN KEY → orders.id     | Order reference       |
-| `inventory_id`   | INT           | FOREIGN KEY → inventory.id  | Inventory reference   |
 | `product_id`     | INT           | FOREIGN KEY → products.id   | Product reference     |
-| `unit_price`     | DECIMAL(15,2) | NOT NULL                    | Unit cost (snapshot)  |
 | `quantity`       | INT           | NOT NULL                    | Quantity ordered      |
 | `packaging_cost` | DECIMAL(15,2) | DEFAULT 0                   | Packaging cost        |
 | `other_cost`     | DECIMAL(15,2) | DEFAULT 0                   | Other costs           |
-| `subtotal_cost`  | DECIMAL(15,2) | NOT NULL                    | Line item total       |
 | `notes`          | TEXT          | NULL                        | Additional notes      |
 | `created_at`     | DATETIME      | DEFAULT CURRENT_TIMESTAMP   | Creation timestamp    |
 | `updated_at`     | DATETIME      | ON UPDATE CURRENT_TIMESTAMP | Last update timestamp |
@@ -241,21 +235,14 @@ Line items for orders with cost breakdown.
 
 - PRIMARY KEY (`id`)
 - INDEX (`order_id`)
-- INDEX (`inventory_id`)
 - INDEX (`product_id`)
-- INDEX (`order_id`, `inventory_id`)
 
 **Foreign Keys:**
 
 - `order_id` → `orders.id` (ON DELETE CASCADE)
-- `inventory_id` → `inventory.id` (ON DELETE RESTRICT)
 - `product_id` → `products.id` (ON DELETE RESTRICT)
 
-**Calculated Field:**
-
-```
-subtotal_cost = (unit_price * quantity) + packaging_cost + other_cost
-```
+Batch links and line costs are not stored. See [FIFO Calculation](architecture.md#6-fifo-calculation).
 
 ## Soft Delete Implementation
 
@@ -293,10 +280,7 @@ Benefits:
    inventory.unit_cost = purchase_amount_jpy / purchase_quantity
    ```
 
-3. **Order Detail Level**: Unit cost snapshot preserved
-   ```
-   order_details.unit_price = inventory.unit_cost (at order time)
-   ```
+3. **Order Detail Level**: Cost is calculated when read. See [FIFO Calculation](architecture.md#6-fifo-calculation).
 
 ### Supported Currencies
 
@@ -311,10 +295,6 @@ Benefits:
 ### Check Constraints
 
 ```sql
--- Inventory stock cannot go negative
-ALTER TABLE inventory ADD CONSTRAINT chk_stock_positive
-CHECK (stock_quantity >= 0);
-
 -- Order detail quantity must be positive
 ALTER TABLE order_details ADD CONSTRAINT chk_quantity_positive
 CHECK (quantity > 0);
