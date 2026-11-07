@@ -11,3 +11,6 @@ node_modules/
 **/logs/**
 .claude
 inventory-hub-frontend/data/**
+
+# macOS Finder files
+.DS_Store
