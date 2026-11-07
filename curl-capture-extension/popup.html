@@ -1,0 +1,57 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <style>
+      body {
+        font-family: -apple-system, system-ui, sans-serif;
+        width: 260px;
+        margin: 0;
+        padding: 12px 14px;
+        color: #1f2329;
+      }
+      h1 {
+        font-size: 13px;
+        margin: 0 0 10px;
+      }
+      .row {
+        display: flex;
+        justify-content: space-between;
+        align-items: baseline;
+        padding: 6px 0;
+        border-top: 1px solid #eee;
+        font-size: 12px;
+      }
+      .name {
+        font-weight: 600;
+      }
+      .ok {
+        color: #18794e;
+      }
+      .none {
+        color: #9aa0a6;
+      }
+      .hint {
+        font-size: 11px;
+        color: #9aa0a6;
+        margin-top: 10px;
+        line-height: 1.4;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>InventoryHub Order Capture</h1>
+    <div class="row">
+      <span class="name">淘宝 Taobao</span><span id="taobao" class="none">—</span>
+    </div>
+    <div class="row">
+      <span class="name">拼多多 Pinduoduo</span
+      ><span id="pinduoduo" class="none">—</span>
+    </div>
+    <p class="hint">
+      Open your order list and refresh once. The latest captured request is sent
+      to the import page when you click “一键获取订单”.
+    </p>
+    <script src="popup.js"></script>
+  </body>
+</html>

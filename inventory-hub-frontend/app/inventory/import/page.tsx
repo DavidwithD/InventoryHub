@@ -2,12 +2,16 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import {
+  Accordion,
+  AccordionDetails,
+  AccordionSummary,
   Alert,
   Box,
   Button,
   CircularProgress,
   FormControl,
   InputLabel,
+  Link,
   MenuItem,
   Paper,
   Select,
@@ -16,6 +20,7 @@ import {
   TextField,
   Typography,
 } from '@mui/material';
+import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import { useSuppliers } from '../../suppliers/hooks/useSuppliers';
 import { useCategories } from '../../categories/hooks/useCategories';
 import { useProducts } from '../../products/hooks/useProducts';
@@ -27,12 +32,21 @@ import { fetchExchangeRate } from '@/lib/exchangeRate';
 import { fetchPinduoduoOrders, buildNextFetchCommand } from './pinduoduoService';
 import { fetchTaobaoOrders, buildNextTaobaoFetchCommand, detectPlatform } from './taobaoService';
 import FetchCommandGuide, {
+  getListingsUrl,
   getPlaceholderForPlatform,
   validateFetchCommand,
 } from './FetchCommandGuide';
+import { getCapturedCommand, isExtensionAvailable } from './extensionBridge';
 
 function storageKey(platform: 'pinduoduo' | 'taobao'): string {
   return platform === 'taobao' ? 'taobao_fetch_command' : 'pinduoduo_fetch_command';
+}
+
+function formatCaptureAge(capturedAt: number): string {
+  const minutes = Math.floor((Date.now() - capturedAt) / 60000);
+  if (minutes < 1) return '最新抓取：刚刚';
+  if (minutes < 60) return `最新抓取：${minutes} 分钟前`;
+  return `最新抓取：${Math.floor(minutes / 60)} 小时前`;
 }
 
 export default function InventoryImportPage() {
@@ -52,6 +66,9 @@ export default function InventoryImportPage() {
   const { create: createInventory, loadAllInventories } = useInventory();
   const [registeredItems, setRegisteredItems] = useState<Set<string>>(new Set());
   const [factorSuggestions, setFactorSuggestions] = useState<Record<number, number>>({});
+  const [extAvailable, setExtAvailable] = useState(false);
+  const [manualOpen, setManualOpen] = useState(false);
+  const [captureAge, setCaptureAge] = useState('');
 
   const selectedSupplier = useMemo(
     () => suppliers.find((s) => String(s.id) === supplierId)?.name ?? '',
@@ -64,6 +81,36 @@ export default function InventoryImportPage() {
     [fetchCommand, platform],
   );
   const inputError = validation !== null && !validation.ok;
+
+  useEffect(() => {
+    const available = isExtensionAvailable();
+    setExtAvailable(available);
+    setManualOpen(!available);
+  }, []);
+
+  // Show the capture age for the selected platform. Update it when the user returns to this tab.
+  useEffect(() => {
+    if (!supplierId || !extAvailable) return;
+    let cancelled = false;
+    const refresh = async () => {
+      const result = await getCapturedCommand(platform);
+      if (cancelled) return;
+      if (result.status === 'unavailable') {
+        setExtAvailable(false);
+        setManualOpen(true);
+        return;
+      }
+      setCaptureAge(
+        result.status === 'ok' ? formatCaptureAge(result.capture.capturedAt) : '尚无抓取数据'
+      );
+    };
+    refresh();
+    window.addEventListener('focus', refresh);
+    return () => {
+      cancelled = true;
+      window.removeEventListener('focus', refresh);
+    };
+  }, [supplierId, platform, extAvailable]);
 
   // Load per-platform saved fetch command when supplier changes
   useEffect(() => {
@@ -164,6 +211,54 @@ export default function InventoryImportPage() {
     setSupplierId(event.target.value);
   };
 
+  const parseCommand = async (command: string, errorHint = '') => {
+    setLoading(true);
+    setError('');
+    setInfo('正在获取并解析数据...');
+
+    try {
+      const fetcher = platform === 'taobao' ? fetchTaobaoOrders : fetchPinduoduoOrders;
+      const { rows: extracted, nextOffset: offset } = await fetcher(command);
+      setRows(extracted);
+      setNextOffset(offset);
+      setInfo('从响应中解析出 ' + extracted.length + ' 条商品记录');
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Parse failed';
+      setError(msg + errorHint);
+      setInfo('');
+      setRows([]);
+      setNextOffset(null);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // The captured command stays in page state only. The extension already stores it.
+  const handleOneClickImport = async () => {
+    setError('');
+    setInfo('');
+    const result = await getCapturedCommand(platform);
+    if (result.status === 'unavailable') {
+      setExtAvailable(false);
+      setManualOpen(true);
+      setError('无法连接浏览器扩展，请手动粘贴 fetch 命令。');
+      return;
+    }
+    if (result.status === 'empty') {
+      setError('未找到抓取数据，请打开订单页并刷新一次后重试。');
+      return;
+    }
+    const { command, capturedAt } = result.capture;
+    setCaptureAge(formatCaptureAge(capturedAt));
+    const check = validateFetchCommand(command, platform);
+    if (!check.ok) {
+      setError(check.message);
+      return;
+    }
+    setFetchCommand(command);
+    await parseCommand(command, '（抓取可能已过期，请刷新订单页后重试。）');
+  };
+
   const handleParseFetch = async () => {
     if (!supplierId) {
       setError('请先选择供应商');
@@ -178,25 +273,7 @@ export default function InventoryImportPage() {
       return;
     }
 
-    setLoading(true);
-    setError('');
-    setInfo('正在获取并解析数据...');
-
-    try {
-      const fetcher = platform === 'taobao' ? fetchTaobaoOrders : fetchPinduoduoOrders;
-      const { rows: extracted, nextOffset: offset } = await fetcher(fetchCommand);
-      setRows(extracted);
-      setNextOffset(offset);
-      setInfo('从响应中解析出 ' + extracted.length + ' 条商品记录');
-    } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : 'Parse failed';
-      setError(msg);
-      setInfo('');
-      setRows([]);
-      setNextOffset(null);
-    } finally {
-      setLoading(false);
-    }
+    await parseCommand(fetchCommand);
   };
 
   const handleNextPage = async () => {
@@ -233,7 +310,9 @@ export default function InventoryImportPage() {
           采购导入预览
         </Typography>
         <Typography variant="body2" color="text.secondary">
-          选择供应商后按下方步骤复制粘贴 fetch 命令，即可解析并提取库存字段。
+          {extAvailable
+            ? '选择供应商后点击“一键获取订单”，即可解析并提取库存字段。'
+            : '选择供应商后按下方步骤复制粘贴 fetch 命令，即可解析并提取库存字段。'}
         </Typography>
         <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
           当前汇率：1 CNY ≈ {exchangeRate > 0 ? exchangeRate.toFixed(2) : '加载中...'} JPY
@@ -268,37 +347,77 @@ export default function InventoryImportPage() {
 
           {supplierId ? (
             <>
-              <FetchCommandGuide platform={platform} />
+              {extAvailable && (
+                <Box sx={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 2 }}>
+                  <Button
+                    variant="contained"
+                    onClick={handleOneClickImport}
+                    disabled={loading || supplierLoading}
+                  >
+                    {'一键获取订单'}
+                  </Button>
+                  <Typography variant="body2" color="text.secondary">
+                    {captureAge}
+                  </Typography>
+                  <Link
+                    href={getListingsUrl(platform)}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    variant="body2"
+                  >
+                    打开订单页
+                  </Link>
+                  {loading && <CircularProgress size={22} />}
+                </Box>
+              )}
 
-              <TextField
-                label={`fetch 命令（${platformLabel}）`}
-                multiline
-                minRows={1}
-                maxRows={5}
-                value={fetchCommand}
-                onChange={(e) => {
-                  setFetchCommand(e.target.value);
-                  localStorage.setItem(storageKey(platform), e.target.value);
-                }}
-                placeholder={getPlaceholderForPlatform(platform)}
-                disabled={loading}
-                fullWidth
-                error={inputError}
-                helperText={
-                  inputError && validation && !validation.ok ? validation.message : ' '
-                }
-              />
+              <Accordion
+                disableGutters
+                elevation={0}
+                expanded={manualOpen}
+                onChange={(_, expanded) => setManualOpen(expanded)}
+                slotProps={{ transition: { unmountOnExit: true } }}
+                sx={{ '&:before': { display: 'none' }, bgcolor: 'transparent' }}
+              >
+                <AccordionSummary expandIcon={<ExpandMoreIcon />} sx={{ px: 0 }}>
+                  <Typography variant="body2">手动粘贴 fetch 命令（备用）</Typography>
+                </AccordionSummary>
+                <AccordionDetails sx={{ px: 0 }}>
+                  <Stack spacing={2}>
+                    <FetchCommandGuide platform={platform} />
 
-              <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-                <Button
-                  variant="contained"
-                  onClick={handleParseFetch}
-                  disabled={loading || supplierLoading || inputError}
-                >
-                  {'解析并预览'}
-                </Button>
-                {loading && <CircularProgress size={22} />}
-              </Box>
+                    <TextField
+                      label={`fetch 命令（${platformLabel}）`}
+                      multiline
+                      minRows={1}
+                      maxRows={5}
+                      value={fetchCommand}
+                      onChange={(e) => {
+                        setFetchCommand(e.target.value);
+                        localStorage.setItem(storageKey(platform), e.target.value);
+                      }}
+                      placeholder={getPlaceholderForPlatform(platform)}
+                      disabled={loading}
+                      fullWidth
+                      error={inputError}
+                      helperText={
+                        inputError && validation && !validation.ok ? validation.message : ' '
+                      }
+                    />
+
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                      <Button
+                        variant={extAvailable ? 'outlined' : 'contained'}
+                        onClick={handleParseFetch}
+                        disabled={loading || supplierLoading || inputError}
+                      >
+                        {'解析并预览'}
+                      </Button>
+                      {loading && <CircularProgress size={22} />}
+                    </Box>
+                  </Stack>
+                </AccordionDetails>
+              </Accordion>
             </>
           ) : (
             <Typography variant="body2" color="text.secondary">

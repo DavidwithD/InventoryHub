@@ -46,7 +46,7 @@ export default function ExtractedResultTable({
   if (rows.length === 0) {
     return (
       <Typography variant="body2" color="text.secondary">
-        {'暂无数据。请选择供应商后点击"解析并预览"。'}
+        {'暂无数据。请选择供应商后获取订单。'}
       </Typography>
     );
   }

@@ -80,6 +80,10 @@ export function getPlaceholderForPlatform(platform: Platform): string {
   return `fetch("${config.placeholderUrl}", { method: "POST", headers: {...}, body: "..." })`;
 }
 
+export function getListingsUrl(platform: Platform): string {
+  return PLATFORM_CONFIG[platform].listingsUrl;
+}
+
 interface Props {
   platform: Platform;
 }
