@@ -1,0 +1,25 @@
+{
+  "manifest_version": 3,
+  "name": "InventoryHub Order Capture",
+  "version": "1.0.0",
+  "description": "Captures the Taobao / Pinduoduo order-list API request and hands it to InventoryHub, so you don't copy-paste cURL from DevTools.",
+  "permissions": ["webRequest", "storage"],
+  "host_permissions": [
+    "https://h5api.m.taobao.com/*",
+    "https://buyertrade.taobao.com/*",
+    "https://mobile.pinduoduo.com/*"
+  ],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "action": {
+    "default_popup": "popup.html",
+    "default_title": "InventoryHub Order Capture"
+  },
+  "externally_connectable": {
+    "matches": [
+      "http://localhost/*",
+      "http://127.0.0.1/*"
+    ]
+  }
+}
