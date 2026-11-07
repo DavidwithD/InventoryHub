@@ -26,7 +26,7 @@ The dashboard provides an at-a-glance view of your business metrics.
 | Metric                | Description                      | Calculation                                  |
 | --------------------- | -------------------------------- | -------------------------------------------- |
 | Total Inventory Value | Total value of current inventory | Sum of (stock × JPY unit price)              |
-| Monthly Profit        | Profit for current month         | Sum of (revenue - total_cost - shipping_fee) |
+| Monthly Profit        | Profit for current month         | Sum of (revenue - cost) for orders with a known cost |
 | Total Orders          | Total number of orders           | Count of all orders                          |
 | Orders Without Cost   | Orders missing cost data         | Orders with no lines or unknown cost         |
 | Low Stock Products    | Products with low inventory      | Batches with 1 to 4 units in stock           |
@@ -107,8 +107,8 @@ The orders page displays:
 - Order number
 - Item name and image
 - Revenue
-- Total cost
-- Profit (revenue - cost - shipping)
+- Total cost: FIFO batch cost plus packaging and other costs
+- Profit (revenue - cost)
 - Transaction date
 
 ### Filtering and Search

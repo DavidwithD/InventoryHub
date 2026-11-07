@@ -791,7 +791,7 @@ GET /api/dashboard/stats
 **Calculations:**
 
 - `totalInventoryValue`: Sum of (calculated stock × `priceJpy`) for all batches
-- `monthlyProfit`: Sum of (revenue - total_cost - shipping_fee) for current month orders
+- `monthlyProfit`: Sum of (revenue - calculated cost) for current month orders. Orders with no lines or an unknown cost are skipped.
 - `lowStockProductsCount`: Batches with calculated stock from 1 to 4
 
 ---
