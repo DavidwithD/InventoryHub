@@ -262,7 +262,7 @@ DELETE /api/orders/details/{id}
 
 **Response:** `204 No Content`
 
-**Note:** Stock will be returned to inventory
+**Note:** Stock and the costs of later sales of the same product change on the next read.
 
 ---
 

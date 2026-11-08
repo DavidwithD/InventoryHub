@@ -73,7 +73,7 @@ When creating inventory, you specify:
 | Price (JPY)    | Unit price in Japanese Yen        | Yes      |
 | Price (CNY)    | Unit price in Chinese Yuan        | No       |
 | Quantity       | Number of units purchased         | Yes      |
-| Stock Quantity | Initial available stock           | Yes      |
+| Initial Stock  | Units available for sale          | Yes      |
 | Purchase No    | Reference purchase order number   | No       |
 | Supplier       | Supplier reference                | No       |
 | Purchase Date  | Date of purchase                  | No       |
@@ -358,6 +358,6 @@ InventoryHub is responsive and works on mobile devices:
 
 ### Data Integrity
 
-1. **Don't delete referenced items** - System prevents orphaned records
+1. **Don't delete referenced items** - Deleting a batch with sales changes past costs. See [Changing a Batch With Sales](#changing-a-batch-with-sales).
 2. **Use soft delete** - Data can be recovered if needed
 3. **Regular backups** - Back up your database regularly

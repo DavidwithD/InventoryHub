@@ -366,14 +366,14 @@ const handleDelete = useCallback((id: number) => {
 
 ```csharp
 /// <summary>
-/// Creates an order with details and updates inventory stock.
+/// Creates an order with its details. FIFO calculates the cost on read.
 /// </summary>
 /// <param name="dto">The order creation data transfer object.</param>
 /// <returns>The created order.</returns>
 /// <exception cref="InvalidOperationException">
-/// Thrown when stock is insufficient or inventory not found.
+/// Thrown when a product does not exist or a quantity is not positive.
 /// </exception>
-public async Task<OrderDto> CreateOrderWithDetailsAsync(CreateOrderDto dto)
+public async Task<OrderDto> CreateOrderWithDetailsAsync(CreateOrderWithDetailsDto dto)
 ```
 
 ### API Documentation

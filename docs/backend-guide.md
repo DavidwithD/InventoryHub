@@ -161,15 +161,14 @@ public class Inventory : BaseEntity
 public class Order : BaseEntity
 {
     public string OrderNo { get; set; } = string.Empty;
-    public string? Name { get; set; }
+    public string Name { get; set; } = string.Empty;
     public string? ImageUrl { get; set; }
     public decimal Revenue { get; set; }
-    public decimal? TotalCost { get; set; }
-    public decimal? ShippingFee { get; set; }
+    public decimal ShippingFee { get; set; } = 0;
     public DateTime TransactionTime { get; set; }
 
     // Navigation property
-    public virtual ICollection<OrderDetail> OrderDetails { get; set; } = new List<OrderDetail>();
+    public ICollection<OrderDetail> OrderDetails { get; set; } = new List<OrderDetail>();
 }
 ```
 
@@ -267,7 +266,6 @@ public class AppDbContext : DbContext
             entity.HasIndex(e => e.OrderNo).IsUnique();
             entity.HasIndex(e => e.TransactionTime);
             entity.Property(e => e.Revenue).HasPrecision(15, 2);
-            entity.Property(e => e.TotalCost).HasPrecision(15, 2);
         });
 
         // OrderDetail configuration
@@ -575,12 +573,16 @@ public class OrderDto
 {
     public int Id { get; set; }
     public string OrderNo { get; set; } = string.Empty;
-    public string? Name { get; set; }
+    public string Name { get; set; } = string.Empty;
     public string? ImageUrl { get; set; }
     public decimal Revenue { get; set; }
-    public decimal? TotalCost { get; set; }
-    public decimal? ShippingFee { get; set; }
+    public decimal TotalCost { get; set; } // 由 FIFO 计算
+    public decimal ShippingFee { get; set; }
     public DateTime TransactionTime { get; set; }
+    public bool HasDetails { get; set; }
+    public bool HasUnknownCost { get; set; }
+    public DateTime CreatedAt { get; set; }
+    public DateTime UpdatedAt { get; set; }
 }
 
 public class CreateOrderDto
