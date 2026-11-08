@@ -19,7 +19,8 @@ export default defineConfig({
   projects: [{ name: 'chromium', use: { ...devices['Desktop Chrome'] } }],
   webServer: [
     {
-      command: `mkdir -p "${path.dirname(dbFile)}" && rm -f "${dbFile}" && dotnet run --project ../InventoryHub.API --no-launch-profile --urls http://localhost:${API_PORT}`,
+      // The reset runs before dotnet run. Playwright starts web servers before globalSetup.
+      command: `node e2e/reset-db.mjs "${dbFile}" && dotnet run --project ../InventoryHub.API --no-launch-profile --urls http://localhost:${API_PORT}`,
       url: `${API_URL}/health`,
       reuseExistingServer: false,
       timeout: 180_000,

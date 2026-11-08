@@ -6,18 +6,16 @@ using Xunit;
 
 namespace InventoryHub.Tests.Integration;
 
-// Each test gets its own database, because the dashboard and stats sum over all rows.
-public class FifoApiTests : IDisposable
+// Each test starts from an empty database, because the dashboard and stats sum over all rows.
+public class FifoApiTests : IClassFixture<ApiFactory>
 {
-    private readonly ApiFactory _factory = new();
     private readonly ApiClient _api;
 
-    public FifoApiTests()
+    public FifoApiTests(ApiFactory factory)
     {
-        _api = new ApiClient(_factory.CreateClient());
+        factory.ResetDatabase();
+        _api = new ApiClient(factory.CreateClient());
     }
-
-    public void Dispose() => _factory.Dispose();
 
     private static readonly DateTime Jan1 = new(2026, 1, 1);
     private static readonly DateTime Jan2 = new(2026, 1, 2);

@@ -16,14 +16,14 @@ builder.Host.UseSerilog();
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 
-// Configure the database. The E2E tests set ConnectionStrings:Sqlite. Everything else uses MySQL.
-var sqliteConnectionString = builder.Configuration.GetConnectionString("Sqlite");
+// Configure the database. The E2E environment uses SQLite from ConnectionStrings:Sqlite. Every other environment uses MySQL.
+var isE2E = builder.Environment.IsEnvironment("E2E");
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
 builder.Services.AddDbContext<AppDbContext>(options =>
 {
-    if (!string.IsNullOrEmpty(sqliteConnectionString))
+    if (isE2E)
     {
-        options.UseSqlite(sqliteConnectionString);
+        options.UseSqlite(builder.Configuration.GetConnectionString("Sqlite"));
     }
     else
     {
@@ -64,7 +64,7 @@ builder.Services.AddScoped<IStatsService, StatsService>();
 var app = builder.Build();
 
 // A SQLite database has no migrations. Create its tables at startup.
-if (!string.IsNullOrEmpty(sqliteConnectionString))
+if (isE2E)
 {
     using var scope = app.Services.CreateScope();
     scope.ServiceProvider.GetRequiredService<AppDbContext>().Database.EnsureCreated();

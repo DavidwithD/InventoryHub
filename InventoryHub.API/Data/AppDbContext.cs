@@ -22,7 +22,7 @@ public class AppDbContext : DbContext
         base.OnModelCreating(modelBuilder);
 
         // The tests use SQLite. ON UPDATE is MySQL syntax, so SQLite gets a plain default.
-        var isSqlite = Database.ProviderName == "Microsoft.EntityFrameworkCore.Sqlite";
+        var isSqlite = Database.IsSqlite();
         var updatedAtDefault = isSqlite ? "CURRENT_TIMESTAMP" : "CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP";
 
         // Category configuration

@@ -1,5 +1,12 @@
-import { expect, test } from '@playwright/test';
+import { expect, test, type Locator, type Page } from '@playwright/test';
 import { Seed, unique } from './seed';
+
+// The ID is in the first cell. Other cells also hold bare numbers, so match only the first cell.
+const batchRow = (page: Page, id: number) =>
+  page.getByRole('row').filter({ has: page.locator('td:first-child', { hasText: new RegExp(`^${id}$`) }) });
+
+// The stock column shows a chip with the remaining quantity, or 缺货 at zero.
+const stockChip = (row: Locator) => row.locator('.MuiChip-label');
 
 // Two batches: 2 units at ¥100, then 5 units at ¥150. One order sells 3 units.
 // FIFO takes both units of the first batch and 1 unit of the second: cost 350, 4 units left.
@@ -12,10 +19,8 @@ test('inventory and orders pages show FIFO stock and cost', async ({ page, reque
   await seed.order(`E2E-${id}`, '2026-02-01T00:00:00', 1000, product.id, 3);
 
   await page.goto('/inventory');
-  const firstRow = page.getByRole('row').filter({ has: page.getByRole('cell', { name: String(first.id), exact: true }) });
-  const secondRow = page.getByRole('row').filter({ has: page.getByRole('cell', { name: String(second.id), exact: true }) });
-  await expect(firstRow.getByText('缺货')).toBeVisible();
-  await expect(secondRow.getByText('4', { exact: true })).toBeVisible();
+  await expect(stockChip(batchRow(page, first.id))).toHaveText('缺货');
+  await expect(stockChip(batchRow(page, second.id))).toHaveText('4');
 
   await page.goto('/orders');
   const orderRow = page.getByRole('row').filter({ hasText: `E2E-${id}` });
@@ -37,7 +42,7 @@ test('an order sold before any purchase shows unknown cost', async ({ page, requ
 });
 
 test('home page loads dashboard stats from the API', async ({ page }) => {
-  const stats = page.waitForResponse((r) => r.url().endsWith('/api/dashboard/stats'));
+  const stats = page.waitForResponse((r) => new URL(r.url()).pathname === '/api/dashboard/stats');
 
   await page.goto('/');
 

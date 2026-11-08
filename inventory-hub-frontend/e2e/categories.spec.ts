@@ -12,14 +12,14 @@ test('create, rename and delete a category', async ({ page }) => {
   const row = page.getByRole('row').filter({ hasText: name });
   await expect(row).toBeVisible();
 
-  await row.getByRole('button').first().click();
+  await row.getByRole('button', { name: '编辑' }).click();
   await expect(page.getByText('编辑分类')).toBeVisible();
   await page.getByLabel('分类名称').fill(`${name} v2`);
   await page.getByRole('button', { name: '保存' }).click();
   const renamed = page.getByRole('row').filter({ hasText: `${name} v2` });
   await expect(renamed).toBeVisible();
 
-  await renamed.getByRole('button').last().click();
+  await renamed.getByRole('button', { name: '删除' }).click();
   await page.getByRole('dialog').getByRole('button', { name: '删除' }).click();
   await expect(page.getByText('分类删除成功')).toBeVisible();
   await expect(renamed).toHaveCount(0);
