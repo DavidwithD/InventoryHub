@@ -39,6 +39,33 @@ public class StatsService : IStatsService
     private static bool HasKnownCost(Order order, FifoResult fifo) =>
         !order.OrderDetails.Any(d => fifo.Unmatched(d.Id) > 0);
 
+    // Revenue is stored per order. Each line gets a share in proportion to its quantity.
+    // The details must hold every live line of each order, with Order loaded.
+    private static Dictionary<int, decimal> LineRevenue(IEnumerable<OrderDetail> details) =>
+        details
+            .GroupBy(d => d.OrderId)
+            .SelectMany(g =>
+            {
+                int totalQuantity = g.Sum(d => d.Quantity);
+                return g.Select(d => new
+                {
+                    d.Id,
+                    Revenue = totalQuantity > 0 ? d.Order.Revenue * d.Quantity / totalQuantity : 0,
+                });
+            })
+            .ToDictionary(x => x.Id, x => x.Revenue);
+
+    // Profit counts only lines with a known cost. Margin uses the revenue of those lines.
+    private static (decimal Profit, decimal MarginPct) LineProfit(
+        IEnumerable<OrderDetail> lines, Dictionary<int, decimal> lineRevenue, FifoResult fifo)
+    {
+        var costed = lines.Where(d => fifo.Unmatched(d.Id) == 0).ToList();
+        decimal costedRevenue = costed.Sum(d => lineRevenue[d.Id]);
+        decimal profit = costed.Sum(d => lineRevenue[d.Id] - fifo.LineCost(d));
+        decimal margin = costedRevenue > 0 ? Math.Round(profit / costedRevenue * 100, 1) : 0;
+        return (profit, margin);
+    }
+
     private string PeriodLabel(DateTime date, string granularity) => granularity switch
     {
         "day" => date.ToString("MM/dd"),
@@ -93,13 +120,8 @@ public class StatsService : IStatsService
         int prevCount = prevOrders.Count;
         decimal prevAov = prevCount > 0 ? Math.Round(prevRevenue / prevCount, 0) : 0;
 
-        var batches = await _db.Inventory
-            .Where(i => !i.IsDeleted)
-            .Select(i => new { i.Id, i.PriceJpy })
-            .ToListAsync();
-
-        var stockValue = batches.Sum(i => fifo.Remaining(i.Id) * i.PriceJpy);
-        var lowStockItems = batches.Count(i => fifo.Remaining(i.Id) > 0 && fifo.Remaining(i.Id) < 5);
+        var stockValue = fifo.StockValue();
+        var lowStockItems = fifo.LowStockBatchCount();
 
         return new StatsDashboardKpiDto
         {
@@ -156,10 +178,10 @@ public class StatsService : IStatsService
                      && d.Order.TransactionTime >= start && d.Order.TransactionTime < end)
             .ToListAsync();
 
-        // Revenue here equals batch cost. This keeps the old values until the stats revenue fix lands.
+        var lineRevenue = LineRevenue(details);
         var data = details
             .GroupBy(d => d.Product.Category.Name)
-            .Select(g => new { Category = g.Key, Revenue = g.Sum(d => fifo.BatchCost(d.Id)) })
+            .Select(g => new { Category = g.Key, Revenue = g.Sum(d => lineRevenue[d.Id]) })
             .ToList();
 
         var total = data.Sum(x => x.Revenue);
@@ -187,26 +209,26 @@ public class StatsService : IStatsService
                      && d.Order.TransactionTime >= start && d.Order.TransactionTime < end)
             .ToListAsync();
 
-        // Revenue here equals batch cost. This keeps the old values until the stats revenue fix lands.
-        var data = details
+        var lineRevenue = LineRevenue(details);
+        return details
             .GroupBy(d => new { d.ProductId, d.Product.Name, Category = d.Product.Category.Name })
-            .Select(g => new StatsTopProductDto
+            .Select(g =>
             {
-                ProductId = g.Key.ProductId,
-                Name = g.Key.Name,
-                Category = g.Key.Category,
-                Revenue = g.Sum(d => fifo.BatchCost(d.Id)),
-                Profit = g.Sum(d => fifo.BatchCost(d.Id) - fifo.LineCost(d)),
-                UnitsSold = g.Sum(d => d.Quantity),
+                var (profit, margin) = LineProfit(g, lineRevenue, fifo);
+                return new StatsTopProductDto
+                {
+                    ProductId = g.Key.ProductId,
+                    Name = g.Key.Name,
+                    Category = g.Key.Category,
+                    Revenue = g.Sum(d => lineRevenue[d.Id]),
+                    Profit = profit,
+                    MarginPct = margin,
+                    UnitsSold = g.Sum(d => d.Quantity),
+                };
             })
             .OrderByDescending(x => x.Revenue)
             .Take(count)
             .ToList();
-
-        foreach (var item in data)
-            item.MarginPct = item.Revenue > 0 ? Math.Round(item.Profit / item.Revenue * 100, 1) : 0;
-
-        return data;
     }
 
     // ── Inventory Health ──────────────────────────────────────────────────────
@@ -222,10 +244,7 @@ public class StatsService : IStatsService
             .Where(i => !i.IsDeleted)
             .ToListAsync();
 
-        var sales = await _db.OrderDetails
-            .Where(d => !d.IsDeleted && !d.Order.IsDeleted)
-            .Select(d => new { d.Id, d.ProductId, d.Quantity, d.Order.TransactionTime })
-            .ToListAsync();
+        var sales = fifo.Sales;
 
         // Stock levels (aggregated per product across all inventory lots)
         var stockLevels = inventories
@@ -254,13 +273,13 @@ public class StatsService : IStatsService
 
         // Dead stock per product (no sales in window, but has stock)
         var salesInWindow = sales
-            .Where(d => d.TransactionTime >= cutoff)
+            .Where(d => d.SaleTime >= cutoff)
             .GroupBy(d => d.ProductId)
             .ToDictionary(g => g.Key, g => g.Sum(d => d.Quantity));
 
         var lastSaleDateByProduct = sales
             .GroupBy(d => d.ProductId)
-            .ToDictionary(g => g.Key, g => g.Max(d => d.TransactionTime));
+            .ToDictionary(g => g.Key, g => g.Max(d => d.SaleTime));
 
         var salesByProduct = sales.ToLookup(d => d.ProductId);
 
@@ -310,9 +329,9 @@ public class StatsService : IStatsService
 
                 // Avg days to sell: avg days from purchase_date to sale date
                 var avgDays = salesByProduct[g.Key.ProductId]
-                    .SelectMany(d => fifo.Allocations(d.Id)
+                    .SelectMany(d => fifo.Allocations(d.DetailId)
                         .Where(a => a.PurchaseDate.HasValue)
-                        .Select(a => (d.TransactionTime - a.PurchaseDate!.Value).TotalDays))
+                        .Select(a => (d.SaleTime - a.PurchaseDate!.Value).TotalDays))
                     .DefaultIfEmpty(0)
                     .Average();
 
@@ -381,22 +400,20 @@ public class StatsService : IStatsService
                      && d.Order.TransactionTime >= start && d.Order.TransactionTime < end)
             .ToListAsync();
 
+        var lineRevenue = LineRevenue(details);
         var products = details
             .GroupBy(d => new { d.ProductId, d.Product.Name, Category = d.Product.Category.Name })
             .Select(g =>
             {
-                // Revenue here equals batch cost. This keeps the old values until the stats revenue fix lands.
-                decimal rev = g.Sum(d => fifo.BatchCost(d.Id));
-                decimal cost = g.Sum(fifo.LineCost);
-                decimal profit = rev - cost;
+                var (profit, margin) = LineProfit(g, lineRevenue, fifo);
                 return new StatsProductPerformanceDto
                 {
                     ProductId = g.Key.ProductId,
                     Name = g.Key.Name,
                     Category = g.Key.Category,
-                    Revenue = rev,
+                    Revenue = g.Sum(d => lineRevenue[d.Id]),
                     Profit = profit,
-                    MarginPct = rev > 0 ? Math.Round(profit / rev * 100, 1) : 0,
+                    MarginPct = margin,
                     UnitsSold = g.Sum(d => d.Quantity),
                 };
             })

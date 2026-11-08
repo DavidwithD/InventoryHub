@@ -109,6 +109,19 @@ public class FifoCalculatorTests
     }
 
     [Fact]
+    public void Stock_value_and_low_stock_use_remaining_units()
+    {
+        var result = FifoCalculator.Calculate(
+            new[] { Batch(1, Day(1, 1), 6, 100m), Batch(2, Day(1, 2), 10, 200m), Batch(3, Day(1, 3), 2, 50m) },
+            new[] { Sale(10, Day(2, 1), 9), Sale(11, Day(2, 2), 2, product: 2) });
+
+        // Batch 1 is empty, batch 2 has 7 left and batch 3 has 2 left.
+        Assert.Equal(7 * 200m + 2 * 50m, result.StockValue());
+        Assert.Equal(1, result.LowStockBatchCount());
+        Assert.Equal(2, result.Sales.Count);
+    }
+
+    [Fact]
     public void Undated_batch_is_used_only_after_dated_batches()
     {
         var result = FifoCalculator.Calculate(

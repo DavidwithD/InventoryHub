@@ -50,23 +50,8 @@ export function useInventory() {
     }
   }, [loadAllInventories]);
 
-  const deleteInventory = useCallback(async (id: number) => {
-    try {
-      await api.delete(`/inventory/${id}`);
-      await loadAllInventories();
-    } catch (err) {
-      console.error('deleteInventory error', err);
-      throw err;
-    }
-  }, [loadAllInventories]);
-
   const previewUpdate = useCallback(async (id: number, data: CreateInventory) => {
     const res = await api.post<InventoryImpact>(`/inventory/${id}/update-impact`, data);
-    return res.data;
-  }, []);
-
-  const previewDelete = useCallback(async (id: number) => {
-    const res = await api.get<InventoryImpact>(`/inventory/${id}/delete-impact`);
     return res.data;
   }, []);
 
@@ -76,9 +61,7 @@ export function useInventory() {
     create,
     createBatch,
     updateInventory,
-    deleteInventory,
     previewUpdate,
-    previewDelete,
     setInventories,
   };
 }

@@ -330,7 +330,6 @@ GET /api/inventory
     "purchaseDate": "2024-01-15T00:00:00",
     "currencyType": "JPY",
     "exchangeRate": 1.0,
-    "isReferenced": true,
     "createdAt": "2024-01-15T10:00:00",
     "updatedAt": "2024-01-16T09:00:00"
   }
@@ -430,7 +429,7 @@ PUT /api/inventory/{id}
 
 **Note:** A change can also change the calculated cost of sales of the same product.
 
-`stockQuantity` and `isReferenced` are read-only values. `isReferenced` is true when FIFO assigned sales to the batch.
+`stockQuantity` is a read-only value.
 
 ---
 

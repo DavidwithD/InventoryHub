@@ -54,7 +54,6 @@ export interface Inventory extends BaseEntity {
   priceCny?: number; // 人民币单价
   initialStock: number;
   stockQuantity: number; // 由 FIFO 计算
-  isReferenced: boolean;
   productName: string;
   categoryId?: number;
   categoryName?: string;
@@ -86,7 +85,6 @@ export interface CreateInventory {
 export interface InventoryRow extends CreateInventory {
   tempId: string;
   id?: number; // 已存在的库存记录有id
-  isReferenced?: boolean; // 是否被订单引用
   productName?: string;
 }
 

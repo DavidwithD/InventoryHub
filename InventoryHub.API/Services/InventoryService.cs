@@ -45,7 +45,6 @@ public class InventoryService : IInventoryService
             PriceCny = i.PriceCny,
             InitialStock = i.InitialStock,
             StockQuantity = fifo.Remaining(i.Id),
-            IsReferenced = fifo.Remaining(i.Id) < i.InitialStock,
             CreatedAt = i.CreatedAt,
             UpdatedAt = i.UpdatedAt
         });
@@ -77,7 +76,6 @@ public class InventoryService : IInventoryService
             PriceCny = inventory.PriceCny,
             InitialStock = inventory.InitialStock,
             StockQuantity = fifo.Remaining(inventory.Id),
-            IsReferenced = fifo.Remaining(inventory.Id) < inventory.InitialStock,
             CreatedAt = inventory.CreatedAt,
             UpdatedAt = inventory.UpdatedAt
         };

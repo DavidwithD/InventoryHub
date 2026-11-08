@@ -28,11 +28,7 @@ public class DashboardService : IDashboardService
 
         // 总库存价値 = SUM(库存数量 × 单件日元价)
         var fifo = await _fifoService.CalculateAsync();
-        var batches = await _context.Inventory
-            .Where(i => !i.IsDeleted)
-            .Select(i => new { i.Id, i.PriceJpy })
-            .ToListAsync();
-        var totalInventoryValue = batches.Sum(i => fifo.Remaining(i.Id) * i.PriceJpy);
+        var totalInventoryValue = fifo.StockValue();
 
         // 本月订单（包含订单详细以计算成本）
         var monthlyOrders = await _context.Orders
@@ -59,8 +55,7 @@ public class DashboardService : IDashboardService
             .Count(ids => ids.Count == 0 || ids.Any(id => fifo.Unmatched(id) > 0));
 
         // 低库存商品数量（库存 < 5）
-        var lowStockProductsCount = batches
-            .Count(i => fifo.Remaining(i.Id) > 0 && fifo.Remaining(i.Id) < 5);
+        var lowStockProductsCount = fifo.LowStockBatchCount();
 
         return new DashboardStatsDto
         {

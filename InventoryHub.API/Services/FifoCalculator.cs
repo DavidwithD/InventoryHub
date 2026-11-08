@@ -15,6 +15,19 @@ public class FifoResult
 {
     private static readonly IReadOnlyList<FifoAllocation> NoAllocations = Array.Empty<FifoAllocation>();
 
+    // A batch with fewer units than this counts as low stock.
+    public const int LowStockThreshold = 5;
+
+    public FifoResult(IReadOnlyList<FifoBatch> batches, IReadOnlyList<FifoSale> sales)
+    {
+        Batches = batches;
+        Sales = sales;
+    }
+
+    // The batches and sales this result was calculated from.
+    public IReadOnlyList<FifoBatch> Batches { get; }
+    public IReadOnlyList<FifoSale> Sales { get; }
+
     public Dictionary<int, List<FifoAllocation>> AllocationsByDetail { get; } = new();
     public Dictionary<int, int> UnmatchedByDetail { get; } = new();
     public Dictionary<int, int> RemainingByBatch { get; } = new();
@@ -30,6 +43,12 @@ public class FifoResult
     public decimal BatchCost(int detailId) => Allocations(detailId).Sum(a => a.Quantity * a.UnitCost);
 
     public decimal LineCost(OrderDetail detail) => BatchCost(detail.Id) + detail.PackagingCost + detail.OtherCost;
+
+    // Value of the remaining units at each batch's JPY price.
+    public decimal StockValue() => Batches.Sum(b => Remaining(b.Id) * b.PriceJpy);
+
+    public int LowStockBatchCount() =>
+        Batches.Count(b => Remaining(b.Id) > 0 && Remaining(b.Id) < LowStockThreshold);
 }
 
 public static class FifoCalculator
@@ -38,8 +57,10 @@ public static class FifoCalculator
     // and was purchased on or before the sale. Batches with no purchase date are used last.
     public static FifoResult Calculate(IEnumerable<FifoBatch> batches, IEnumerable<FifoSale> sales)
     {
-        var result = new FifoResult();
-        var batchesByProduct = batches
+        var batchList = batches.ToList();
+        var saleList = sales.ToList();
+        var result = new FifoResult(batchList, saleList);
+        var batchesByProduct = batchList
             .GroupBy(b => b.ProductId)
             .ToDictionary(
                 g => g.Key,
@@ -53,7 +74,7 @@ public static class FifoCalculator
             result.RemainingByBatch[batch.Id] = batch.InitialStock;
         }
 
-        foreach (var sale in sales.OrderBy(s => s.SaleTime).ThenBy(s => s.DetailId))
+        foreach (var sale in saleList.OrderBy(s => s.SaleTime).ThenBy(s => s.DetailId))
         {
             var allocations = new List<FifoAllocation>();
             var needed = sale.Quantity;

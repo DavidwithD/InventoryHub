@@ -16,7 +16,6 @@ public class InventoryDto
     // Denormalized purchase-level fields
     public int? SupplierId { get; set; }
     public DateTime? PurchaseDate { get; set; }
-    public bool IsReferenced { get; set; }
     public DateTime CreatedAt { get; set; }
     public DateTime UpdatedAt { get; set; }
 }
