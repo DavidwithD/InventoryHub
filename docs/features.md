@@ -167,6 +167,7 @@ The order detail editor provides:
 - At least one detail required
 - A product must be selected
 - Quantity must be at least 1
+- Each product can appear in only one line of an order. To sell more units, raise the quantity of the existing line.
 
 ### Unknown Cost
 

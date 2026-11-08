@@ -13,9 +13,9 @@ Stock and line costs are not stored. See [FIFO Calculation](architecture.md#6-fi
 **Key derived metrics:**
 - **Unit cost** = `price_jpy`
 - **Line cost** = FIFO batch cost + `packaging_cost` + `other_cost`
-- **Order profit** = `revenue − sum(line costs)`
+- **Order profit** = `revenue − sum(line costs)`. Profit totals skip orders with unmatched units.
 - **Stock value** = `sum(calculated stock × price_jpy)` across all inventory lots
-- **Margin %** = profit / revenue
+- **Margin %** = profit / revenue of the orders that profit counts
 
 ---
 

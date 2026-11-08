@@ -83,25 +83,29 @@ public class InventoryService : IInventoryService
         };
     }
 
-    public async Task<InventoryDto> CreateAsync(CreateInventoryDto dto)
+    // 验证商品和数量
+    private async Task ValidateAsync(int productId, int purchaseQuantity, int initialStock)
     {
-        // 验证商品是否存在
         var productExists = await _context.Products
-            .AnyAsync(p => p.Id == dto.ProductId && !p.IsDeleted);
+            .AnyAsync(p => p.Id == productId && !p.IsDeleted);
         if (!productExists)
         {
-            throw new InvalidOperationException($"商品 ID {dto.ProductId} 不存在");
+            throw new InvalidOperationException($"商品 ID {productId} 不存在");
         }
 
-        // 验证数量
-        if (dto.PurchaseQuantity <= 0)
+        if (purchaseQuantity <= 0)
         {
             throw new InvalidOperationException("进货数量必须大于 0");
         }
-        if (dto.InitialStock < 0)
+        if (initialStock < 0)
         {
             throw new InvalidOperationException("库存数量不能为负数");
         }
+    }
+
+    public async Task<InventoryDto> CreateAsync(CreateInventoryDto dto)
+    {
+        await ValidateAsync(dto.ProductId, dto.PurchaseQuantity, dto.InitialStock);
 
         // 创建库存记录
         var inventory = new Inventory
@@ -144,23 +148,7 @@ public class InventoryService : IInventoryService
             return null;
         }
 
-        // 验证商品是否存在
-        var productExists = await _context.Products
-            .AnyAsync(p => p.Id == dto.ProductId && !p.IsDeleted);
-        if (!productExists)
-        {
-            throw new InvalidOperationException($"商品 ID {dto.ProductId} 不存在");
-        }
-
-        // 验证数量
-        if (dto.PurchaseQuantity <= 0)
-        {
-            throw new InvalidOperationException("进货数量必须大于 0");
-        }
-        if (dto.InitialStock < 0)
-        {
-            throw new InvalidOperationException("库存数量不能为负数");
-        }
+        await ValidateAsync(dto.ProductId, dto.PurchaseQuantity, dto.InitialStock);
 
         // 更新库存记录
         inventory.ProductId = dto.ProductId;
@@ -199,6 +187,8 @@ public class InventoryService : IInventoryService
     {
         var exists = await _context.Inventory.AnyAsync(i => i.Id == id && !i.IsDeleted);
         if (!exists) return null;
+
+        await ValidateAsync(dto.ProductId, dto.PurchaseQuantity, dto.InitialStock);
 
         var replacement = new FifoBatch(id, dto.ProductId, dto.PurchaseDate, dto.InitialStock, dto.PriceJpy);
         return await ToImpactDtoAsync(await _fifoService.CalculateImpactAsync(id, replacement));

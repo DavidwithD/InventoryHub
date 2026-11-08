@@ -1,5 +1,6 @@
 using InventoryHub.API.Data;
 using InventoryHub.API.DTOs;
+using InventoryHub.API.Models;
 using Microsoft.EntityFrameworkCore;
 
 namespace InventoryHub.API.Services;
@@ -33,6 +34,10 @@ public class StatsService : IStatsService
 
     private static decimal OrderProfit(decimal revenue, IEnumerable<decimal> subtotalCosts) =>
         revenue - subtotalCosts.Sum();
+
+    // An order with unmatched units has an unknown cost. Profit and margin leave it out.
+    private static bool HasKnownCost(Order order, FifoResult fifo) =>
+        !order.OrderDetails.Any(d => fifo.Unmatched(d.Id) > 0);
 
     private string PeriodLabel(DateTime date, string granularity) => granularity switch
     {
@@ -71,15 +76,20 @@ public class StatsService : IStatsService
             .Where(o => !o.IsDeleted && o.TransactionTime >= prevStart && o.TransactionTime < prevEnd)
             .ToListAsync();
 
+        var costedOrders = orders.Where(o => HasKnownCost(o, fifo)).ToList();
+        var prevCostedOrders = prevOrders.Where(o => HasKnownCost(o, fifo)).ToList();
+
         decimal revenue = orders.Sum(o => o.Revenue);
-        decimal profit = orders.Sum(o => OrderProfit(o.Revenue, o.OrderDetails.Select(fifo.LineCost)));
-        decimal margin = revenue > 0 ? Math.Round(profit / revenue * 100, 1) : 0;
+        decimal costedRevenue = costedOrders.Sum(o => o.Revenue);
+        decimal profit = costedOrders.Sum(o => OrderProfit(o.Revenue, o.OrderDetails.Select(fifo.LineCost)));
+        decimal margin = costedRevenue > 0 ? Math.Round(profit / costedRevenue * 100, 1) : 0;
         int count = orders.Count;
         decimal aov = count > 0 ? Math.Round(revenue / count, 0) : 0;
 
         decimal prevRevenue = prevOrders.Sum(o => o.Revenue);
-        decimal prevProfit = prevOrders.Sum(o => OrderProfit(o.Revenue, o.OrderDetails.Select(fifo.LineCost)));
-        decimal prevMargin = prevRevenue > 0 ? Math.Round(prevProfit / prevRevenue * 100, 1) : 0;
+        decimal prevCostedRevenue = prevCostedOrders.Sum(o => o.Revenue);
+        decimal prevProfit = prevCostedOrders.Sum(o => OrderProfit(o.Revenue, o.OrderDetails.Select(fifo.LineCost)));
+        decimal prevMargin = prevCostedRevenue > 0 ? Math.Round(prevProfit / prevCostedRevenue * 100, 1) : 0;
         int prevCount = prevOrders.Count;
         decimal prevAov = prevCount > 0 ? Math.Round(prevRevenue / prevCount, 0) : 0;
 
@@ -125,7 +135,8 @@ public class StatsService : IStatsService
             {
                 Label = PeriodLabel(g.Key, granularity),
                 Revenue = g.Sum(o => o.Revenue),
-                Profit = g.Sum(o => OrderProfit(o.Revenue, o.OrderDetails.Select(fifo.LineCost))),
+                Profit = g.Where(o => HasKnownCost(o, fifo))
+                    .Sum(o => OrderProfit(o.Revenue, o.OrderDetails.Select(fifo.LineCost))),
             })
             .ToList();
 
@@ -251,6 +262,8 @@ public class StatsService : IStatsService
             .GroupBy(d => d.ProductId)
             .ToDictionary(g => g.Key, g => g.Max(d => d.TransactionTime));
 
+        var salesByProduct = sales.ToLookup(d => d.ProductId);
+
         // Aggregate by product for dead stock
         var byProduct = inventories.GroupBy(i => new { i.ProductId, i.Product.Name, Category = i.Product.Category.Name });
 
@@ -296,8 +309,7 @@ public class StatsService : IStatsService
                 double weeksToClear = velocity > 0 ? Math.Round(remaining / velocity, 0) : 9999;
 
                 // Avg days to sell: avg days from purchase_date to sale date
-                var avgDays = sales
-                    .Where(d => d.ProductId == g.Key.ProductId)
+                var avgDays = salesByProduct[g.Key.ProductId]
                     .SelectMany(d => fifo.Allocations(d.Id)
                         .Where(a => a.PurchaseDate.HasValue)
                         .Select(a => (d.TransactionTime - a.PurchaseDate!.Value).TotalDays))

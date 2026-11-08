@@ -64,7 +64,7 @@ public static class FifoCalculator
                 if (batch.PurchaseDate > sale.SaleTime) continue;
 
                 var taken = Math.Min(needed, result.RemainingByBatch[batch.Id]);
-                if (taken == 0) continue;
+                if (taken <= 0) continue;
 
                 result.RemainingByBatch[batch.Id] -= taken;
                 needed -= taken;

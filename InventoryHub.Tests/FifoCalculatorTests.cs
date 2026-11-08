@@ -95,6 +95,20 @@ public class FifoCalculatorTests
     }
 
     [Fact]
+    public void Batch_with_negative_stock_is_skipped()
+    {
+        var result = FifoCalculator.Calculate(
+            new[] { Batch(1, Day(1, 1), -3, 100m), Batch(2, Day(1, 2), 5, 200m) },
+            new[] { Sale(10, Day(2, 1), 2) });
+
+        var allocation = Assert.Single(result.Allocations(10));
+        Assert.Equal(2, allocation.InventoryId);
+        Assert.Equal(2, allocation.Quantity);
+        Assert.Equal(-3, result.Remaining(1));
+        Assert.Equal(3, result.Remaining(2));
+    }
+
+    [Fact]
     public void Undated_batch_is_used_only_after_dated_batches()
     {
         var result = FifoCalculator.Calculate(

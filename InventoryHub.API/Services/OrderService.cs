@@ -84,6 +84,19 @@ public class OrderService : IOrderService
         }
     }
 
+    // 每个订单中同一商品只能有一条明细
+    private async Task EnsureProductNotInOrderAsync(int orderId, int productId, int? exceptDetailId = null)
+    {
+        var duplicate = await _context.OrderDetails
+            .AnyAsync(d => d.OrderId == orderId && d.ProductId == productId && !d.IsDeleted
+                        && d.Id != exceptDetailId);
+
+        if (duplicate)
+        {
+            throw new InvalidOperationException($"订单中已有商品 ID {productId} 的明细");
+        }
+    }
+
     // 订单 CRUD
     public async Task<IEnumerable<OrderDto>> GetAllOrdersAsync(DateTime? startDate = null, DateTime? endDate = null)
     {
@@ -128,6 +141,14 @@ public class OrderService : IOrderService
         foreach (var detailDto in dto.Details)
         {
             await ValidateDetailAsync(detailDto.ProductId, detailDto.Quantity);
+        }
+
+        var duplicateProductId = dto.Details
+            .GroupBy(d => d.ProductId)
+            .FirstOrDefault(g => g.Count() > 1)?.Key;
+        if (duplicateProductId != null)
+        {
+            throw new InvalidOperationException($"订单中已有商品 ID {duplicateProductId} 的明细");
         }
 
         var order = new Order
@@ -239,6 +260,8 @@ public class OrderService : IOrderService
             throw new InvalidOperationException($"订单 ID {dto.OrderId} 不存在");
         }
 
+        await EnsureProductNotInOrderAsync(dto.OrderId, dto.ProductId);
+
         var orderDetail = new OrderDetail
         {
             OrderId = dto.OrderId,
@@ -266,6 +289,7 @@ public class OrderService : IOrderService
         }
 
         await ValidateDetailAsync(dto.ProductId, dto.Quantity);
+        await EnsureProductNotInOrderAsync(orderDetail.OrderId, dto.ProductId, orderDetail.Id);
 
         orderDetail.ProductId = dto.ProductId;
         orderDetail.Quantity = dto.Quantity;

@@ -36,6 +36,7 @@ interface Props {
   orderId: number;
   inventories: Inventory[];
   categories: Category[];
+  existingProductIds: number[]; // 订单中已有明细的商品
   onClose: () => void;
   onSaved: () => void;
 }
@@ -45,6 +46,7 @@ export default function OrderDetailBulkCreateDialog({
   orderId,
   inventories,
   categories,
+  existingProductIds,
   onClose,
   onSaved,
 }: Props) {
@@ -59,10 +61,13 @@ export default function OrderDetailBulkCreateDialog({
     }
   }, [open]);
 
-  const excludeProductIds = useMemo(() => rows.map((r) => r.productId), [rows]);
+  const excludeProductIds = useMemo(
+    () => [...existingProductIds, ...rows.map((r) => r.productId)],
+    [existingProductIds, rows]
+  );
 
   const handleProductPick = (productId: number) => {
-    if (rows.some((r) => r.productId === productId)) return;
+    if (excludeProductIds.includes(productId)) return;
     const batches = inventories.filter((inv) => inv.productId === productId);
     if (batches.length === 0) return;
     setRows((prev) => [

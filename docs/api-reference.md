@@ -138,6 +138,8 @@ POST /api/orders
 
 **Response:** `201 Created` with created order
 
+**Errors:** `400 Bad Request` if two lines in `details` have the same `productId`.
+
 ---
 
 ### Update Order
@@ -228,6 +230,8 @@ POST /api/orders/details
 
 **Note:** The API calculates `subtotalCost` and `allocations` with FIFO. It saves a sale even when stock is short. `unmatchedQuantity` then shows the units with no batch.
 
+**Errors:** `400 Bad Request` if the order already has a line for this product.
+
 ---
 
 ### Update Order Detail
@@ -251,6 +255,8 @@ PUT /api/orders/details/{id}
 **Response:** Updated detail object
 
 **Note:** A change can also change the calculated cost of later sales of the same product.
+
+**Errors:** `400 Bad Request` if another line of the order already has this product.
 
 ---
 
@@ -436,7 +442,7 @@ POST /api/inventory/{id}/update-impact
 
 **Request Body:** Same as [Update Inventory Item](#update-inventory-item)
 
-Calculates how the update would change FIFO allocation of existing sales. It saves nothing.
+Calculates how the update would change FIFO allocation of existing sales. It saves nothing. It returns `400 Bad Request` for the same validation errors as the update.
 
 **Response:**
 

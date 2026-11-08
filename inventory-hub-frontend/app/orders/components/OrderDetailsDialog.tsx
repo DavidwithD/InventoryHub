@@ -237,6 +237,7 @@ export default function OrderDetailsDialog({
           orderId={orderId}
           inventories={inventories}
           categories={categories}
+          existingProductIds={orderDetails.map((d) => d.productId)}
           onClose={() => setBulkCreateDialogOpen(false)}
           onSaved={handleBulkCreateDialogSaved}
         />

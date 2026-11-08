@@ -51,11 +51,12 @@ public class DashboardService : IDashboardService
             .CountAsync();
 
         // 待补充成本的订单数（没有订单详细，或有商品未匹配到批次）
-        var unmatchedDetailIds = fifo.UnmatchedByDetail.Keys.ToList();
-        var ordersWithoutCost = await _context.Orders
-            .Where(o => !o.IsDeleted
-                     && (!o.OrderDetails.Any() || o.OrderDetails.Any(d => unmatchedDetailIds.Contains(d.Id))))
-            .CountAsync();
+        var detailIdsByOrder = await _context.Orders
+            .Where(o => !o.IsDeleted)
+            .Select(o => o.OrderDetails.Where(d => !d.IsDeleted).Select(d => d.Id).ToList())
+            .ToListAsync();
+        var ordersWithoutCost = detailIdsByOrder
+            .Count(ids => ids.Count == 0 || ids.Any(id => fifo.Unmatched(id) > 0));
 
         // 低库存商品数量（库存 < 5）
         var lowStockProductsCount = batches
