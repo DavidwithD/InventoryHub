@@ -64,6 +64,14 @@ export interface Inventory extends BaseEntity {
   product?: Product;
 }
 
+// 修改或删除批次后 FIFO 结果的变化
+export interface InventoryImpact {
+  affectedOrders: number;
+  affectedLines: number;
+  newlyUnmatchedQuantity: number; // 变为成本未知的件数
+  costChange: number; // 仅已匹配部分
+}
+
 export interface CreateInventory {
   productId: number;
   purchaseQuantity: number;

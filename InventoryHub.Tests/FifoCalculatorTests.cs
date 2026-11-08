@@ -127,4 +127,61 @@ public class FifoCalculatorTests
         Assert.Equal(1, result.Unmatched(10));
         Assert.Equal(5, result.Remaining(1));
     }
+
+    [Fact]
+    public void Compare_finds_no_change_when_an_unused_batch_is_removed()
+    {
+        var sales = new[] { Sale(10, Day(3, 1), 2) };
+        var before = FifoCalculator.Calculate(
+            new[] { Batch(1, Day(1, 1), 5, 100m), Batch(2, Day(2, 1), 5, 200m) }, sales);
+        var after = FifoCalculator.Calculate(new[] { Batch(1, Day(1, 1), 5, 100m) }, sales);
+
+        var impact = FifoCalculator.Compare(before, after);
+
+        Assert.Empty(impact.ChangedDetailIds);
+        Assert.Equal(0, impact.NewlyUnmatched);
+        Assert.Equal(0m, impact.CostChange);
+    }
+
+    [Fact]
+    public void Compare_reports_a_sale_moved_to_another_batch()
+    {
+        var sales = new[] { Sale(10, Day(3, 1), 2) };
+        var before = FifoCalculator.Calculate(
+            new[] { Batch(1, Day(1, 1), 5, 100m), Batch(2, Day(2, 1), 5, 200m) }, sales);
+        var after = FifoCalculator.Calculate(new[] { Batch(2, Day(2, 1), 5, 200m) }, sales);
+
+        var impact = FifoCalculator.Compare(before, after);
+
+        Assert.Equal(new[] { 10 }, impact.ChangedDetailIds);
+        Assert.Equal(0, impact.NewlyUnmatched);
+        Assert.Equal(200m, impact.CostChange);
+    }
+
+    [Fact]
+    public void Compare_counts_units_that_lose_their_batch()
+    {
+        var sales = new[] { Sale(10, Day(3, 1), 3) };
+        var before = FifoCalculator.Calculate(new[] { Batch(1, Day(1, 1), 5, 100m) }, sales);
+        var after = FifoCalculator.Calculate(new[] { Batch(1, Day(1, 1), 1, 100m) }, sales);
+
+        var impact = FifoCalculator.Compare(before, after);
+
+        Assert.Equal(new[] { 10 }, impact.ChangedDetailIds);
+        Assert.Equal(2, impact.NewlyUnmatched);
+        Assert.Equal(-200m, impact.CostChange);
+    }
+
+    [Fact]
+    public void Compare_reports_a_price_change()
+    {
+        var sales = new[] { Sale(10, Day(3, 1), 2) };
+        var before = FifoCalculator.Calculate(new[] { Batch(1, Day(1, 1), 5, 100m) }, sales);
+        var after = FifoCalculator.Calculate(new[] { Batch(1, Day(1, 1), 5, 50m) }, sales);
+
+        var impact = FifoCalculator.Compare(before, after);
+
+        Assert.Equal(new[] { 10 }, impact.ChangedDetailIds);
+        Assert.Equal(-100m, impact.CostChange);
+    }
 }

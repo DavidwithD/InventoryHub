@@ -187,17 +187,48 @@ public class InventoryService : IInventoryService
             return false;
         }
 
-        // 检查是否已有销售分配到该批次
-        var fifo = await _fifoService.CalculateAsync();
-        if (fifo.Remaining(id) < inventory.InitialStock)
-        {
-            throw new InvalidOperationException("该库存已被订单引用，无法删除");
-        }
-
+        // 删除后相关销售按 FIFO 重新分配。调用方先用 PreviewDeleteAsync 查看影响。
         inventory.IsDeleted = true;
         inventory.UpdatedAt = DateTime.UtcNow;
         await _context.SaveChangesAsync();
 
         return true;
+    }
+
+    public async Task<InventoryImpactDto?> PreviewUpdateAsync(int id, UpdateInventoryDto dto)
+    {
+        var exists = await _context.Inventory.AnyAsync(i => i.Id == id && !i.IsDeleted);
+        if (!exists) return null;
+
+        var replacement = new FifoBatch(id, dto.ProductId, dto.PurchaseDate, dto.InitialStock, dto.PriceJpy);
+        return await ToImpactDtoAsync(await _fifoService.CalculateImpactAsync(id, replacement));
+    }
+
+    public async Task<InventoryImpactDto?> PreviewDeleteAsync(int id)
+    {
+        var exists = await _context.Inventory.AnyAsync(i => i.Id == id && !i.IsDeleted);
+        if (!exists) return null;
+
+        return await ToImpactDtoAsync(await _fifoService.CalculateImpactAsync(id, null));
+    }
+
+    private async Task<InventoryImpactDto> ToImpactDtoAsync(FifoImpact impact)
+    {
+        var detailIds = impact.ChangedDetailIds.ToList();
+        var affectedOrders = detailIds.Count == 0
+            ? 0
+            : await _context.OrderDetails
+                .Where(d => detailIds.Contains(d.Id))
+                .Select(d => d.OrderId)
+                .Distinct()
+                .CountAsync();
+
+        return new InventoryImpactDto
+        {
+            AffectedOrders = affectedOrders,
+            AffectedLines = detailIds.Count,
+            NewlyUnmatchedQuantity = impact.NewlyUnmatched,
+            CostChange = impact.CostChange
+        };
     }
 }

@@ -79,6 +79,28 @@ public class InventoryController : ControllerBase
         }
     }
 
+    [HttpPost("{id}/update-impact")]
+    public async Task<ActionResult<InventoryImpactDto>> UpdateImpact(int id, UpdateInventoryDto dto)
+    {
+        var impact = await _inventoryService.PreviewUpdateAsync(id, dto);
+        if (impact == null)
+        {
+            return NotFound($"库存记录 ID {id} 不存在");
+        }
+        return Ok(impact);
+    }
+
+    [HttpGet("{id}/delete-impact")]
+    public async Task<ActionResult<InventoryImpactDto>> DeleteImpact(int id)
+    {
+        var impact = await _inventoryService.PreviewDeleteAsync(id);
+        if (impact == null)
+        {
+            return NotFound($"库存记录 ID {id} 不存在");
+        }
+        return Ok(impact);
+    }
+
     [HttpDelete("{id}")]
     public async Task<IActionResult> Delete(int id)
     {

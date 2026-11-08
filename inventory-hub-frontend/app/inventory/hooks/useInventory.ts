@@ -2,7 +2,7 @@
 
 import { useState, useCallback } from 'react';
 import api from '@/lib/api';
-import { Inventory, CreateInventory } from '@/types';
+import { Inventory, CreateInventory, InventoryImpact } from '@/types';
 
 export function useInventory() {
   const [inventories, setInventories] = useState<Inventory[]>([]);
@@ -60,6 +60,16 @@ export function useInventory() {
     }
   }, [loadAllInventories]);
 
+  const previewUpdate = useCallback(async (id: number, data: CreateInventory) => {
+    const res = await api.post<InventoryImpact>(`/inventory/${id}/update-impact`, data);
+    return res.data;
+  }, []);
+
+  const previewDelete = useCallback(async (id: number) => {
+    const res = await api.get<InventoryImpact>(`/inventory/${id}/delete-impact`);
+    return res.data;
+  }, []);
+
   return {
     inventories,
     loadAllInventories,
@@ -67,6 +77,8 @@ export function useInventory() {
     createBatch,
     updateInventory,
     deleteInventory,
+    previewUpdate,
+    previewDelete,
     setInventories,
   };
 }

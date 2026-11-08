@@ -316,6 +316,8 @@ public class AppDbContext : DbContext
 
 `FifoCalculator` is a pure function. `FifoService` loads live batches and sales, then calls it. Tests are in `InventoryHub.Tests/FifoCalculatorTests.cs`.
 
+`FifoCalculator.Compare` compares two results for the same sales. `FifoService.CalculateImpactAsync` uses it to compare the current batches with one batch replaced or removed. `InventoryService` exposes this as the update and delete impact previews.
+
 ### InventoryService
 
 ```csharp

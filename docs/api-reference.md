@@ -424,7 +424,37 @@ PUT /api/inventory/{id}
 
 **Note:** A change can also change the calculated cost of sales of the same product.
 
-`stockQuantity` and `isReferenced` are read-only values. `isReferenced` is true when FIFO assigned sales to the batch. The API rejects a delete for such a batch.
+`stockQuantity` and `isReferenced` are read-only values. `isReferenced` is true when FIFO assigned sales to the batch.
+
+---
+
+### Preview Update Impact
+
+```http
+POST /api/inventory/{id}/update-impact
+```
+
+**Request Body:** Same as [Update Inventory Item](#update-inventory-item)
+
+Calculates how the update would change FIFO allocation of existing sales. It saves nothing.
+
+**Response:**
+
+```json
+{
+  "affectedOrders": 2,
+  "affectedLines": 3,
+  "newlyUnmatchedQuantity": 1,
+  "costChange": -450.0
+}
+```
+
+- `affectedLines`: Order lines whose allocation or unmatched units change
+- `affectedOrders`: Orders that hold those lines
+- `newlyUnmatchedQuantity`: Units that would have no matching batch
+- `costChange`: Change in batch cost of the matched units
+
+`404 Not Found` if the batch does not exist.
 
 ---
 
@@ -434,7 +464,21 @@ PUT /api/inventory/{id}
 DELETE /api/inventory/{id}
 ```
 
-**Response:** `204 No Content` or `400 Bad Request` if referenced
+**Response:** `204 No Content`
+
+Sales assigned to the batch move to other batches, or become unmatched. Call [Preview Delete Impact](#preview-delete-impact) first to see the change.
+
+---
+
+### Preview Delete Impact
+
+```http
+GET /api/inventory/{id}/delete-impact
+```
+
+Calculates how deleting the batch would change FIFO allocation of existing sales. It saves nothing.
+
+**Response:** Same shape as [Preview Update Impact](#preview-update-impact)
 
 ---
 

@@ -8,6 +8,9 @@ public record FifoSale(int DetailId, int ProductId, DateTime SaleTime, int Quant
 
 public record FifoAllocation(int InventoryId, int Quantity, decimal UnitCost, DateTime? PurchaseDate);
 
+// CostChange covers matched units only. NewlyUnmatched counts units that lose their batch.
+public record FifoImpact(IReadOnlyList<int> ChangedDetailIds, int NewlyUnmatched, decimal CostChange);
+
 public class FifoResult
 {
     private static readonly IReadOnlyList<FifoAllocation> NoAllocations = Array.Empty<FifoAllocation>();
@@ -76,5 +79,27 @@ public static class FifoCalculator
         }
 
         return result;
+    }
+
+    // Compares two results for the same sales. A line changes when its allocations or unmatched units differ.
+    public static FifoImpact Compare(FifoResult before, FifoResult after)
+    {
+        var changed = new List<int>();
+        var newlyUnmatched = 0;
+        var costChange = 0m;
+
+        foreach (var detailId in before.AllocationsByDetail.Keys.OrderBy(id => id))
+        {
+            var unmatchedBefore = before.Unmatched(detailId);
+            var unmatchedAfter = after.Unmatched(detailId);
+            var sameAllocations = before.Allocations(detailId).SequenceEqual(after.Allocations(detailId));
+            if (sameAllocations && unmatchedBefore == unmatchedAfter) continue;
+
+            changed.Add(detailId);
+            newlyUnmatched += Math.Max(0, unmatchedAfter - unmatchedBefore);
+            costChange += after.BatchCost(detailId) - before.BatchCost(detailId);
+        }
+
+        return new FifoImpact(changed, newlyUnmatched, costChange);
     }
 }

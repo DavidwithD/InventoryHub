@@ -10,4 +10,6 @@ public interface IInventoryService
     Task<IEnumerable<InventoryDto>> BatchCreateAsync(List<CreateInventoryDto> dtos);
     Task<InventoryDto?> UpdateAsync(int id, UpdateInventoryDto dto);
     Task<bool> DeleteAsync(int id);
+    Task<InventoryImpactDto?> PreviewUpdateAsync(int id, UpdateInventoryDto dto);
+    Task<InventoryImpactDto?> PreviewDeleteAsync(int id);
 }

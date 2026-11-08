@@ -24,18 +24,24 @@ import { useInventory } from './hooks/useInventory';
 import { useCategories } from '../products/hooks/useCategories';
 import InventoryTable, { SortField } from './components/InventoryTable';
 import FactorAdjustDialog from './components/FactorAdjustDialog';
-import { Inventory, CreateInventory } from '@/types';
+import ImpactConfirmDialog from './components/ImpactConfirmDialog';
+import { Inventory, CreateInventory, InventoryImpact } from '@/types';
 import { useInventoryFilterStore } from '@/lib/stores/filterStore';
 
 export default function InventoryPage() {
   const router = useRouter();
-  const { inventories, loadAllInventories, updateInventory } = useInventory();
+  const { inventories, loadAllInventories, updateInventory, previewUpdate } = useInventory();
   const { categories, loadCategories } = useCategories();
 
   const [loading, setLoading] = useState(false);
   const [adjustTarget, setAdjustTarget] = useState<Inventory | null>(null);
   const [adjusting, setAdjusting] = useState(false);
   const [adjustError, setAdjustError] = useState('');
+  const [pendingAdjust, setPendingAdjust] = useState<{
+    id: number;
+    payload: CreateInventory;
+    impact: InventoryImpact;
+  } | null>(null);
 
   // Filters persist across visits via localStorage (zustand persist).
   const {
@@ -60,9 +66,21 @@ export default function InventoryPage() {
     Promise.all([loadAllInventories(), loadCategories()]).finally(() => setLoading(false));
   }, [loadAllInventories, loadCategories]);
 
+  const applyAdjust = async (id: number, payload: CreateInventory) => {
+    setAdjusting(true);
+    try {
+      await updateInventory(id, payload);
+      setAdjustTarget(null);
+      setPendingAdjust(null);
+    } catch {
+      setAdjustError('调整失败');
+    } finally {
+      setAdjusting(false);
+    }
+  };
+
   const handleConfirmFactor = async (factor: number) => {
     if (!adjustTarget) return;
-    setAdjusting(true);
     setAdjustError('');
     const payload: CreateInventory = {
       productId: adjustTarget.productId,
@@ -77,13 +95,23 @@ export default function InventoryPage() {
       purchaseDate: adjustTarget.purchaseDate,
       purchaseNo: adjustTarget.purchaseNo,
     };
+
+    // 先查看对已有销售的影响。没有影响时直接保存。
+    setAdjusting(true);
+    let impact: InventoryImpact;
     try {
-      await updateInventory(adjustTarget.id, payload);
-      setAdjustTarget(null);
+      impact = await previewUpdate(adjustTarget.id, payload);
     } catch {
-      setAdjustError('调整失败');
-    } finally {
+      setAdjustError('无法计算调整影响');
       setAdjusting(false);
+      return;
+    }
+    setAdjusting(false);
+
+    if (impact.affectedLines === 0) {
+      await applyAdjust(adjustTarget.id, payload);
+    } else {
+      setPendingAdjust({ id: adjustTarget.id, payload, impact });
     }
   };
 
@@ -291,6 +319,16 @@ export default function InventoryPage() {
         submitting={adjusting}
         onClose={() => setAdjustTarget(null)}
         onConfirm={handleConfirmFactor}
+      />
+
+      <ImpactConfirmDialog
+        open={pendingAdjust !== null}
+        title="调整将影响已有销售"
+        impact={pendingAdjust?.impact ?? null}
+        confirmLabel="仍然应用"
+        submitting={adjusting}
+        onClose={() => setPendingAdjust(null)}
+        onConfirm={() => pendingAdjust && applyAdjust(pendingAdjust.id, pendingAdjust.payload)}
       />
 
       <Snackbar

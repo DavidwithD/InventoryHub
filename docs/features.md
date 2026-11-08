@@ -92,9 +92,11 @@ For bulk entries with the same purchase details:
 
 The app calculates stock from each batch's starting stock and the recorded sales. Adding, changing or deleting a sale updates stock on the next read.
 
-### Reference Protection
+### Changing a Batch With Sales
 
-You can edit a batch that has sales. The app recalculates the related costs. You cannot delete a batch that has sales assigned to it.
+You can adjust or delete a batch that has sales. The app recalculates the related costs.
+
+When you adjust the conversion factor, the app first shows how the change affects past sales: the number of orders, the cost change, and the units that would have no matching batch. Click "仍然应用" to save, or "取消" to keep the batch as it is. A batch with no affected sales saves without this step.
 
 ---
 

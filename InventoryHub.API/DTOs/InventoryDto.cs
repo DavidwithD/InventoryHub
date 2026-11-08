@@ -51,3 +51,12 @@ public class BatchCreateInventoryDto
 {
     public List<CreateInventoryDto> Items { get; set; } = new();
 }
+
+// 修改或删除批次后 FIFO 结果的变化
+public class InventoryImpactDto
+{
+    public int AffectedOrders { get; set; }
+    public int AffectedLines { get; set; }
+    public int NewlyUnmatchedQuantity { get; set; } // 变为成本未知的件数
+    public decimal CostChange { get; set; } // 仅已匹配部分
+}
