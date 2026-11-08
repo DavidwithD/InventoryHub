@@ -264,7 +264,6 @@ export default function OrderFormDialog({
 
             <Box sx={{ mt: 2, p: 2, bgcolor: 'grey.100', borderRadius: 1 }}>
               <Typography variant="body2">营业额：¥ {revenue.toFixed(2)}</Typography>
-              <Typography variant="body2">保存后按 FIFO 自动计算成本和利润。</Typography>
             </Box>
           </Box>
         </Box>

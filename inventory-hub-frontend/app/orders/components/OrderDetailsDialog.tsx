@@ -172,7 +172,6 @@ export default function OrderDetailsDialog({
                     <TableRow>
                       <TableCell>商品名</TableCell>
                       <TableCell>数量</TableCell>
-                      <TableCell>批次分配（FIFO）</TableCell>
                       <TableCell>包装费（¥）</TableCell>
                       <TableCell>其他费用（¥）</TableCell>
                       <TableCell>小计（¥）</TableCell>
@@ -185,25 +184,6 @@ export default function OrderDetailsDialog({
                       <TableRow key={detail.id}>
                         <TableCell>{detail.productName}</TableCell>
                         <TableCell>{detail.quantity}</TableCell>
-                        <TableCell>
-                          {detail.allocations.map((a) => (
-                            <Typography
-                              key={a.inventoryId}
-                              variant="caption"
-                              sx={{ display: 'block' }}
-                            >
-                              {a.quantity} 件 · ¥{a.unitCost.toFixed(2)} ·{' '}
-                              {a.purchaseDate
-                                ? new Date(a.purchaseDate).toLocaleDateString('zh-CN')
-                                : '无日期'}
-                            </Typography>
-                          ))}
-                          {detail.unmatchedQuantity > 0 && (
-                            <Typography variant="caption" color="error" sx={{ display: 'block' }}>
-                              {detail.unmatchedQuantity} 件未匹配批次，成本未知
-                            </Typography>
-                          )}
-                        </TableCell>
                         <TableCell>{detail.packagingCost.toFixed(2)}</TableCell>
                         <TableCell>{detail.otherCost.toFixed(2)}</TableCell>
                         <TableCell>

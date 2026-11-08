@@ -191,7 +191,7 @@ export default function OrderDetailEditDialog({
                 value={quantity}
                 onChange={(e) => setQuantity(Number(e.target.value))}
                 slotProps={{ htmlInput: { min: 1 } }}
-                helperText={productId > 0 ? `当前库存：${totalStock}。成本按 FIFO 自动计算。` : ''}
+                helperText={productId > 0 ? `当前库存：${totalStock}。` : ''}
               />
             </Grid>
           </Grid>

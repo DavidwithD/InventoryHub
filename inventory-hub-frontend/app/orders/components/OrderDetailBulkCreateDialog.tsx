@@ -167,7 +167,7 @@ export default function OrderDetailBulkCreateDialog({
           {rows.length > 0 ? (
             <>
               <Typography variant="subtitle2" sx={{ mt: 3, mb: 1 }}>
-                已选商品（成本按 FIFO 自动计算）：
+                已选商品：
               </Typography>
               <TableContainer sx={{ mb: 2 }}>
                 <Table size="small">
@@ -192,7 +192,9 @@ export default function OrderDetailBulkCreateDialog({
                             onChange={(e) => handleQuantityChange(index, Number(e.target.value))}
                             slotProps={{ htmlInput: { min: 1 } }}
                             sx={{ width: 90 }}
-                            helperText={row.quantity > row.totalStock ? '超出库存，成本可能未知' : ''}
+                            helperText={
+                              row.quantity > row.totalStock ? '超出库存，成本可能未知' : ''
+                            }
                           />
                         </TableCell>
                         <TableCell>
