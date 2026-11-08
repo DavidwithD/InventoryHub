@@ -40,7 +40,15 @@ public sealed class TestDb : IDisposable
         return product;
     }
 
-    public Inventory AddBatch(int productId, DateTime? purchaseDate, int stock, decimal priceJpy)
+    public Supplier AddSupplier(string name)
+    {
+        using var context = NewContext();
+        var supplier = context.Suppliers.Add(new Supplier { Name = name }).Entity;
+        context.SaveChanges();
+        return supplier;
+    }
+
+    public Inventory AddBatch(int productId, DateTime? purchaseDate, int stock, decimal priceJpy, int? supplierId = null)
     {
         using var context = NewContext();
         var batch = new Inventory
@@ -49,7 +57,8 @@ public sealed class TestDb : IDisposable
             PurchaseDate = purchaseDate,
             PurchaseQuantity = stock,
             InitialStock = stock,
-            PriceJpy = priceJpy
+            PriceJpy = priceJpy,
+            SupplierId = supplierId
         };
         context.Inventory.Add(batch);
         context.SaveChanges();

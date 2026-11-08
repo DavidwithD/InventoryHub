@@ -132,75 +132,47 @@ export default function PurchaseSupplyTab() {
         )}
       </Paper>
 
-      {/* Exchange rate + Unit cost side by side */}
-      <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: '1fr 1fr' }, gap: 2, mb: 2 }}>
-        {/* Exchange rate history */}
-        <Paper sx={{ p: 2.5, borderRadius: 2, border: '1px solid', borderColor: 'divider' }}>
-          <Box sx={{ mb: 2 }}>
-            <Typography variant="subtitle1" fontWeight={700}>汇率历史</Typography>
-            <Typography variant="caption" color="text.secondary">日元/人民币随时间变化 —— 成本趋势参考</Typography>
+      {/* Unit cost trend */}
+      <Paper sx={{ p: 2.5, borderRadius: 2, border: '1px solid', borderColor: 'divider', mb: 2 }}>
+        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 2 }}>
+          <Box>
+            <Typography variant="subtitle1" fontWeight={700}>平均单位成本趋势</Typography>
+            <Typography variant="caption" color="text.secondary">按采购批次 —— 成本是否在上涨？</Typography>
           </Box>
-          {loading && !purchasesPage ? (
-            <Skeleton variant="rectangular" height={200} />
-          ) : (purchasesPage?.exchangeRates ?? []).length === 0 ? (
-            <Box sx={{ height: 200, display: 'flex', alignItems: 'center', justifyContent: 'center', bgcolor: 'action.hover', borderRadius: 1 }}>
-              <Typography variant="body2" color="text.secondary">暂无人民币采购数据</Typography>
-            </Box>
-          ) : (
-            <ResponsiveContainer width="100%" height={200}>
-              <LineChart data={purchasesPage?.exchangeRates} margin={{ top: 4, right: 16, bottom: 0, left: 0 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
-                <XAxis dataKey="date" tick={{ fontSize: 10 }} />
-                <YAxis tick={{ fontSize: 11 }} />
-                <Tooltip />
-                <Line type="monotone" dataKey="rate" name="日元/人民币" stroke="#4f46e5" strokeWidth={2} dot={false} />
-              </LineChart>
-            </ResponsiveContainer>
+          {(purchasesPage?.products?.length ?? 0) > 0 && (
+            <FormControl size="small" sx={{ minWidth: 140 }}>
+              <InputLabel>商品</InputLabel>
+              <Select
+                label="商品"
+                value={selectedProduct}
+                onChange={(e) => setSelectedProduct(e.target.value)}
+              >
+                <MenuItem value="">全部</MenuItem>
+                {(purchasesPage?.products ?? []).map((p) => (
+                  <MenuItem key={p} value={p}>{p}</MenuItem>
+                ))}
+              </Select>
+            </FormControl>
           )}
-        </Paper>
-
-        {/* Unit cost trend */}
-        <Paper sx={{ p: 2.5, borderRadius: 2, border: '1px solid', borderColor: 'divider' }}>
-          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 2 }}>
-            <Box>
-              <Typography variant="subtitle1" fontWeight={700}>平均单位成本趋势</Typography>
-              <Typography variant="caption" color="text.secondary">按采购批次 —— 成本是否在上涨？</Typography>
-            </Box>
-            {(purchasesPage?.products?.length ?? 0) > 0 && (
-              <FormControl size="small" sx={{ minWidth: 140 }}>
-                <InputLabel>商品</InputLabel>
-                <Select
-                  label="商品"
-                  value={selectedProduct}
-                  onChange={(e) => setSelectedProduct(e.target.value)}
-                >
-                  <MenuItem value="">全部</MenuItem>
-                  {(purchasesPage?.products ?? []).map((p) => (
-                    <MenuItem key={p} value={p}>{p}</MenuItem>
-                  ))}
-                </Select>
-              </FormControl>
-            )}
+        </Box>
+        {loading && !purchasesPage ? (
+          <Skeleton variant="rectangular" height={200} />
+        ) : filteredCostTrend.length === 0 ? (
+          <Box sx={{ height: 200, display: 'flex', alignItems: 'center', justifyContent: 'center', bgcolor: 'action.hover', borderRadius: 1 }}>
+            <Typography variant="body2" color="text.secondary">暂无采购批次数据</Typography>
           </Box>
-          {loading && !purchasesPage ? (
-            <Skeleton variant="rectangular" height={200} />
-          ) : filteredCostTrend.length === 0 ? (
-            <Box sx={{ height: 200, display: 'flex', alignItems: 'center', justifyContent: 'center', bgcolor: 'action.hover', borderRadius: 1 }}>
-              <Typography variant="body2" color="text.secondary">暂无采购批次数据</Typography>
-            </Box>
-          ) : (
-            <ResponsiveContainer width="100%" height={200}>
-              <LineChart data={filteredCostTrend} margin={{ top: 4, right: 16, bottom: 0, left: 0 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
-                <XAxis dataKey="date" tick={{ fontSize: 10 }} />
-                <YAxis tick={{ fontSize: 11 }} tickFormatter={(v) => fmt(v)} />
-                <Tooltip formatter={(v) => fmt(Number(v))} />
-                <Line type="monotone" dataKey="unitCost" name="单位成本" stroke="#16a34a" strokeWidth={2} dot />
-              </LineChart>
-            </ResponsiveContainer>
-          )}
-        </Paper>
-      </Box>
+        ) : (
+          <ResponsiveContainer width="100%" height={200}>
+            <LineChart data={filteredCostTrend} margin={{ top: 4, right: 16, bottom: 0, left: 0 }}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
+              <XAxis dataKey="date" tick={{ fontSize: 10 }} />
+              <YAxis tick={{ fontSize: 11 }} tickFormatter={(v) => fmt(v)} />
+              <Tooltip formatter={(v) => fmt(Number(v))} />
+              <Line type="monotone" dataKey="unitCost" name="单位成本" stroke="#16a34a" strokeWidth={2} dot />
+            </LineChart>
+          </ResponsiveContainer>
+        )}
+      </Paper>
 
       {/* Supplier concentration */}
       <Paper sx={{ p: 2.5, borderRadius: 2, border: '1px solid', borderColor: 'divider' }}>

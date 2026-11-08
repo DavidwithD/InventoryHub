@@ -454,13 +454,32 @@ public class StatsService : IStatsService
 
     // ── Purchase & Supply ─────────────────────────────────────────────────────
 
+    // Label for batches with no supplier.
+    private const string NoSupplierName = "未指定供应商";
+
     public async Task<StatsPurchasesPageDto> GetPurchasesPageAsync(DateTime start, DateTime end, string granularity, int? productId)
     {
-        var purchases = await _db.Purchases
-            .Include(p => p.Supplier)
-            .Where(p => !p.IsDeleted && p.PurchaseDate >= start && p.PurchaseDate < end)
-            .OrderBy(p => p.PurchaseDate)
+        // Spend per batch is price_jpy × purchase_quantity, in JPY.
+        var batches = await _db.Inventory
+            .Where(i => !i.IsDeleted && i.PurchaseDate >= start && i.PurchaseDate < end)
+            .Select(i => new { i.SupplierId, PurchaseDate = i.PurchaseDate!.Value, Spend = i.PriceJpy * i.PurchaseQuantity })
             .ToListAsync();
+
+        var supplierIds = batches.Where(b => b.SupplierId.HasValue).Select(b => b.SupplierId!.Value).Distinct().ToList();
+        var supplierNameById = await _db.Suppliers
+            .Where(s => supplierIds.Contains(s.Id))
+            .ToDictionaryAsync(s => s.Id, s => s.Name);
+
+        var purchases = batches
+            .Select(b => new
+            {
+                b.PurchaseDate,
+                b.Spend,
+                Supplier = b.SupplierId.HasValue && supplierNameById.TryGetValue(b.SupplierId.Value, out var name)
+                    ? name
+                    : NoSupplierName,
+            })
+            .ToList();
 
         // Spending trend by supplier
         var spendGrouped = purchases
@@ -470,29 +489,17 @@ public class StatsService : IStatsService
             {
                 Period = PeriodLabel(g.Key, granularity),
                 BySupplier = g
-                    .GroupBy(p => p.Supplier.Name)
+                    .GroupBy(p => p.Supplier)
                     .Select(sg => new StatsSupplierSpendDto
                     {
                         Supplier = sg.Key,
-                        Amount = sg.Sum(p => p.TotalAmount),
+                        Amount = sg.Sum(p => p.Spend),
                     })
                     .ToList(),
             })
             .ToList();
 
-        var supplierNames = purchases.Select(p => p.Supplier.Name).Distinct().OrderBy(x => x).ToList();
-
-        // Exchange rate history (CNY purchases only)
-        var exchangeRates = purchases
-            .Where(p => p.CurrencyType == "CNY" && p.ExchangeRate > 0)
-            .OrderBy(p => p.PurchaseDate)
-            .Select(p => new StatsExchangeRatePointDto
-            {
-                Date = p.PurchaseDate.ToString("yyyy/MM/dd"),
-                Rate = p.ExchangeRate,
-                Supplier = p.Supplier.Name,
-            })
-            .ToList();
+        var supplierNames = purchases.Select(p => p.Supplier).Distinct().OrderBy(x => x).ToList();
 
         // Unit cost trend per product (from Inventory table)
         var inventoryQuery = _db.Inventory
@@ -516,14 +523,14 @@ public class StatsService : IStatsService
             .ToList();
 
         // Supplier concentration
-        decimal totalSpend = purchases.Sum(p => p.TotalAmount);
+        decimal totalSpend = purchases.Sum(p => p.Spend);
         var concentration = purchases
-            .GroupBy(p => p.Supplier.Name)
+            .GroupBy(p => p.Supplier)
             .Select(g => new StatsSupplierConcentrationDto
             {
                 SupplierName = g.Key,
-                TotalSpend = g.Sum(p => p.TotalAmount),
-                Pct = totalSpend > 0 ? Math.Round((double)(g.Sum(p => p.TotalAmount) / totalSpend) * 100, 1) : 0,
+                TotalSpend = g.Sum(p => p.Spend),
+                Pct = totalSpend > 0 ? Math.Round((double)(g.Sum(p => p.Spend) / totalSpend) * 100, 1) : 0,
             })
             .OrderByDescending(x => x.TotalSpend)
             .ToList();
@@ -541,7 +548,6 @@ public class StatsService : IStatsService
         {
             SpendingTrend = spendGrouped,
             SupplierNames = supplierNames,
-            ExchangeRates = exchangeRates,
             UnitCostTrend = unitCostTrend,
             SupplierConcentration = concentration,
             Products = products,

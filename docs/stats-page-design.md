@@ -69,8 +69,7 @@ Per-product deep dive with search + filter by category.
 - Unsold products — in inventory but never appeared in an OrderDetail
 
 #### 3. Purchase & Supply
-- Spending over time by supplier — sourced from `Inventory.price_jpy` grouped by `Inventory.supplier_id` (denormalized), or from the `Purchases` table directly for purchase-level totals
-- Exchange rate history — from `Purchases.exchange_rate` over `Purchases.purchase_date`
+- Spending over time by supplier — `price_jpy × purchase_quantity` from `Inventory`, grouped by `Inventory.supplier_id`
 - Average unit cost trend per product — `price_jpy / purchase_quantity` over `Inventory.purchase_date`, grouped by product
 - Supplier concentration — % of total spend per supplier
 

@@ -126,7 +126,7 @@ After setup, verify the installation:
    USE inventory_hub;
    SHOW TABLES;
    ```
-   Expected tables: `categories`, `suppliers`, `products`, `purchases`, `inventory`, `orders`, `order_details`
+   Expected tables: `categories`, `suppliers`, `products`, `inventory`, `orders`, `order_details`
 
 ## Project Scripts
 

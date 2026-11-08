@@ -12,7 +12,6 @@ public class AppDbContext : DbContext
     public DbSet<Category> Categories { get; set; }
     public DbSet<Supplier> Suppliers { get; set; }
     public DbSet<Product> Products { get; set; }
-    public DbSet<Purchase> Purchases { get; set; }
     public DbSet<Inventory> Inventory { get; set; }
     public DbSet<Order> Orders { get; set; }
     public DbSet<OrderDetail> OrderDetails { get; set; }
@@ -71,32 +70,6 @@ public class AppDbContext : DbContext
                 .OnDelete(DeleteBehavior.Restrict);
 
             entity.HasIndex(e => e.CategoryId).HasDatabaseName("idx_category_id");
-        });
-
-        // Purchase configuration
-        modelBuilder.Entity<Purchase>(entity =>
-        {
-            entity.ToTable("purchases");
-            entity.HasKey(e => e.Id);
-            entity.Property(e => e.Id).HasColumnName("id");
-            entity.Property(e => e.SupplierId).HasColumnName("supplier_id").IsRequired();
-            entity.Property(e => e.PurchaseDate).HasColumnName("purchase_date").IsRequired();
-            entity.Property(e => e.PurchaseNo).HasColumnName("purchase_no").HasMaxLength(100).IsRequired();
-            entity.Property(e => e.TotalAmount).HasColumnName("total_amount").HasColumnType("decimal(15,2)").IsRequired();
-            entity.Property(e => e.CurrencyType).HasColumnName("currency_type").HasMaxLength(10).IsRequired();
-            entity.Property(e => e.ExchangeRate).HasColumnName("exchange_rate").HasColumnType("decimal(10,4)").IsRequired();
-            entity.Property(e => e.CreatedAt).HasColumnName("created_at").HasColumnType("datetime").HasDefaultValueSql("CURRENT_TIMESTAMP");
-            entity.Property(e => e.UpdatedAt).HasColumnName("updated_at").HasColumnType("datetime").HasDefaultValueSql(updatedAtDefault);
-            entity.Property(e => e.IsDeleted).HasColumnName("is_deleted").HasDefaultValue(false);
-
-            entity.HasOne(p => p.Supplier)
-                .WithMany(s => s.Purchases)
-                .HasForeignKey(p => p.SupplierId)
-                .OnDelete(DeleteBehavior.Restrict);
-
-            entity.HasIndex(e => e.PurchaseNo).HasDatabaseName("unique_purchase_no").IsUnique();
-            entity.HasIndex(e => e.SupplierId).HasDatabaseName("idx_supplier_id");
-            entity.HasIndex(e => e.PurchaseDate).HasDatabaseName("idx_purchase_date");
         });
 
         // Inventory configuration

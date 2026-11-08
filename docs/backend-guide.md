@@ -20,7 +20,6 @@ InventoryHub.API/
 ├── Controllers/              # API endpoints
 │   ├── OrdersController.cs
 │   ├── InventoryController.cs
-│   ├── PurchaseController.cs
 │   ├── ProductController.cs
 │   ├── CategoryController.cs
 │   ├── SupplierController.cs
@@ -29,7 +28,6 @@ InventoryHub.API/
 ├── Services/                 # Business logic
 │   ├── OrderService.cs
 │   ├── InventoryService.cs
-│   ├── PurchaseService.cs
 │   ├── ProductService.cs
 │   ├── CategoryService.cs
 │   ├── SupplierService.cs
@@ -41,7 +39,6 @@ InventoryHub.API/
 │   ├── Category.cs
 │   ├── Supplier.cs
 │   ├── Product.cs
-│   ├── Purchase.cs
 │   ├── Inventory.cs
 │   ├── Order.cs
 │   └── OrderDetail.cs
@@ -50,7 +47,6 @@ InventoryHub.API/
 │   ├── CategoryDto.cs
 │   ├── SupplierDto.cs
 │   ├── ProductDto.cs
-│   ├── PurchaseDto.cs
 │   ├── InventoryDto.cs
 │   ├── OrderDto.cs
 │   └── OrderDetailDto.cs
@@ -110,25 +106,6 @@ public class Product : BaseEntity
 
     // Navigation properties
     public virtual Category Category { get; set; } = null!;
-    public virtual ICollection<Inventory> InventoryItems { get; set; } = new List<Inventory>();
-}
-```
-
-### Purchase
-
-```csharp
-// Models/Purchase.cs
-public class Purchase : BaseEntity
-{
-    public int SupplierId { get; set; }
-    public DateTime PurchaseDate { get; set; }
-    public string PurchaseNo { get; set; } = string.Empty;
-    public decimal TotalAmount { get; set; }
-    public string CurrencyType { get; set; } = "JPY";
-    public decimal ExchangeRate { get; set; } = 1.0m;
-
-    // Navigation properties
-    public virtual Supplier Supplier { get; set; } = null!;
     public virtual ICollection<Inventory> InventoryItems { get; set; } = new List<Inventory>();
 }
 ```
@@ -202,7 +179,6 @@ public class AppDbContext : DbContext
     public DbSet<Category> Categories { get; set; }
     public DbSet<Supplier> Suppliers { get; set; }
     public DbSet<Product> Products { get; set; }
-    public DbSet<Purchase> Purchases { get; set; }
     public DbSet<Inventory> Inventory { get; set; }
     public DbSet<Order> Orders { get; set; }
     public DbSet<OrderDetail> OrderDetails { get; set; }
@@ -228,17 +204,6 @@ public class AppDbContext : DbContext
                   .WithMany(c => c.Products)
                   .HasForeignKey(p => p.CategoryId)
                   .OnDelete(DeleteBehavior.Restrict);
-        });
-
-        // Purchase configuration
-        modelBuilder.Entity<Purchase>(entity =>
-        {
-            entity.ToTable("purchases");
-            entity.HasIndex(e => e.PurchaseNo).IsUnique();
-            entity.HasIndex(e => e.SupplierId);
-            entity.HasIndex(e => e.PurchaseDate);
-            entity.Property(e => e.TotalAmount).HasPrecision(15, 2);
-            entity.Property(e => e.ExchangeRate).HasPrecision(10, 4);
         });
 
         // Inventory configuration
@@ -283,7 +248,6 @@ public class AppDbContext : DbContext
         modelBuilder.Entity<Category>().HasQueryFilter(e => !e.IsDeleted);
         modelBuilder.Entity<Supplier>().HasQueryFilter(e => !e.IsDeleted);
         modelBuilder.Entity<Product>().HasQueryFilter(e => !e.IsDeleted);
-        modelBuilder.Entity<Purchase>().HasQueryFilter(e => !e.IsDeleted);
         modelBuilder.Entity<Inventory>().HasQueryFilter(e => !e.IsDeleted);
         modelBuilder.Entity<Order>().HasQueryFilter(e => !e.IsDeleted);
         modelBuilder.Entity<OrderDetail>().HasQueryFilter(e => !e.IsDeleted);
@@ -620,10 +584,6 @@ public class MappingProfile : Profile
         CreateMap<Product, ProductDto>()
             .ForMember(d => d.CategoryName, opt => opt.MapFrom(s => s.Category.Name));
 
-        // Purchase mappings
-        CreateMap<Purchase, PurchaseDto>()
-            .ForMember(d => d.SupplierName, opt => opt.MapFrom(s => s.Supplier.Name));
-
         // Inventory mappings
         CreateMap<Inventory, InventoryDto>()
             .ForMember(d => d.ProductName, opt => opt.MapFrom(s => s.Product.Name))
@@ -669,7 +629,6 @@ builder.Services.AddHttpClient();
 builder.Services.AddScoped<CategoryService>();
 builder.Services.AddScoped<SupplierService>();
 builder.Services.AddScoped<ProductService>();
-builder.Services.AddScoped<PurchaseService>();
 builder.Services.AddScoped<InventoryService>();
 builder.Services.AddScoped<OrderService>();
 builder.Services.AddScoped<MercariService>();

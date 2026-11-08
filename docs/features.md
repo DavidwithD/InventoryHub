@@ -9,7 +9,6 @@ InventoryHub provides comprehensive inventory and order management with the foll
 | Feature              | Description                                                      |
 | -------------------- | ---------------------------------------------------------------- |
 | Inventory Management | Track stock levels across multiple products and purchase sources |
-| Purchase Processing  | Record purchases with multi-currency support                     |
 | Order Management     | Create and manage sales orders with cost tracking                |
 | Batch Import         | Import orders from Mercari marketplace                           |
 | Analytics Dashboard  | View key metrics and statistics                                  |
@@ -286,8 +285,7 @@ Suppliers/channels represent:
 
 ### Deletion Rules
 
-- Cannot delete suppliers with purchases
-- Must delete/reassign purchases first
+- Suppliers cannot be deleted.
 
 ---
 
@@ -347,9 +345,7 @@ InventoryHub is responsive and works on mobile devices:
 
 ### Inventory Management
 
-1. **Create purchases first** - Always record the purchase before adding inventory
-2. **Accurate exchange rates** - Use the rate at time of purchase
-3. **Allocate carefully** - Ensure inventory amounts match purchase total
+1. **Accurate exchange rates** - Use the rate at time of purchase
 
 ### Order Processing
 

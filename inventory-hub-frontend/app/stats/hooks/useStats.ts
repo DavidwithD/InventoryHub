@@ -115,12 +115,6 @@ export interface SpendingPeriod {
   bySupplier: { supplier: string; amount: number }[];
 }
 
-export interface ExchangeRatePoint {
-  date: string;
-  rate: number;
-  supplier: string;
-}
-
 export interface UnitCostPoint {
   purchaseNo: string;
   date: string;
@@ -136,7 +130,6 @@ export interface SupplierConcentration {
 export interface PurchasesPage {
   spendingTrend: SpendingPeriod[];
   supplierNames: string[];
-  exchangeRates: ExchangeRatePoint[];
   unitCostTrend: UnitCostPoint[];
   supplierConcentration: SupplierConcentration[];
   products: string[];

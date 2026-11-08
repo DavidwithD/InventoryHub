@@ -162,8 +162,6 @@ app/
 │           └── page.tsx     # Order detail editor
 ├── inventory/
 │   └── page.tsx             # Inventory management
-├── purchases/
-│   └── page.tsx             # Purchase management
 ├── products/
 │   └── page.tsx             # Product management
 ├── categories/

@@ -22,10 +22,6 @@ public class MappingProfile : Profile
         CreateMap<CreateProductDto, Product>();
         CreateMap<UpdateProductDto, Product>();
 
-        // Purchase mappings
-        CreateMap<CreatePurchaseDto, Purchase>();
-        CreateMap<UpdatePurchaseDto, Purchase>();
-
         // Inventory mappings
         CreateMap<CreateInventoryDto, Inventory>();
         CreateMap<UpdateInventoryDto, Inventory>();
