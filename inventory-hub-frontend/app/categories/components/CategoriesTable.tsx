@@ -84,10 +84,10 @@ export default function CategoriesTable({ categories, loading, onEdit, onDelete 
                 <TableCell>{new Date(category.createdAt).toLocaleString('zh-CN')}</TableCell>
                 <TableCell>{new Date(category.updatedAt).toLocaleString('zh-CN')}</TableCell>
                 <TableCell align="right">
-                  <IconButton size="small" color="primary" onClick={() => onEdit(category)}>
+                  <IconButton size="small" color="primary" aria-label="编辑" onClick={() => onEdit(category)}>
                     <EditIcon />
                   </IconButton>
-                  <IconButton size="small" color="error" onClick={() => openConfirm(category)}>
+                  <IconButton size="small" color="error" aria-label="删除" onClick={() => openConfirm(category)}>
                     <DeleteIcon />
                   </IconButton>
                 </TableCell>

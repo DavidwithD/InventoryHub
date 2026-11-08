@@ -136,7 +136,7 @@ After setup, verify the installation:
 |---------|-------------|
 | `dotnet run` | Start the API server |
 | `dotnet build` | Build the project |
-| `dotnet test` | Run tests |
+| `dotnet test` | Run tests. See [Running Tests](development.md#running-tests) for all suites |
 | `dotnet ef migrations add <name>` | Create a new migration |
 | `dotnet ef database update` | Apply pending migrations |
 
