@@ -402,7 +402,7 @@ const orderSchema = z.object({
   transactionTime: z.date(),
   details: z.array(
     z.object({
-      inventoryId: z.number().positive('Select an inventory item'),
+      productId: z.number().positive('Select a product'),
       quantity: z.number().int().positive('Quantity must be at least 1'),
       packagingCost: z.number().min(0).optional(),
     })
@@ -585,17 +585,15 @@ export interface Order {
 export interface OrderDetail {
   id: number;
   orderId: number;
-  inventoryId: number;
   productId: number;
   productName: string;
-  categoryName: string;
-  unitPrice: number;
   quantity: number;
   packagingCost: number;
   otherCost: number;
   subtotalCost: number;
+  unmatchedQuantity: number;
+  allocations: OrderDetailAllocation[];
   notes: string | null;
-  availableStock: number;
 }
 
 export interface CreateOrderDto {
@@ -609,7 +607,6 @@ export interface CreateOrderDto {
 }
 
 export interface CreateOrderDetailDto {
-  inventoryId: number;
   productId: number;
   quantity: number;
   packagingCost?: number;

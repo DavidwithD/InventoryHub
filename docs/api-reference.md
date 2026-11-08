@@ -127,7 +127,6 @@ POST /api/orders
   "transactionTime": "2024-01-15T10:30:00",
   "details": [
     {
-      "inventoryId": 1,
       "productId": 1,
       "quantity": 2,
       "packagingCost": 50.0,
@@ -138,6 +137,8 @@ POST /api/orders
 ```
 
 **Response:** `201 Created` with created order
+
+**Errors:** `400 Bad Request` if two lines in `details` have the same `productId`.
 
 ---
 
@@ -184,17 +185,22 @@ GET /api/orders/{orderId}/details
   {
     "id": 1,
     "orderId": 1,
-    "inventoryId": 5,
     "productId": 3,
     "productName": "Wireless Earbuds",
-    "categoryName": "Electronics",
-    "unitPrice": 537.5,
     "quantity": 2,
     "packagingCost": 50.0,
     "otherCost": 0,
     "subtotalCost": 1125.0,
-    "notes": null,
-    "availableStock": 8
+    "unmatchedQuantity": 0,
+    "allocations": [
+      {
+        "inventoryId": 5,
+        "quantity": 2,
+        "unitCost": 537.5,
+        "purchaseDate": "2024-01-15T00:00:00"
+      }
+    ],
+    "notes": null
   }
 ]
 ```
@@ -212,7 +218,6 @@ POST /api/orders/details
 ```json
 {
   "orderId": 1,
-  "inventoryId": 5,
   "productId": 3,
   "quantity": 2,
   "packagingCost": 50.0,
@@ -223,12 +228,9 @@ POST /api/orders/details
 
 **Response:** `201 Created` with created detail
 
-**Note:** This will automatically:
+**Note:** The API calculates `subtotalCost` and `allocations` with FIFO. It saves a sale even when stock is short. `unmatchedQuantity` then shows the units with no batch.
 
-- Snapshot `unit_price` from inventory
-- Calculate `subtotal_cost`
-- Deduct `stock_quantity` from inventory
-- Update order's `total_cost`
+**Errors:** `400 Bad Request` if the order already has a line for this product.
 
 ---
 
@@ -242,7 +244,6 @@ PUT /api/orders/details/{id}
 
 ```json
 {
-  "inventoryId": 5,
   "productId": 3,
   "quantity": 3,
   "packagingCost": 75.0,
@@ -253,7 +254,9 @@ PUT /api/orders/details/{id}
 
 **Response:** Updated detail object
 
-**Note:** Stock will be adjusted (rollback old quantity, apply new quantity)
+**Note:** A change can also change the calculated cost of later sales of the same product.
+
+**Errors:** `400 Bad Request` if another line of the order already has this product.
 
 ---
 
@@ -265,7 +268,7 @@ DELETE /api/orders/details/{id}
 
 **Response:** `204 No Content`
 
-**Note:** Stock will be returned to inventory
+**Note:** Stock and the costs of later sales of the same product change on the next read.
 
 ---
 
@@ -321,12 +324,12 @@ GET /api/inventory
     "purchaseQuantity": 10,
     "priceJpy": 537.5,
     "priceCny": 25.0,
+    "initialStock": 10,
     "stockQuantity": 8,
     "supplierId": 1,
     "purchaseDate": "2024-01-15T00:00:00",
     "currencyType": "JPY",
     "exchangeRate": 1.0,
-    "isReferenced": true,
     "createdAt": "2024-01-15T10:00:00",
     "updatedAt": "2024-01-16T09:00:00"
   }
@@ -357,7 +360,7 @@ POST /api/inventory
 {
   "productId": 3,
   "purchaseQuantity": 10,
-  "stockQuantity": 10,
+  "initialStock": 10,
   "priceJpy": 537.5,
   "priceCny": 25.0,
   "supplierId": 1,
@@ -386,14 +389,14 @@ POST /api/inventory/batch
     {
       "productId": 3,
       "purchaseQuantity": 10,
-      "stockQuantity": 10,
+      "initialStock": 10,
       "priceJpy": 537.5,
       "purchaseNo": "PO-2024-001"
     },
     {
       "productId": 4,
       "purchaseQuantity": 5,
-      "stockQuantity": 5,
+      "initialStock": 5,
       "priceJpy": 430.0
     }
   ]
@@ -416,7 +419,7 @@ PUT /api/inventory/{id}
 {
   "productId": 3,
   "purchaseQuantity": 10,
-  "stockQuantity": 7,
+  "initialStock": 10,
   "priceJpy": 550.0,
   "priceCny": 26.0
 }
@@ -424,7 +427,39 @@ PUT /api/inventory/{id}
 
 **Response:** Updated inventory object
 
-**Note:** Updates may be restricted if the item is referenced in order details
+**Note:** A change can also change the calculated cost of sales of the same product.
+
+`stockQuantity` is a read-only value.
+
+---
+
+### Preview Update Impact
+
+```http
+POST /api/inventory/{id}/update-impact
+```
+
+**Request Body:** Same as [Update Inventory Item](#update-inventory-item)
+
+Calculates how the update would change FIFO allocation of existing sales. It saves nothing. It returns `400 Bad Request` for the same validation errors as the update.
+
+**Response:**
+
+```json
+{
+  "affectedOrders": 2,
+  "affectedLines": 3,
+  "newlyUnmatchedQuantity": 1,
+  "costChange": -450.0
+}
+```
+
+- `affectedLines`: Order lines whose allocation or unmatched units change
+- `affectedOrders`: Orders that hold those lines
+- `newlyUnmatchedQuantity`: Units that would have no matching batch
+- `costChange`: Change in batch cost of the matched units
+
+`404 Not Found` if the batch does not exist.
 
 ---
 
@@ -434,7 +469,21 @@ PUT /api/inventory/{id}
 DELETE /api/inventory/{id}
 ```
 
-**Response:** `204 No Content` or `400 Bad Request` if referenced
+**Response:** `204 No Content`
+
+Sales assigned to the batch move to other batches, or become unmatched. Call [Preview Delete Impact](#preview-delete-impact) first to see the change.
+
+---
+
+### Preview Delete Impact
+
+```http
+GET /api/inventory/{id}/delete-impact
+```
+
+Calculates how deleting the batch would change FIFO allocation of existing sales. It saves nothing.
+
+**Response:** Same shape as [Preview Update Impact](#preview-update-impact)
 
 ---
 
@@ -790,9 +839,9 @@ GET /api/dashboard/stats
 
 **Calculations:**
 
-- `totalInventoryValue`: Sum of (stock_quantity × unit_cost) for all inventory
-- `monthlyProfit`: Sum of (revenue - total_cost - shipping_fee) for current month orders
-- `lowStockProductsCount`: Products with stock_quantity < 5
+- `totalInventoryValue`: Sum of (calculated stock × `priceJpy`) for all batches
+- `monthlyProfit`: Sum of (revenue - calculated cost) for current month orders. Orders with no lines or an unknown cost are skipped.
+- `lowStockProductsCount`: Batches with calculated stock from 1 to 4
 
 ---
 

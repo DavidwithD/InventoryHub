@@ -18,7 +18,6 @@ import Image from 'next/image';
 import api from '@/lib/api';
 import { Category, Inventory, Product } from '@/types';
 import { usePickHistoryStore } from '@/lib/stores/pickHistoryStore';
-import { isBatchEligible, totalStockForProduct } from '../utils/fifoPick';
 
 // Sentinel category values. Real category ids are positive.
 const CATEGORY_HISTORY = -1; // 选择历史 — only previously picked products
@@ -30,7 +29,6 @@ interface ProductPickerProps {
   excludeProductIds?: number[];
   onPick: (productId: number) => void;
   mode?: 'grid' | 'compact';
-  saleDate?: string;
 }
 
 interface PickerItem {
@@ -46,7 +44,6 @@ export default function ProductPicker({
   excludeProductIds = [],
   onPick,
   mode = 'grid',
-  saleDate,
 }: ProductPickerProps) {
   const [categoryId, setCategoryId] = useState<number>(CATEGORY_HISTORY);
   const [search, setSearch] = useState<string>('');
@@ -74,7 +71,6 @@ export default function ProductPicker({
     const byProduct = new Map<number, PickerItem>();
     for (const inv of inventories) {
       if (!inv.productId) continue;
-      if (!isBatchEligible(inv, saleDate)) continue;
       const existing = byProduct.get(inv.productId);
       if (existing) {
         existing.totalStock += inv.stockQuantity;
@@ -92,7 +88,6 @@ export default function ProductPicker({
     const historyRank = new Map(history.map((id, i) => [id, i]));
 
     const result = Array.from(byProduct.values())
-      .filter((it) => it.totalStock > 0)
       .filter((it) => !excluded.has(it.productId))
       .filter((it) => term === '' || it.productName.toLowerCase().includes(term))
       .filter((it) => {
@@ -108,7 +103,7 @@ export default function ProductPicker({
       result.sort((a, b) => a.productName.localeCompare(b.productName));
     }
     return result;
-  }, [inventories, excludeProductIds, search, categoryId, history, saleDate]);
+  }, [inventories, excludeProductIds, search, categoryId, history]);
 
   const pick = (productId: number) => {
     addToHistory(productId);
@@ -216,5 +211,3 @@ export default function ProductPicker({
     </Box>
   );
 }
-
-export { totalStockForProduct };

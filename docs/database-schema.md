@@ -4,62 +4,72 @@ This document describes the database structure, tables, relationships, and const
 
 ## Entity Relationship Diagram
 
+```mermaid
+erDiagram
+    categories ||--o{ products : "category_id"
+    suppliers ||--o{ purchases : "supplier_id"
+    suppliers |o..o{ inventory : "supplier_id (no FK)"
+    products ||--o{ inventory : "product_id"
+    products ||--o{ order_details : "product_id"
+    orders ||--o{ order_details : "order_id"
+
+    categories {
+        int id PK
+        varchar name UK "unique with is_deleted"
+    }
+    suppliers {
+        int id PK
+        varchar name UK "unique with is_deleted"
+    }
+    products {
+        int id PK
+        int category_id FK
+        varchar name
+        longtext ImageUrl "nullable"
+    }
+    purchases {
+        int id PK
+        int supplier_id FK
+        date purchase_date
+        varchar purchase_no UK
+        decimal total_amount
+        varchar currency_type
+        decimal exchange_rate
+    }
+    inventory {
+        int id PK
+        int product_id FK
+        decimal price_jpy "unit price"
+        decimal price_cny "nullable"
+        int purchase_quantity
+        int initial_stock
+        int supplier_id "nullable"
+        datetime purchase_date "nullable"
+        varchar purchase_no "nullable"
+    }
+    orders {
+        int id PK
+        varchar order_no UK
+        varchar name
+        varchar image_url "nullable"
+        decimal revenue
+        decimal shipping_fee
+        datetime transaction_time
+    }
+    order_details {
+        int id PK
+        int order_id FK
+        int product_id FK
+        int quantity
+        decimal packaging_cost
+        decimal other_cost
+        text notes "nullable"
+    }
 ```
-┌──────────────┐
-│  Categories  │
-├──────────────┤
-│ PK id        │
-│    name      │◄─────────────────────┐
-└──────────────┘                      │
-                                      │ category_id (FK)
-                                      │
-┌──────────────┐         ┌────────────┴───┐         ┌──────────────┐
-│  Suppliers   │         │    Products    │         │  Purchases   │
-├──────────────┤         ├────────────────┤         ├──────────────┤
-│ PK id        │◄──────┐ │ PK id          │         │ PK id        │
-│    name      │       │ │ FK category_id │         │ FK supplier_id│
-└──────────────┘       │ │    name        │         │    purchase_no│
-                       │ └────────┬───────┘         │    total_amount   │
-                       │          │                 │    currency_type  │
-                       │          │ product_id (FK) │    exchange_rate  │
-                       │          │                 └──────────────────┘
-                       │          │                  (being removed — see
-                       │          │                   production-rollout-
-                       │          │                   checklist.md)
-                       │          ▼
-                       │ ┌────────────────────────────────────────┐
-                       │ │              Inventory                 │
-                       │ ├────────────────────────────────────────┤
-                       │ │ PK id                                  │
-                       │ │ FK product_id                          │
-                       │ │    price_jpy  (unit price in JPY)      │
-                       │ │    price_cny  (unit price in CNY, opt) │
-                       │ │    purchase_quantity                   │
-                       │ │    stock_quantity                      │
-                       │ │ -- denormalized purchase fields --     │
-                       └─┤    supplier_id (nullable)              │
-                         │    purchase_date (nullable)            │
-                         │    purchase_no   (nullable)            │
-                         └──────────────────┬─────────────────────┘
-                                            │
-                                            │ inventory_id (FK)
-                                            │
-┌──────────────┐                            ▼
-│    Orders    │         ┌────────────────────────────────────────┐
-├──────────────┤         │            OrderDetails                │
-│ PK id        │◄────────┤────────────────────────────────────────┤
-│    order_no  │         │ PK id                                  │
-│    name      │         │ FK order_id                            │
-│    image_url │         │ FK inventory_id                        │
-│    revenue   │         │ FK product_id                          │
-│    total_cost│         │    unit_price (snapshot)               │
-│    shipping  │         │    quantity                            │
-│    trans_time│         │    packaging_cost                      │
-└──────────────┘         │    other_cost                          │
-                         │    subtotal_cost                       │
-                         │    notes                               │
-                         └────────────────────────────────────────┘
-```
+
+Every table also has `created_at`, `updated_at` and `is_deleted`. See [Soft Delete Implementation](#soft-delete-implementation).
+
+The dotted line has no foreign key in the database. `inventory.supplier_id` is a plain column.
 
 ## Tables
 
@@ -70,7 +80,7 @@ Master table for product categories.
 | Column       | Type         | Constraints                 | Description           |
 | ------------ | ------------ | --------------------------- | --------------------- |
 | `id`         | INT          | PRIMARY KEY, AUTO_INCREMENT | Unique identifier     |
-| `name`       | VARCHAR(100) | NOT NULL, UNIQUE            | Category name         |
+| `name`       | VARCHAR(100) | NOT NULL                    | Category name         |
 | `created_at` | DATETIME     | DEFAULT CURRENT_TIMESTAMP   | Creation timestamp    |
 | `updated_at` | DATETIME     | ON UPDATE CURRENT_TIMESTAMP | Last update timestamp |
 | `is_deleted` | BOOLEAN      | DEFAULT FALSE               | Soft delete flag      |
@@ -78,7 +88,7 @@ Master table for product categories.
 **Indexes:**
 
 - PRIMARY KEY (`id`)
-- UNIQUE (`name`)
+- UNIQUE (`name`, `is_deleted`)
 
 ---
 
@@ -89,7 +99,7 @@ Master table for suppliers/vendors.
 | Column       | Type         | Constraints                 | Description           |
 | ------------ | ------------ | --------------------------- | --------------------- |
 | `id`         | INT          | PRIMARY KEY, AUTO_INCREMENT | Unique identifier     |
-| `name`       | VARCHAR(100) | NOT NULL, UNIQUE            | Supplier name         |
+| `name`       | VARCHAR(100) | NOT NULL                    | Supplier name         |
 | `created_at` | DATETIME     | DEFAULT CURRENT_TIMESTAMP   | Creation timestamp    |
 | `updated_at` | DATETIME     | ON UPDATE CURRENT_TIMESTAMP | Last update timestamp |
 | `is_deleted` | BOOLEAN      | DEFAULT FALSE               | Soft delete flag      |
@@ -97,7 +107,7 @@ Master table for suppliers/vendors.
 **Indexes:**
 
 - PRIMARY KEY (`id`)
-- UNIQUE (`name`)
+- UNIQUE (`name`, `is_deleted`)
 
 ---
 
@@ -110,6 +120,7 @@ Product catalog linked to categories.
 | `id`          | INT          | PRIMARY KEY, AUTO_INCREMENT | Unique identifier     |
 | `category_id` | INT          | FOREIGN KEY → categories.id | Product category      |
 | `name`        | VARCHAR(200) | NOT NULL                    | Product name          |
+| `ImageUrl`    | LONGTEXT     | NULL                        | Product image URL     |
 | `created_at`  | DATETIME     | DEFAULT CURRENT_TIMESTAMP   | Creation timestamp    |
 | `updated_at`  | DATETIME     | ON UPDATE CURRENT_TIMESTAMP | Last update timestamp |
 | `is_deleted`  | BOOLEAN      | DEFAULT FALSE               | Soft delete flag      |
@@ -166,7 +177,7 @@ Inventory items linked to products. Purchase-level fields are denormalized here 
 | `price_jpy`         | DECIMAL(15,2) | NOT NULL                    | Unit price in JPY                     |
 | `price_cny`         | DECIMAL(15,2) | NULL                        | Unit price in CNY                     |
 | `purchase_quantity` | INT           | NOT NULL                    | Quantity purchased                    |
-| `stock_quantity`    | INT           | NOT NULL, CHECK >= 0        | Current available stock               |
+| `initial_stock`     | INT           | NOT NULL                    | Sellable units at purchase            |
 | `supplier_id`       | INT           | NULL                        | Supplier (denormalized from purchase) |
 | `purchase_date`     | DATETIME      | NULL                        | Purchase date (denormalized)          |
 | `purchase_no`       | VARCHAR(100)  | NULL                        | Purchase order number (denormalized)  |
@@ -183,6 +194,8 @@ Inventory items linked to products. Purchase-level fields are denormalized here 
 
 - `product_id` → `products.id` (ON DELETE RESTRICT)
 
+Current stock is not stored. See [FIFO Calculation](architecture.md#6-fifo-calculation).
+
 ---
 
 ### Orders
@@ -193,11 +206,10 @@ Sales orders with revenue and cost tracking.
 | ------------------ | ------------- | --------------------------- | ----------------------- |
 | `id`               | INT           | PRIMARY KEY, AUTO_INCREMENT | Unique identifier       |
 | `order_no`         | VARCHAR(100)  | NOT NULL, UNIQUE            | Order number            |
-| `name`             | VARCHAR(200)  | NULL                        | Order/item name         |
+| `name`             | VARCHAR(200)  | NOT NULL                    | Order/item name         |
 | `image_url`        | VARCHAR(500)  | NULL                        | Product image URL       |
 | `revenue`          | DECIMAL(15,2) | NOT NULL                    | Sales revenue           |
-| `total_cost`       | DECIMAL(15,2) | NULL                        | Total cost (calculated) |
-| `shipping_fee`     | DECIMAL(15,2) | NULL                        | Shipping fee            |
+| `shipping_fee`     | DECIMAL(15,2) | NOT NULL, DEFAULT 0         | Shipping fee in JPY     |
 | `transaction_time` | DATETIME      | NOT NULL                    | Transaction timestamp   |
 | `created_at`       | DATETIME      | DEFAULT CURRENT_TIMESTAMP   | Creation timestamp      |
 | `updated_at`       | DATETIME      | ON UPDATE CURRENT_TIMESTAMP | Last update timestamp   |
@@ -208,12 +220,8 @@ Sales orders with revenue and cost tracking.
 - PRIMARY KEY (`id`)
 - UNIQUE (`order_no`)
 - INDEX (`transaction_time`)
-- INDEX (`total_cost`, `transaction_time`)
 
-**Business Logic:**
-
-- `total_cost = NULL` indicates order details not yet entered
-- `profit = revenue - total_cost - shipping_fee`
+Order cost is not stored. See [FIFO Calculation](architecture.md#6-fifo-calculation).
 
 ---
 
@@ -225,13 +233,10 @@ Line items for orders with cost breakdown.
 | ---------------- | ------------- | --------------------------- | --------------------- |
 | `id`             | INT           | PRIMARY KEY, AUTO_INCREMENT | Unique identifier     |
 | `order_id`       | INT           | FOREIGN KEY → orders.id     | Order reference       |
-| `inventory_id`   | INT           | FOREIGN KEY → inventory.id  | Inventory reference   |
 | `product_id`     | INT           | FOREIGN KEY → products.id   | Product reference     |
-| `unit_price`     | DECIMAL(15,2) | NOT NULL                    | Unit cost (snapshot)  |
 | `quantity`       | INT           | NOT NULL                    | Quantity ordered      |
 | `packaging_cost` | DECIMAL(15,2) | DEFAULT 0                   | Packaging cost        |
 | `other_cost`     | DECIMAL(15,2) | DEFAULT 0                   | Other costs           |
-| `subtotal_cost`  | DECIMAL(15,2) | NOT NULL                    | Line item total       |
 | `notes`          | TEXT          | NULL                        | Additional notes      |
 | `created_at`     | DATETIME      | DEFAULT CURRENT_TIMESTAMP   | Creation timestamp    |
 | `updated_at`     | DATETIME      | ON UPDATE CURRENT_TIMESTAMP | Last update timestamp |
@@ -241,21 +246,14 @@ Line items for orders with cost breakdown.
 
 - PRIMARY KEY (`id`)
 - INDEX (`order_id`)
-- INDEX (`inventory_id`)
 - INDEX (`product_id`)
-- INDEX (`order_id`, `inventory_id`)
 
 **Foreign Keys:**
 
-- `order_id` → `orders.id` (ON DELETE CASCADE)
-- `inventory_id` → `inventory.id` (ON DELETE RESTRICT)
+- `order_id` → `orders.id` (ON DELETE RESTRICT)
 - `product_id` → `products.id` (ON DELETE RESTRICT)
 
-**Calculated Field:**
-
-```
-subtotal_cost = (unit_price * quantity) + packaging_cost + other_cost
-```
+Batch links and line costs are not stored. See [FIFO Calculation](architecture.md#6-fifo-calculation).
 
 ## Soft Delete Implementation
 
@@ -286,17 +284,14 @@ Benefits:
    purchases.exchange_rate = 21.5 (CNY to JPY)
    ```
 
-2. **Inventory Level**: JPY amount stored for consistency
+2. **Inventory Level**: Unit price stored per batch
 
    ```
-   inventory.purchase_amount_jpy = amount * exchange_rate
-   inventory.unit_cost = purchase_amount_jpy / purchase_quantity
+   inventory.price_jpy = unit price in JPY
+   inventory.price_cny = unit price in CNY (optional)
    ```
 
-3. **Order Detail Level**: Unit cost snapshot preserved
-   ```
-   order_details.unit_price = inventory.unit_cost (at order time)
-   ```
+3. **Order Detail Level**: Cost is calculated when read. See [FIFO Calculation](architecture.md#6-fifo-calculation).
 
 ### Supported Currencies
 
@@ -310,24 +305,19 @@ Benefits:
 
 ### Check Constraints
 
-```sql
--- Inventory stock cannot go negative
-ALTER TABLE inventory ADD CONSTRAINT chk_stock_positive
-CHECK (stock_quantity >= 0);
-
--- Order detail quantity must be positive
-ALTER TABLE order_details ADD CONSTRAINT chk_quantity_positive
-CHECK (quantity > 0);
-```
+| Table         | Check                  |
+| ------------- | ---------------------- |
+| inventory     | `purchase_quantity > 0` |
+| order_details | `quantity > 0`         |
 
 ### Unique Constraints
 
-| Table      | Column(s)   | Purpose                       |
-| ---------- | ----------- | ----------------------------- |
-| categories | name        | Prevent duplicate categories  |
-| suppliers  | name        | Prevent duplicate suppliers   |
-| purchases  | purchase_no | Unique purchase order numbers |
-| orders     | order_no    | Unique order numbers          |
+| Table      | Column(s)           | Purpose                       |
+| ---------- | ------------------- | ----------------------------- |
+| categories | name, is_deleted    | Prevent duplicate categories  |
+| suppliers  | name, is_deleted    | Prevent duplicate suppliers   |
+| purchases  | purchase_no         | Unique purchase order numbers |
+| orders     | order_no            | Unique order numbers          |
 
 ### Foreign Key Behavior
 
@@ -336,9 +326,8 @@ CHECK (quantity > 0);
 | products → categories     | RESTRICT  | Prevent orphaned products  |
 | purchases → suppliers     | RESTRICT  | Preserve purchase history  |
 | inventory → products      | RESTRICT  | Preserve inventory history |
-| inventory → purchases     | RESTRICT  | Preserve cost tracking     |
-| order_details → orders    | CASCADE   | Delete details with order  |
-| order_details → inventory | RESTRICT  | Preserve cost history      |
+| order_details → orders    | RESTRICT  | Preserve order history     |
+| order_details → products  | RESTRICT  | Preserve sales history     |
 
 ## Sample Data
 
@@ -376,9 +365,9 @@ VALUES (1, '2024-01-15', 'PO-2024-001', 500.00, 'CNY', 21.50);
 ### Inventory
 
 ```sql
-INSERT INTO inventory (product_id, purchase_id, purchase_amount_jpy, purchase_quantity, unit_cost, stock_quantity)
-VALUES (1, 1, 5375.00, 10, 537.50, 10);
--- unit_cost = 500 CNY * 21.50 / 10 = 1075 JPY / 2 = 537.50 JPY per unit
+INSERT INTO inventory (product_id, price_jpy, price_cny, purchase_quantity, initial_stock, supplier_id, purchase_date, purchase_no)
+VALUES (1, 1075.00, 50.00, 10, 10, 1, '2024-01-15', 'PO-2024-001');
+-- price_jpy = 50 CNY * 21.50 = 1075 JPY per unit
 ```
 
 ## Migration Notes

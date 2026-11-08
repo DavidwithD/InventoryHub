@@ -6,24 +6,18 @@
 
 ## Database Schema (relevant to stats)
 
-| Table | Key fields |
-|---|---|
-| Orders | revenue, shipping_fee, transaction_time, order_no, name, image_url |
-| OrderDetails | unit_price, quantity, packaging_cost, other_cost, subtotal_cost, inventory_id, product_id, order_id |
-| Inventory | price_jpy, price_cny (nullable), purchase_quantity, stock_quantity, supplier_id (nullable, denorm), purchase_date (nullable, denorm), purchase_no (nullable, denorm), product_id |
-| Purchases | total_amount, purchase_date, currency_type, exchange_rate, supplier_id, purchase_no |
-| Products | name, category_id, image_url (nullable) |
-| Categories | name |
-| Suppliers | name |
+See [Database Schema](database-schema.md) for the tables and columns.
 
-> **Note:** `Inventory` no longer FK's into `Purchases`. Purchase context (supplier, date, no.) is denormalized directly onto each inventory row. The `Purchases` table is now standalone — useful for purchase-level spend tracking, but inventory stats derive everything from the Inventory table itself.
+Stock and line costs are not stored. See [FIFO Calculation](architecture.md#6-fifo-calculation).
 
 **Key derived metrics:**
-- **Unit cost** = `price_jpy / purchase_quantity` (no longer a stored field)
-- **Profit per line** = `(unit_price − price_jpy/purchase_quantity) × quantity − packaging_cost − other_cost`
-- **Order profit** = `revenue − shipping_fee − sum(line profits)`
-- **Stock value** = `sum(stock_quantity × (price_jpy / purchase_quantity))` across all inventory lots
-- **Margin %** = profit / revenue
+- **Unit cost** = `price_jpy`
+- **Line cost** = FIFO batch cost + `packaging_cost` + `other_cost`
+- **Order profit** = `revenue − sum(line costs)`. Profit totals skip orders with unmatched units.
+- **Line revenue** = order `revenue × line quantity / order quantity`. Category and product revenue add up line revenue.
+- **Product profit** = `sum(line revenue − line cost)` over lines with no unmatched units
+- **Stock value** = `sum(calculated stock × price_jpy)` across all inventory lots
+- **Margin %** = profit / revenue of the orders that profit counts
 
 ---
 
@@ -43,7 +37,7 @@ Each date-filtered card shows a **period-over-period comparison** (e.g. ↑12% v
 | Avg Profit Margin % | profit / revenue | date-filtered + % change |
 | Orders Count | count of orders | date-filtered + % change |
 | Avg Order Value | revenue / orders count | date-filtered + % change |
-| Current Stock Value | sum(stock_qty × unit_cost) | always live, unfiltered |
+| Current Stock Value | sum(calculated stock × price_jpy) | always live, unfiltered |
 | Low Stock Items | count of products near zero | always live, unfiltered |
 
 #### Charts
@@ -60,8 +54,8 @@ Operational view — not strictly date-filtered like sales.
 
 - Stock level per product — table + visual progress bar
 - Stock value ranked by category
-- **Turnover rate** per category — `units_sold / avg_stock_quantity` over the period; helps decide between stock value and capital lock-up
-- **Dead stock** — `stock_quantity > 0` but zero sales in last N days (default window TBD, user-adjustable: 30 / 60 / 90d)
+- **Turnover rate** per category — `units_sold / avg calculated stock` over the period; helps decide between stock value and capital lock-up
+- **Dead stock** — calculated stock > 0 but zero sales in last N days (default window TBD, user-adjustable: 30 / 60 / 90d)
 - **Slow movers** — low sales velocity relative to remaining stock
 - **Time to sell** — avg days from `purchase_date` to `transaction_time` per product; shows how long stock typically sits before moving
 - Capital lock-up by category (value of dead stock + slow movers only, not total stock)

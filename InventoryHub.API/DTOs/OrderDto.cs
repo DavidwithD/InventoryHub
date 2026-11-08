@@ -11,6 +11,7 @@ public class OrderDto
     public decimal ShippingFee { get; set; }
     public DateTime TransactionTime { get; set; }
     public bool HasDetails { get; set; }
+    public bool HasUnknownCost { get; set; }
     public DateTime CreatedAt { get; set; }
     public DateTime UpdatedAt { get; set; }
 }
@@ -38,25 +39,31 @@ public class OrderDetailDto
 {
     public int Id { get; set; }
     public int OrderId { get; set; }
-    public int InventoryId { get; set; }
     public int ProductId { get; set; }
     public string ProductName { get; set; } = string.Empty;
-    public decimal UnitPrice { get; set; }
     public int Quantity { get; set; }
     public decimal PackagingCost { get; set; }
     public decimal OtherCost { get; set; }
-    public decimal SubtotalCost { get; set; }
+    public decimal SubtotalCost { get; set; } // 由 FIFO 计算
+    public int UnmatchedQuantity { get; set; }
+    public List<OrderDetailAllocationDto> Allocations { get; set; } = new();
     public string? Notes { get; set; }
     public DateTime CreatedAt { get; set; }
     public DateTime UpdatedAt { get; set; }
 }
 
+public class OrderDetailAllocationDto
+{
+    public int InventoryId { get; set; }
+    public int Quantity { get; set; }
+    public decimal UnitCost { get; set; }
+    public DateTime? PurchaseDate { get; set; }
+}
+
 public class CreateOrderDetailDto
 {
     public int OrderId { get; set; }
-    public int InventoryId { get; set; }
     public int ProductId { get; set; }
-    public decimal UnitPrice { get; set; }
     public int Quantity { get; set; }
     public decimal PackagingCost { get; set; }
     public decimal OtherCost { get; set; }
@@ -65,9 +72,7 @@ public class CreateOrderDetailDto
 
 public class UpdateOrderDetailDto
 {
-    public int InventoryId { get; set; }
     public int ProductId { get; set; }
-    public decimal UnitPrice { get; set; }
     public int Quantity { get; set; }
     public decimal PackagingCost { get; set; }
     public decimal OtherCost { get; set; }

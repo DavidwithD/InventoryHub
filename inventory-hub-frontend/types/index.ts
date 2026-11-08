@@ -52,8 +52,8 @@ export interface Inventory extends BaseEntity {
   purchaseQuantity: number;
   priceJpy: number; // 日元单价
   priceCny?: number; // 人民币单价
-  stockQuantity: number;
-  isReferenced: boolean;
+  initialStock: number;
+  stockQuantity: number; // 由 FIFO 计算
   productName: string;
   categoryId?: number;
   categoryName?: string;
@@ -63,10 +63,18 @@ export interface Inventory extends BaseEntity {
   product?: Product;
 }
 
+// 修改或删除批次后 FIFO 结果的变化
+export interface InventoryImpact {
+  affectedOrders: number;
+  affectedLines: number;
+  newlyUnmatchedQuantity: number; // 变为成本未知的件数
+  costChange: number; // 仅已匹配部分
+}
+
 export interface CreateInventory {
   productId: number;
   purchaseQuantity: number;
-  stockQuantity: number;
+  initialStock: number;
   priceJpy: number; // 日元单价
   priceCny?: number; // 人民币单价
   supplierId?: number;
@@ -77,7 +85,6 @@ export interface CreateInventory {
 export interface InventoryRow extends CreateInventory {
   tempId: string;
   id?: number; // 已存在的库存记录有id
-  isReferenced?: boolean; // 是否被订单引用
   productName?: string;
 }
 
@@ -91,6 +98,7 @@ export interface Order extends BaseEntity {
   shippingFee: number;
   transactionTime: string;
   hasDetails: boolean;
+  hasUnknownCost: boolean;
 }
 
 export interface CreateOrder {
@@ -112,24 +120,29 @@ export interface UpdateOrder {
 }
 
 // Order Detail
+export interface OrderDetailAllocation {
+  inventoryId: number;
+  quantity: number;
+  unitCost: number;
+  purchaseDate?: string;
+}
+
 export interface OrderDetail extends BaseEntity {
   orderId: number;
-  inventoryId: number;
   productId: number;
   productName: string;
-  unitPrice: number;
   quantity: number;
   packagingCost: number;
   otherCost: number;
-  subtotalCost: number;
+  subtotalCost: number; // 由 FIFO 计算
+  unmatchedQuantity: number;
+  allocations: OrderDetailAllocation[];
   notes?: string;
 }
 
 export interface CreateOrderDetail {
   orderId: number;
-  inventoryId: number;
   productId: number;
-  unitPrice: number;
   quantity: number;
   packagingCost: number;
   otherCost: number;
@@ -137,9 +150,7 @@ export interface CreateOrderDetail {
 }
 
 export interface UpdateOrderDetail {
-  inventoryId: number;
   productId: number;
-  unitPrice: number;
   quantity: number;
   packagingCost: number;
   otherCost: number;
@@ -158,14 +169,9 @@ export interface CreateOrderWithDetails {
 // 订单详细行（用于前端编辑）
 export interface OrderDetailRow {
   tempId: string;
-  inventoryId: number;
   productId: number;
-  productName?: string;
-  unitPrice: number;
   quantity: number;
   packagingCost: number;
   otherCost: number;
-  availableStock?: number;
-  priceJpy?: number;
   notes?: string;
 }

@@ -132,16 +132,20 @@ Benefits:
 - Data recovery capability
 - Referential integrity maintained
 
-### 6. Snapshot Pattern
+### 6. FIFO Calculation
 
-Historical data is preserved via snapshots:
+The database stores purchases and sales. It does not store batch links, line costs or current stock. `FifoCalculator` calculates those values on each read.
 
-```
-Inventory.unit_cost    → Snapshot at purchase time
-OrderDetail.unit_price → Snapshot from inventory at order time
-```
+For each product:
 
-This ensures profit calculations remain accurate even if costs change later.
+1. Sort batches by purchase date, then by id. Batches with no purchase date go last.
+2. Sort sales by order transaction time, then by detail id.
+3. Each sale takes units from the oldest batch that has stock and was purchased on or before the sale.
+4. Units with no matching batch become unmatched. They add no cost and do not reduce stock.
+
+The result does not depend on entry order. A backdated sale or a corrected purchase updates all related costs.
+
+Past costs are not frozen. An earlier edit can change the profit of a closed month.
 
 ## Frontend Architecture
 
@@ -254,28 +258,6 @@ public async Task<OrderDto> CreateOrderWithDetailsAsync(CreateOrderDto dto)
         _context.Orders.Add(order);
         await _context.SaveChangesAsync();
 
-        // 2. Create order details and update inventory
-        foreach (var detail in dto.Details)
-        {
-            // Validate stock
-            var inventory = await _context.Inventory.FindAsync(detail.InventoryId);
-            if (inventory.StockQuantity < detail.Quantity)
-                throw new InvalidOperationException("Insufficient stock");
-
-            // Deduct stock
-            inventory.StockQuantity -= detail.Quantity;
-
-            // Create detail with cost snapshot
-            var orderDetail = new OrderDetail
-            {
-                OrderId = order.Id,
-                InventoryId = detail.InventoryId,
-                UnitPrice = inventory.UnitCost,  // Snapshot!
-                Quantity = detail.Quantity
-            };
-            _context.OrderDetails.Add(orderDetail);
-        }
-
         await _context.SaveChangesAsync();
         await transaction.CommitAsync();
 
@@ -313,13 +295,10 @@ public async Task<OrderDto> CreateOrderWithDetailsAsync(CreateOrderDto dto)
         ├──► Create Order record
         │
         ├──► For each detail:
-        │    ├── Validate inventory exists
-        │    ├── Check stock availability
-        │    ├── Snapshot unit_cost to unit_price
-        │    ├── Create OrderDetail record
-        │    └── Decrement stock_quantity
+        │    ├── Validate product and quantity
+        │    └── Create OrderDetail record
         │
-        ├──► Calculate total_cost
+        ├──► Calculate cost with FIFO
         │
         ├──► Commit Transaction
         │
@@ -360,7 +339,7 @@ public async Task<OrderDto> CreateOrderWithDetailsAsync(CreateOrderDto dto)
    {total, success, skipped, failed}
 ```
 
-### Updating Inventory with Validation
+### Updating Inventory
 
 ```
 1. PUT /api/inventory/{id}
@@ -370,15 +349,7 @@ public async Task<OrderDto> CreateOrderWithDetailsAsync(CreateOrderDto dto)
         │
         ├──► Fetch current inventory
         │
-        ├──► Check if referenced by OrderDetails
-        │    │
-        │    ├── If YES and reducing stock below used amount:
-        │    │   └── Reject update (400 Bad Request)
-        │    │
-        │    └── If NO or safe change:
-        │        └── Allow update
-        │
-        ├──► Validate stock_quantity >= 0
+        ├──► Validate product and quantities
         │
         └──► Save changes
 ```
@@ -387,10 +358,7 @@ public async Task<OrderDto> CreateOrderWithDetailsAsync(CreateOrderDto dto)
 
 ### Stock Management
 
-Stock updates are protected by:
-1. **Database transactions** - Atomic operations
-2. **Validation checks** - Verify stock before deduction
-3. **Constraint enforcement** - `stock_quantity >= 0` at database level
+Stock has no stored counter to protect. Each read calculates stock from committed purchases and sales.
 
 ### Optimistic vs Pessimistic Locking
 

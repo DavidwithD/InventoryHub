@@ -63,9 +63,13 @@ export default function OrdersPage() {
     }
 
     if (costStatus === 'null') {
-      filtered = filtered.filter((order) => order.totalCost === null || order.totalCost === 0);
+      filtered = filtered.filter(
+        (order) => order.totalCost === null || order.totalCost === 0 || order.hasUnknownCost
+      );
     } else if (costStatus === 'hasValue') {
-      filtered = filtered.filter((order) => order.totalCost !== null && order.totalCost > 0);
+      filtered = filtered.filter(
+        (order) => order.totalCost !== null && order.totalCost > 0 && !order.hasUnknownCost
+      );
     }
 
     return filtered;
@@ -78,8 +82,8 @@ export default function OrdersPage() {
       订单名: order.name,
       图片URL: order.imageUrl || '',
       营业额: order.revenue,
-      总成本: order.totalCost || 0,
-      利润: order.revenue - (order.totalCost || 0),
+      总成本: order.hasUnknownCost ? '未知' : order.totalCost || 0,
+      利润: order.hasUnknownCost ? '未知' : order.revenue - (order.totalCost || 0),
       交易时间: new Date(order.transactionTime).toLocaleString('zh-CN'),
     }));
 
@@ -236,7 +240,6 @@ export default function OrdersPage() {
         orderId={viewingOrderId}
         inventories={inventories}
         categories={categories}
-        saleDate={orders.find((o) => o.id === viewingOrderId)?.transactionTime}
         onClose={handleCloseDetailsDialog}
         onSaved={handleDetailsSaved}
       />

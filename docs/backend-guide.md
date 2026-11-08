@@ -145,7 +145,7 @@ public class Inventory : BaseEntity
     public decimal? PurchaseAmountCny { get; set; }
     public int PurchaseQuantity { get; set; }
     public decimal UnitCost { get; set; }
-    public int StockQuantity { get; set; }
+    public int InitialStock { get; set; }
 
     // Navigation properties
     public virtual Product Product { get; set; } = null!;
@@ -161,15 +161,14 @@ public class Inventory : BaseEntity
 public class Order : BaseEntity
 {
     public string OrderNo { get; set; } = string.Empty;
-    public string? Name { get; set; }
+    public string Name { get; set; } = string.Empty;
     public string? ImageUrl { get; set; }
     public decimal Revenue { get; set; }
-    public decimal? TotalCost { get; set; }
-    public decimal? ShippingFee { get; set; }
+    public decimal ShippingFee { get; set; } = 0;
     public DateTime TransactionTime { get; set; }
 
     // Navigation property
-    public virtual ICollection<OrderDetail> OrderDetails { get; set; } = new List<OrderDetail>();
+    public ICollection<OrderDetail> OrderDetails { get; set; } = new List<OrderDetail>();
 }
 ```
 
@@ -180,18 +179,14 @@ public class Order : BaseEntity
 public class OrderDetail : BaseEntity
 {
     public int OrderId { get; set; }
-    public int InventoryId { get; set; }
     public int ProductId { get; set; }
-    public decimal UnitPrice { get; set; }
     public int Quantity { get; set; }
     public decimal PackagingCost { get; set; } = 0;
     public decimal OtherCost { get; set; } = 0;
-    public decimal SubtotalCost { get; set; }
     public string? Notes { get; set; }
 
     // Navigation properties
     public virtual Order Order { get; set; } = null!;
-    public virtual Inventory Inventory { get; set; } = null!;
     public virtual Product Product { get; set; } = null!;
 }
 ```
@@ -271,7 +266,6 @@ public class AppDbContext : DbContext
             entity.HasIndex(e => e.OrderNo).IsUnique();
             entity.HasIndex(e => e.TransactionTime);
             entity.Property(e => e.Revenue).HasPrecision(15, 2);
-            entity.Property(e => e.TotalCost).HasPrecision(15, 2);
         });
 
         // OrderDetail configuration
@@ -279,15 +273,10 @@ public class AppDbContext : DbContext
         {
             entity.ToTable("order_details");
             entity.HasIndex(e => e.OrderId);
-            entity.HasIndex(e => e.InventoryId);
             entity.HasOne(d => d.Order)
                   .WithMany(o => o.OrderDetails)
                   .HasForeignKey(d => d.OrderId)
                   .OnDelete(DeleteBehavior.Cascade);
-            entity.HasOne(d => d.Inventory)
-                  .WithMany(i => i.OrderDetails)
-                  .HasForeignKey(d => d.InventoryId)
-                  .OnDelete(DeleteBehavior.Restrict);
         });
 
         // Global query filter for soft delete
@@ -319,141 +308,13 @@ public class AppDbContext : DbContext
 
 ### OrderService
 
-```csharp
-// Services/OrderService.cs
-public class OrderService
-{
-    private readonly AppDbContext _context;
-    private readonly IMapper _mapper;
+`OrderService` saves orders and order details. It validates the product and quantity. It gets costs from `IFifoService`. See [FIFO Calculation](architecture.md#6-fifo-calculation).
 
-    public OrderService(AppDbContext context, IMapper mapper)
-    {
-        _context = context;
-        _mapper = mapper;
-    }
+### FifoCalculator and FifoService
 
-    public async Task<List<OrderDto>> GetAllOrdersAsync(DateTime? startDate = null, DateTime? endDate = null)
-    {
-        var query = _context.Orders.AsQueryable();
+`FifoCalculator` is a pure function. `FifoService` loads live batches and sales, then calls it. Tests are in `InventoryHub.Tests/FifoCalculatorTests.cs`.
 
-        if (startDate.HasValue)
-            query = query.Where(o => o.TransactionTime >= startDate.Value);
-        if (endDate.HasValue)
-            query = query.Where(o => o.TransactionTime <= endDate.Value);
-
-        var orders = await query
-            .OrderByDescending(o => o.TransactionTime)
-            .ToListAsync();
-
-        return _mapper.Map<List<OrderDto>>(orders);
-    }
-
-    public async Task<OrderDto?> GetOrderByIdAsync(int id)
-    {
-        var order = await _context.Orders.FindAsync(id);
-        return order != null ? _mapper.Map<OrderDto>(order) : null;
-    }
-
-    public async Task<OrderDto> CreateOrderWithDetailsAsync(CreateOrderDto dto)
-    {
-        using var transaction = await _context.Database.BeginTransactionAsync();
-
-        try
-        {
-            // Create order
-            var order = new Order
-            {
-                OrderNo = dto.OrderNo,
-                Name = dto.Name,
-                ImageUrl = dto.ImageUrl,
-                Revenue = dto.Revenue,
-                ShippingFee = dto.ShippingFee,
-                TransactionTime = dto.TransactionTime
-            };
-
-            _context.Orders.Add(order);
-            await _context.SaveChangesAsync();
-
-            decimal totalCost = 0;
-
-            // Create order details
-            foreach (var detailDto in dto.Details)
-            {
-                var inventory = await _context.Inventory.FindAsync(detailDto.InventoryId);
-                if (inventory == null)
-                    throw new InvalidOperationException($"Inventory {detailDto.InventoryId} not found");
-
-                if (inventory.StockQuantity < detailDto.Quantity)
-                    throw new InvalidOperationException(
-                        $"Insufficient stock for inventory {detailDto.InventoryId}. " +
-                        $"Available: {inventory.StockQuantity}, Requested: {detailDto.Quantity}");
-
-                // Calculate subtotal
-                var subtotal = (inventory.UnitCost * detailDto.Quantity) +
-                               (detailDto.PackagingCost ?? 0) +
-                               (detailDto.OtherCost ?? 0);
-
-                var detail = new OrderDetail
-                {
-                    OrderId = order.Id,
-                    InventoryId = detailDto.InventoryId,
-                    ProductId = detailDto.ProductId,
-                    UnitPrice = inventory.UnitCost,  // Snapshot!
-                    Quantity = detailDto.Quantity,
-                    PackagingCost = detailDto.PackagingCost ?? 0,
-                    OtherCost = detailDto.OtherCost ?? 0,
-                    SubtotalCost = subtotal,
-                    Notes = detailDto.Notes
-                };
-
-                _context.OrderDetails.Add(detail);
-
-                // Deduct stock
-                inventory.StockQuantity -= detailDto.Quantity;
-
-                totalCost += subtotal;
-            }
-
-            // Update order total cost
-            order.TotalCost = totalCost;
-
-            await _context.SaveChangesAsync();
-            await transaction.CommitAsync();
-
-            return _mapper.Map<OrderDto>(order);
-        }
-        catch
-        {
-            await transaction.RollbackAsync();
-            throw;
-        }
-    }
-
-    public async Task<bool> DeleteOrderAsync(int id)
-    {
-        var order = await _context.Orders
-            .Include(o => o.OrderDetails)
-            .FirstOrDefaultAsync(o => o.Id == id);
-
-        if (order == null) return false;
-
-        // Restore stock for each detail
-        foreach (var detail in order.OrderDetails)
-        {
-            var inventory = await _context.Inventory.FindAsync(detail.InventoryId);
-            if (inventory != null)
-            {
-                inventory.StockQuantity += detail.Quantity;
-            }
-            detail.IsDeleted = true;
-        }
-
-        order.IsDeleted = true;
-        await _context.SaveChangesAsync();
-        return true;
-    }
-}
-```
+`FifoCalculator.Compare` compares two results for the same sales. `FifoService.CalculateImpactAsync` uses it to compare the current batches with one batch replaced or removed. `InventoryService` exposes this as the update and delete impact previews.
 
 ### InventoryService
 
@@ -484,13 +345,6 @@ public class InventoryService
         var items = await query.ToListAsync();
         var dtos = _mapper.Map<List<InventoryDto>>(items);
 
-        // Check if each item is referenced in order details
-        foreach (var dto in dtos)
-        {
-            dto.IsReferenced = await _context.OrderDetails
-                .AnyAsync(d => d.InventoryId == dto.Id && !d.IsDeleted);
-        }
-
         return dtos;
     }
 
@@ -508,7 +362,7 @@ public class InventoryService
             PurchaseAmountCny = dto.PurchaseAmountCny,
             PurchaseQuantity = dto.PurchaseQuantity,
             UnitCost = dto.PurchaseAmountJpy / dto.PurchaseQuantity,
-            StockQuantity = dto.PurchaseQuantity
+            InitialStock = dto.InitialStock
         };
 
         _context.Inventory.Add(inventory);
@@ -719,12 +573,16 @@ public class OrderDto
 {
     public int Id { get; set; }
     public string OrderNo { get; set; } = string.Empty;
-    public string? Name { get; set; }
+    public string Name { get; set; } = string.Empty;
     public string? ImageUrl { get; set; }
     public decimal Revenue { get; set; }
-    public decimal? TotalCost { get; set; }
-    public decimal? ShippingFee { get; set; }
+    public decimal TotalCost { get; set; } // 由 FIFO 计算
+    public decimal ShippingFee { get; set; }
     public DateTime TransactionTime { get; set; }
+    public bool HasDetails { get; set; }
+    public bool HasUnknownCost { get; set; }
+    public DateTime CreatedAt { get; set; }
+    public DateTime UpdatedAt { get; set; }
 }
 
 public class CreateOrderDto
@@ -779,8 +637,7 @@ public class MappingProfile : Profile
         // OrderDetail mappings
         CreateMap<OrderDetail, OrderDetailDto>()
             .ForMember(d => d.ProductName, opt => opt.MapFrom(s => s.Product.Name))
-            .ForMember(d => d.CategoryName, opt => opt.MapFrom(s => s.Product.Category.Name))
-            .ForMember(d => d.AvailableStock, opt => opt.MapFrom(s => s.Inventory.StockQuantity));
+            .ForMember(d => d.CategoryName, opt => opt.MapFrom(s => s.Product.Category.Name));
     }
 }
 ```
@@ -881,8 +738,8 @@ public async Task<bool> DeleteAsync(int id)
 Validate business rules in services:
 
 ```csharp
-if (inventory.StockQuantity < requestedQuantity)
-    throw new InvalidOperationException("Insufficient stock");
+if (quantity <= 0)
+    throw new InvalidOperationException("Quantity must be greater than 0");
 ```
 
 ### Async/Await

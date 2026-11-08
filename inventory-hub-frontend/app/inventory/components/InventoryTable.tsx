@@ -111,11 +111,11 @@ export default function InventoryTable({
                 </TableCell>
                 <TableCell align="right">{inv.purchaseQuantity}</TableCell>
                 <TableCell align="center">
-                  <Tooltip title={inv.isReferenced ? '已被订单引用，无法修改' : '调整换算'}>
+                  <Tooltip title="调整换算">
                     <span>
                       <StockChip
                         qty={inv.stockQuantity}
-                        onClick={inv.isReferenced ? undefined : () => onAdjustFactor(inv)}
+                        onClick={() => onAdjustFactor(inv)}
                       />
                     </span>
                   </Tooltip>
