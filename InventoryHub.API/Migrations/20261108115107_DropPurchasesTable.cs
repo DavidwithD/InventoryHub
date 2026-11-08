@@ -31,7 +31,7 @@ namespace InventoryHub.API.Migrations
                         .Annotation("MySql:CharSet", "utf8mb4"),
                     exchange_rate = table.Column<decimal>(type: "decimal(10,4)", nullable: false),
                     is_deleted = table.Column<bool>(type: "tinyint(1)", nullable: false, defaultValue: false),
-                    purchase_date = table.Column<DateTime>(type: "datetime(6)", nullable: false),
+                    purchase_date = table.Column<DateTime>(type: "date", nullable: false),
                     purchase_no = table.Column<string>(type: "varchar(100)", maxLength: 100, nullable: false)
                         .Annotation("MySql:CharSet", "utf8mb4"),
                     total_amount = table.Column<decimal>(type: "decimal(15,2)", nullable: false),

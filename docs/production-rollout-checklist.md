@@ -11,7 +11,7 @@
 
 **Phase 2 — CODE DONE, NOT DEPLOYED.** The purchase backend code is removed. The migration `DropPurchasesTable` drops the `purchases` table. Run the steps below to deploy it.
 
-The Purchase & Supply stats tab now reads spend from `inventory`. Spend per batch is `price_jpy × purchase_quantity`, in JPY. The exchange-rate chart is removed. Its data lived only in `purchases`.
+The Purchase & Supply stats tab now reads from `inventory`. See [Stats page design](stats-page-design.md#3-purchase--supply).
 
 ---
 
@@ -56,7 +56,24 @@ dotnet ef database update
 
 ### Rollback
 
-If the migration fails, roll back the app. If the migration was applied, restore from `pre_drop_purchases.sql`.
+If the migration fails, roll back the app.
+
+If the migration was applied:
+
+1. Roll back the app.
+2. Restore the tables:
+
+```bash
+mysql -u <user> -p <dbname> < pre_drop_purchases.sql
+```
+
+3. Remove the migration from the EF history. Without this step, EF still treats the table as dropped.
+
+```sql
+DELETE FROM __EFMigrationsHistory WHERE MigrationId = '20261108115107_DropPurchasesTable';
+```
+
+The restore also resets `inventory` to the backup. Batches added after the backup are lost.
 
 ---
 
