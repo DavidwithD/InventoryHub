@@ -54,15 +54,23 @@ cd InventoryHub.API
 
 #### Configure Connection String
 
-Update `appsettings.json` with your database credentials:
+Do not put the connection string in `appsettings.json`. Git does not track that file.
 
-```json
-{
-  "ConnectionStrings": {
-    "DefaultConnection": "Server=localhost;Database=inventory_hub;User=inventory_user;Password=inventory_pass;"
-  }
-}
+On your machine, store the connection string in .NET User Secrets. Run this from the repository root:
+
+```bash
+dotnet user-secrets set "ConnectionStrings:DefaultConnection" "Server=localhost;Database=inventory_hub;User=inventory_user;Password=inventory_pass;" --project InventoryHub.API
 ```
+
+`dotnet run` uses the Development environment. In that environment the API loads User Secrets automatically.
+
+On a server, set the `ConnectionStrings__DefaultConnection` environment variable:
+
+```bash
+export ConnectionStrings__DefaultConnection="Server=your-server;Port=3306;Database=your-database;User=your-user;Password=your-password;SslMode=Required;"
+```
+
+The API starts without `appsettings.json`. To change other settings, copy `appsettings.example.json` to `appsettings.json`. Remove the `ConnectionStrings` section from the copy.
 
 #### Run the Backend
 
@@ -145,11 +153,10 @@ After setup, verify the installation:
 
 ### Backend Configuration (`appsettings.json`)
 
+Set the connection string as described in [Configure Connection String](#configure-connection-string). The other settings can go in `appsettings.json`:
+
 ```json
 {
-  "ConnectionStrings": {
-    "DefaultConnection": "Server=localhost;Database=inventory_hub;User=inventory_user;Password=inventory_pass;"
-  },
   "ExchangeRateApi": {
     "BaseUrl": "https://api.exchangerate-api.com/v4/latest/",
     "BaseCurrency": "CNY",
@@ -193,7 +200,7 @@ If port 5022 or 3000 is already in use:
 #### Database Connection Failed
 
 1. Verify MySQL is running: `mysql -u inventory_user -p`
-2. Check connection string in `appsettings.json`
+2. Check the connection string: `dotnet user-secrets list --project InventoryHub.API`, or the `ConnectionStrings__DefaultConnection` environment variable on a server
 3. Ensure the database exists: `SHOW DATABASES;`
 
 #### CORS Errors
