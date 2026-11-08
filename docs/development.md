@@ -145,37 +145,43 @@ refactor(services): extract common validation logic
 
 ## Testing
 
-### Backend Testing
+### Running Tests
 
-```csharp
-// Unit test example
-[Fact]
-public void Sale_takes_the_oldest_batch_first()
-{
-    var result = FifoCalculator.Calculate(
-        new[] { new FifoBatch(1, 1, new DateTime(2026, 1, 1), 5, 100m) },
-        new[] { new FifoSale(10, 1, new DateTime(2026, 2, 1), 2) });
+Run these from the repository root.
 
-    Assert.Equal(200m, result.BatchCost(10));
-    Assert.Equal(3, result.Remaining(1));
-}
+| Command | What it runs |
+|---------|--------------|
+| `npm test` | All three suites below, in order |
+| `npm run test:api` | Backend unit and integration tests (xUnit) |
+| `npm run test:web` | Frontend unit tests (Vitest) |
+| `npm run test:e2e` | Browser tests (Playwright) |
+
+None of the suites need MySQL. They do not touch your database.
+
+Before the first E2E run, install the browser once:
+
+```bash
+npx --prefix inventory-hub-frontend playwright install chromium
 ```
 
-### Frontend Testing
+The E2E run starts its own API on port 5122 and web server on port 3100. Your `npm run dev` servers on 3000 and 5022 can keep running. After a failed E2E run, open the report:
 
-```typescript
-// Component test example
-import { render, screen } from '@testing-library/react';
-import { OrderList } from './OrderList';
-
-describe('OrderList', () => {
-  it('should display orders', async () => {
-    render(<OrderList />);
-
-    expect(await screen.findByText('Order #123')).toBeInTheDocument();
-  });
-});
+```bash
+npx --prefix inventory-hub-frontend playwright show-report
 ```
+
+### Writing Tests
+
+| Layer | Put the test in | Use it for |
+|-------|-----------------|------------|
+| Backend unit | `InventoryHub.Tests/Unit/` | FIFO rules and one service at a time |
+| Backend integration | `InventoryHub.Tests/Integration/` | HTTP requests through the full API |
+| Frontend unit | `inventory-hub-frontend/tests/unit/` | Parsers, stores and single components |
+| E2E | `inventory-hub-frontend/e2e/` | A user flow in the browser |
+
+- Service tests create data with the helpers in `InventoryHub.Tests/Support/TestDb.cs`.
+- Integration tests call the API through `InventoryHub.Tests/Support/ApiClient.cs`.
+- E2E tests create their data through the API with `e2e/seed.ts`. Then they check the page. Give each record a name from `unique()`, because tests in one run share a database.
 
 ## Database Migrations
 

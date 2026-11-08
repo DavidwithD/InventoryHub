@@ -21,6 +21,10 @@ public class AppDbContext : DbContext
     {
         base.OnModelCreating(modelBuilder);
 
+        // The tests use SQLite. ON UPDATE is MySQL syntax, so SQLite gets a plain default.
+        var isSqlite = Database.ProviderName == "Microsoft.EntityFrameworkCore.Sqlite";
+        var updatedAtDefault = isSqlite ? "CURRENT_TIMESTAMP" : "CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP";
+
         // Category configuration
         modelBuilder.Entity<Category>(entity =>
         {
@@ -29,7 +33,7 @@ public class AppDbContext : DbContext
             entity.Property(e => e.Id).HasColumnName("id");
             entity.Property(e => e.Name).HasColumnName("name").HasMaxLength(100).IsRequired();
             entity.Property(e => e.CreatedAt).HasColumnName("created_at").HasColumnType("datetime").HasDefaultValueSql("CURRENT_TIMESTAMP");
-            entity.Property(e => e.UpdatedAt).HasColumnName("updated_at").HasColumnType("datetime").HasDefaultValueSql("CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP");
+            entity.Property(e => e.UpdatedAt).HasColumnName("updated_at").HasColumnType("datetime").HasDefaultValueSql(updatedAtDefault);
             entity.Property(e => e.IsDeleted).HasColumnName("is_deleted").HasDefaultValue(false);
 
             entity.HasIndex(e => new { e.Name, e.IsDeleted }).HasDatabaseName("unique_category_name").IsUnique();
@@ -43,7 +47,7 @@ public class AppDbContext : DbContext
             entity.Property(e => e.Id).HasColumnName("id");
             entity.Property(e => e.Name).HasColumnName("name").HasMaxLength(100).IsRequired();
             entity.Property(e => e.CreatedAt).HasColumnName("created_at").HasColumnType("datetime").HasDefaultValueSql("CURRENT_TIMESTAMP");
-            entity.Property(e => e.UpdatedAt).HasColumnName("updated_at").HasColumnType("datetime").HasDefaultValueSql("CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP");
+            entity.Property(e => e.UpdatedAt).HasColumnName("updated_at").HasColumnType("datetime").HasDefaultValueSql(updatedAtDefault);
             entity.Property(e => e.IsDeleted).HasColumnName("is_deleted").HasDefaultValue(false);
 
             entity.HasIndex(e => new { e.Name, e.IsDeleted }).HasDatabaseName("unique_supplier_name").IsUnique();
@@ -58,7 +62,7 @@ public class AppDbContext : DbContext
             entity.Property(e => e.CategoryId).HasColumnName("category_id").IsRequired();
             entity.Property(e => e.Name).HasColumnName("name").HasMaxLength(200).IsRequired();
             entity.Property(e => e.CreatedAt).HasColumnName("created_at").HasColumnType("datetime").HasDefaultValueSql("CURRENT_TIMESTAMP");
-            entity.Property(e => e.UpdatedAt).HasColumnName("updated_at").HasColumnType("datetime").HasDefaultValueSql("CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP");
+            entity.Property(e => e.UpdatedAt).HasColumnName("updated_at").HasColumnType("datetime").HasDefaultValueSql(updatedAtDefault);
             entity.Property(e => e.IsDeleted).HasColumnName("is_deleted").HasDefaultValue(false);
 
             entity.HasOne(p => p.Category)
@@ -82,7 +86,7 @@ public class AppDbContext : DbContext
             entity.Property(e => e.CurrencyType).HasColumnName("currency_type").HasMaxLength(10).IsRequired();
             entity.Property(e => e.ExchangeRate).HasColumnName("exchange_rate").HasColumnType("decimal(10,4)").IsRequired();
             entity.Property(e => e.CreatedAt).HasColumnName("created_at").HasColumnType("datetime").HasDefaultValueSql("CURRENT_TIMESTAMP");
-            entity.Property(e => e.UpdatedAt).HasColumnName("updated_at").HasColumnType("datetime").HasDefaultValueSql("CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP");
+            entity.Property(e => e.UpdatedAt).HasColumnName("updated_at").HasColumnType("datetime").HasDefaultValueSql(updatedAtDefault);
             entity.Property(e => e.IsDeleted).HasColumnName("is_deleted").HasDefaultValue(false);
 
             entity.HasOne(p => p.Supplier)
@@ -110,7 +114,7 @@ public class AppDbContext : DbContext
             entity.Property(e => e.PurchaseDate).HasColumnName("purchase_date").HasColumnType("datetime");
             entity.Property(e => e.PurchaseNo).HasColumnName("purchase_no").HasMaxLength(100);
             entity.Property(e => e.CreatedAt).HasColumnName("created_at").HasColumnType("datetime").HasDefaultValueSql("CURRENT_TIMESTAMP");
-            entity.Property(e => e.UpdatedAt).HasColumnName("updated_at").HasColumnType("datetime").HasDefaultValueSql("CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP");
+            entity.Property(e => e.UpdatedAt).HasColumnName("updated_at").HasColumnType("datetime").HasDefaultValueSql(updatedAtDefault);
             entity.Property(e => e.IsDeleted).HasColumnName("is_deleted").HasDefaultValue(false);
 
             entity.HasOne(i => i.Product)
@@ -133,7 +137,7 @@ public class AppDbContext : DbContext
             entity.Property(e => e.ShippingFee).HasColumnName("shipping_fee").HasColumnType("decimal(15,2)").HasDefaultValue(0);
             entity.Property(e => e.TransactionTime).HasColumnName("transaction_time").IsRequired();
             entity.Property(e => e.CreatedAt).HasColumnName("created_at").HasColumnType("datetime").HasDefaultValueSql("CURRENT_TIMESTAMP");
-            entity.Property(e => e.UpdatedAt).HasColumnName("updated_at").HasColumnType("datetime").HasDefaultValueSql("CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP");
+            entity.Property(e => e.UpdatedAt).HasColumnName("updated_at").HasColumnType("datetime").HasDefaultValueSql(updatedAtDefault);
             entity.Property(e => e.IsDeleted).HasColumnName("is_deleted").HasDefaultValue(false);
 
             entity.HasIndex(e => e.OrderNo).HasDatabaseName("unique_order_no").IsUnique();
@@ -153,7 +157,7 @@ public class AppDbContext : DbContext
             entity.Property(e => e.OtherCost).HasColumnName("other_cost").HasColumnType("decimal(15,2)").HasDefaultValue(0);
             entity.Property(e => e.Notes).HasColumnName("notes").HasColumnType("text");
             entity.Property(e => e.CreatedAt).HasColumnName("created_at").HasColumnType("datetime").HasDefaultValueSql("CURRENT_TIMESTAMP");
-            entity.Property(e => e.UpdatedAt).HasColumnName("updated_at").HasColumnType("datetime").HasDefaultValueSql("CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP");
+            entity.Property(e => e.UpdatedAt).HasColumnName("updated_at").HasColumnType("datetime").HasDefaultValueSql(updatedAtDefault);
             entity.Property(e => e.IsDeleted).HasColumnName("is_deleted").HasDefaultValue(false);
 
             entity.HasOne(od => od.Order)
@@ -169,5 +173,14 @@ public class AppDbContext : DbContext
             entity.HasIndex(e => e.OrderId).HasDatabaseName("idx_order_id");
             entity.HasIndex(e => e.ProductId).HasDatabaseName("idx_product_id");
         });
+
+        // SQLite needs index names that are unique across the database. Add the table name.
+        if (isSqlite)
+        {
+            foreach (var index in modelBuilder.Model.GetEntityTypes().SelectMany(t => t.GetIndexes()))
+            {
+                index.SetDatabaseName($"{index.DeclaringEntityType.GetTableName()}_{index.GetDatabaseName()}");
+            }
+        }
     }
 }

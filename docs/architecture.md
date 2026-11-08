@@ -271,6 +271,16 @@ public async Task<OrderDto> CreateOrderWithDetailsAsync(CreateOrderDto dto)
 }
 ```
 
+### Test Database
+
+The tests run the API on SQLite. Production uses MySQL. These parts of the code support SQLite:
+
+| File | What it does |
+|------|--------------|
+| `Program.cs` | Uses SQLite when `ConnectionStrings:Sqlite` is set. Creates the tables at startup. Reads allowed origins from `Cors:Origins`. The default is `http://localhost:3000`. |
+| `Data/AppDbContext.cs` | On SQLite, uses a plain `CURRENT_TIMESTAMP` default for `updated_at`. Adds the table name to each index name, because SQLite needs index names unique across the database. |
+| `inventory-hub-frontend/next.config.ts` | Reads the build folder from `NEXT_DIST_DIR`. The E2E web server uses `.next-e2e`. |
+
 ## Data Flow Examples
 
 ### Creating an Order

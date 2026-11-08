@@ -16,17 +16,28 @@ builder.Host.UseSerilog();
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 
-// Configure MySQL Database
+// Configure the database. The E2E tests set ConnectionStrings:Sqlite. Everything else uses MySQL.
+var sqliteConnectionString = builder.Configuration.GetConnectionString("Sqlite");
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
 builder.Services.AddDbContext<AppDbContext>(options =>
-    options.UseMySql(connectionString, ServerVersion.AutoDetect(connectionString)));
+{
+    if (!string.IsNullOrEmpty(sqliteConnectionString))
+    {
+        options.UseSqlite(sqliteConnectionString);
+    }
+    else
+    {
+        options.UseMySql(connectionString, ServerVersion.AutoDetect(connectionString));
+    }
+});
 
 // Configure CORS
+var corsOrigins = builder.Configuration.GetSection("Cors:Origins").Get<string[]>() ?? new[] { "http://localhost:3000" };
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowFrontend", policy =>
     {
-        policy.WithOrigins("http://localhost:3000")
+        policy.WithOrigins(corsOrigins)
               .AllowAnyHeader()
               .AllowAnyMethod();
     });
@@ -52,6 +63,13 @@ builder.Services.AddScoped<IStatsService, StatsService>();
 
 var app = builder.Build();
 
+// A SQLite database has no migrations. Create its tables at startup.
+if (!string.IsNullOrEmpty(sqliteConnectionString))
+{
+    using var scope = app.Services.CreateScope();
+    scope.ServiceProvider.GetRequiredService<AppDbContext>().Database.EnsureCreated();
+}
+
 // Configure the HTTP request pipeline.
 app.UseHttpsRedirection();
 
@@ -65,5 +83,8 @@ app.MapControllers();
 app.MapGet("/api/health", () => new { Status = "OK", Message = "InventoryHub API is running" });
 
 app.Run();
+
+// The integration tests use this type with WebApplicationFactory.
+public partial class Program { }
 
 
