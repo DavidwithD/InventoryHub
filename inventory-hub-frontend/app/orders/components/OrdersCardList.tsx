@@ -1,28 +1,12 @@
 'use client';
 
-import {
-  Box,
-  Button,
-  Card,
-  Chip,
-  FormControl,
-  IconButton,
-  MenuItem,
-  Paper,
-  Select,
-  Stack,
-  Tooltip,
-  Typography,
-} from '@mui/material';
-import ArrowUpwardIcon from '@mui/icons-material/ArrowUpward';
-import ArrowDownwardIcon from '@mui/icons-material/ArrowDownward';
+import { Box, Button, Card, Chip, Paper, Stack, Typography } from '@mui/material';
 import { Order } from '@/types';
-import { ORDER_SORT_LABELS, OrderSort, OrderSortField, sortOrders } from '../utils/sortOrders';
+import { OrderSort, sortOrders } from '../utils/sortOrders';
 
 interface Props {
   orders: Order[];
   sort: OrderSort;
-  onSortChange: (sort: OrderSort) => void;
   onViewDetails: (orderId: number) => void;
 }
 
@@ -41,45 +25,11 @@ function Metric({ label, value }: { label: string; value: string }) {
   );
 }
 
-export default function OrdersCardList({ orders, sort, onSortChange, onViewDetails }: Props) {
+export default function OrdersCardList({ orders, sort, onViewDetails }: Props) {
   const sortedOrders = sortOrders(orders, sort);
 
   return (
     <Box>
-      <Stack direction="row" spacing={1} sx={{ alignItems: 'center', mb: 1.5 }}>
-        <Typography variant="body2" color="text.secondary">
-          排序
-        </Typography>
-        <FormControl size="small">
-          <Select
-            value={sort.field}
-            onChange={(e) => onSortChange({ ...sort, field: e.target.value as OrderSortField })}
-            inputProps={{ 'aria-label': '排序字段' }}
-          >
-            {(Object.keys(ORDER_SORT_LABELS) as OrderSortField[]).map((field) => (
-              <MenuItem key={field} value={field}>
-                {ORDER_SORT_LABELS[field]}
-              </MenuItem>
-            ))}
-          </Select>
-        </FormControl>
-        <Tooltip title={sort.direction === 'asc' ? '升序' : '降序'}>
-          <IconButton
-            size="small"
-            aria-label="切换排序方向"
-            onClick={() =>
-              onSortChange({ ...sort, direction: sort.direction === 'asc' ? 'desc' : 'asc' })
-            }
-          >
-            {sort.direction === 'asc' ? <ArrowUpwardIcon /> : <ArrowDownwardIcon />}
-          </IconButton>
-        </Tooltip>
-        <Box sx={{ flex: 1 }} />
-        <Typography variant="body2" color="text.secondary">
-          共 {sortedOrders.length} 条订单
-        </Typography>
-      </Stack>
-
       {sortedOrders.length === 0 ? (
         <Paper sx={{ p: 3, textAlign: 'center', color: 'text.secondary' }}>暂无订单数据</Paper>
       ) : (

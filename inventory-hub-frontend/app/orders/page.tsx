@@ -14,7 +14,7 @@ import OrderDetailsDialog from './components/OrderDetailsDialog';
 import ImportDialog from './components/ImportDialog';
 import { useOrderFilterStore } from '@/lib/stores/filterStore';
 import OrdersCardList from './components/OrdersCardList';
-import ViewModeToggle from '@/components/ViewModeToggle';
+import OrdersListToolbar from './components/OrdersListToolbar';
 import { useViewMode } from '@/lib/stores/viewModeStore';
 import { DEFAULT_ORDER_SORT, OrderSort } from './utils/sortOrders';
 
@@ -190,8 +190,7 @@ export default function OrdersPage() {
   return (
     <>
       <Box sx={{ display: 'flex', justifyContent: 'flex-end', mb: 3 }}>
-        <Box sx={{ display: 'flex', gap: 2, alignItems: 'center' }}>
-          <ViewModeToggle mode={viewMode} onChange={setViewMode} />
+        <Box sx={{ display: 'flex', gap: 2 }}>
           <Button variant="outlined" onClick={handleOpenImportDialog}>
             批量导入订单
           </Button>
@@ -226,11 +225,18 @@ export default function OrdersPage() {
         onExport={handleExportJSON}
       />
 
+      <OrdersListToolbar
+        count={filteredOrders.length}
+        sort={sort}
+        onSortChange={setSort}
+        viewMode={viewMode}
+        onViewModeChange={setViewMode}
+      />
+
       {viewMode === 'card' ? (
         <OrdersCardList
           orders={filteredOrders}
           sort={sort}
-          onSortChange={setSort}
           onViewDetails={handleViewDetails}
         />
       ) : (

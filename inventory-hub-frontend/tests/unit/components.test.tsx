@@ -4,6 +4,7 @@ import { describe, expect, it, vi } from 'vitest';
 import CategoryDialog from '@/app/categories/components/CategoryDialog';
 import OrdersTable from '@/app/orders/components/OrdersTable';
 import OrdersCardList from '@/app/orders/components/OrdersCardList';
+import OrdersListToolbar from '@/app/orders/components/OrdersListToolbar';
 import ViewModeToggle from '@/components/ViewModeToggle';
 import type { Order } from '@/types';
 import { DEFAULT_ORDER_SORT, sortOrders } from '@/app/orders/utils/sortOrders';
@@ -136,7 +137,6 @@ describe('OrdersCardList', () => {
       <OrdersCardList
         orders={[order({ id: 7 })]}
         sort={DEFAULT_ORDER_SORT}
-        onSortChange={vi.fn()}
         onViewDetails={onViewDetails}
       />
     );
@@ -147,17 +147,27 @@ describe('OrdersCardList', () => {
     await userEvent.click(card.getByRole('button', { name: '查看' }));
     expect(onViewDetails).toHaveBeenCalledWith(7);
   });
+});
 
-  it('flips the sort direction', async () => {
+describe('OrdersListToolbar', () => {
+  const props = {
+    count: 3,
+    sort: DEFAULT_ORDER_SORT,
+    onSortChange: vi.fn(),
+    onViewModeChange: vi.fn(),
+  };
+
+  it('shows the count and the toggle, but no sort controls, in table view', () => {
+    render(<OrdersListToolbar {...props} viewMode="table" />);
+
+    expect(screen.getByText('共 3 条订单')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: '切换到卡片视图' })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: '切换排序方向' })).not.toBeInTheDocument();
+  });
+
+  it('flips the sort direction in card view', async () => {
     const onSortChange = vi.fn();
-    render(
-      <OrdersCardList
-        orders={[order({})]}
-        sort={DEFAULT_ORDER_SORT}
-        onSortChange={onSortChange}
-        onViewDetails={vi.fn()}
-      />
-    );
+    render(<OrdersListToolbar {...props} onSortChange={onSortChange} viewMode="card" />);
 
     await userEvent.click(screen.getByRole('button', { name: '切换排序方向' }));
     expect(onSortChange).toHaveBeenCalledWith({ field: 'transactionTime', direction: 'asc' });

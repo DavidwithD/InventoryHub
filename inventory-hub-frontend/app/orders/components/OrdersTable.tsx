@@ -173,11 +173,6 @@ export default function OrdersTable({
         </Table>
       </TableContainer>
 
-      <Box sx={{ mt: 2, p: 2 }}>
-        <Typography variant="body2" color="text.secondary">
-          共 {sortedOrders.length} 条订单
-        </Typography>
-      </Box>
     </Paper>
   );
 }
