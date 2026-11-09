@@ -6,16 +6,16 @@
 
 - Old fields removed from `inventory`: `purchase_id`, `purchase_amount`, `purchase_amount_cny`, `unit_cost`
 - New fields added: `price_jpy`, `price_cny`
-- Denormalized purchase fields added to `inventory`: `supplier_id`, `purchase_date`, `purchase_no`, `currency_type`, `exchange_rate`
-- Migration applied: `20260405055617_RemovePurchaseFieldsAddPriceFields`
+- Purchase fields added to `inventory`: `supplier_id`, `purchase_date`, `purchase_no`
+- Migrations applied: `20260405055617_RemovePurchaseFieldsAddPriceFields`, `20260405070413_RemoveCurrencyTypeAndExchangeRateFromInventory`
 
-**Phase 2 — PENDING.** Drop the `purchases` table and remove all purchase backend code.
+**Phase 2 — CODE DONE, NOT DEPLOYED.** The purchase backend code is removed. The migration `DropPurchasesTable` drops the `purchases` table. Run the steps below to deploy it.
+
+The Purchase & Supply stats tab now reads from `inventory`. See [Stats page design](stats-page-design.md#3-purchase--supply).
 
 ---
 
-## Before Phase 2: Backfill production data
-
-The denormalized fields on `inventory` rows that were created before the migration will be `NULL`. Run the backfill to populate them from the `purchases` table (while it still exists).
+## Before the migration
 
 ### 1. Take a DB backup
 
@@ -23,76 +23,63 @@ The denormalized fields on `inventory` rows that were created before the migrati
 mysqldump -u <user> -p <dbname> purchases inventory > pre_drop_purchases.sql
 ```
 
-### 2. Run the backfill SQL
+### 2. Check that inventory rows have purchase data
 
-```bash
-mysql -u <user> -p <dbname> < docs/backfill-purchases-to-inventory.sql
-```
-
-### 3. Verify backfill completeness
+Phase 1 dropped `inventory.purchase_id`. There is no column left to copy data from `purchases` into `inventory`. Rows with empty fields stay empty.
 
 ```sql
 -- Should return 0
-SELECT COUNT(*) AS missing_backfill
+SELECT COUNT(*) AS missing
 FROM inventory
-WHERE (supplier_id IS NULL OR purchase_date IS NULL);
+WHERE is_deleted = 0 AND (supplier_id IS NULL OR purchase_date IS NULL);
 ```
 
-Check per-purchase total consistency (investigate rows > tolerance):
-
-```sql
-SELECT p.id, p.total_amount, IFNULL(SUM(i.price_jpy * i.purchase_quantity), 0) AS inventory_sum_jpy
-FROM purchases p
-LEFT JOIN inventory i ON i.purchase_no = p.purchase_no
-GROUP BY p.id
-HAVING ABS(p.total_amount - IFNULL(SUM(i.price_jpy * i.purchase_quantity), 0)) > 1;
-```
+If the count is above 0, fix those rows by hand before you continue. A batch with no `purchase_date` goes last in the FIFO order.
 
 ---
 
-## Phase 2: Destructive cleanup
+## Deploy
 
-Only after the backfill is verified:
-
-### Backend
-
-1. Delete `PurchasesController.cs`
-2. Delete `Services/PurchaseService.cs` and `Services/IPurchaseService.cs`
-3. Delete `DTOs/PurchaseDto.cs`
-4. Delete `Models/Purchase.cs`
-5. Remove `IPurchaseService` registration from `Program.cs`
-6. Remove `Purchases` DbSet and any purchase mappings from `AppDbContext.cs`
-7. Remove purchase mapping entries from `MappingProfile.cs`
-8. Create and apply a new EF migration to drop the `purchases` table
+1. Deploy the API and the frontend.
+2. Apply the migration:
 
 ```bash
-dotnet ef migrations add DropPurchasesTable
 dotnet ef database update
 ```
 
-### Frontend
+### Verification
 
-9. Remove the `purchases` route/page if still present
-10. Remove any remaining `Purchase`-related types from `types/index.ts`
-11. Remove navigation links pointing to `/purchases`
-
-### Verification after Phase 2
-
-- `dotnet build` — no compile errors
-- `npm run build` — no TypeScript errors
-- `GET /api/inventory` — returns `priceJpy`, `priceCny`, denormalized purchase fields
-- Dashboard, orders, and inventory pages load
-- No `/api/purchases` endpoints respond (404)
+- `GET /api/inventory` returns `priceJpy`, `priceCny`, `supplierId`, `purchaseDate` and `purchaseNo`
+- `GET /api/stats/purchases` returns data, and the Purchase & Supply tab shows charts
+- Dashboard, orders and inventory pages load
+- `/api/purchases` returns 404
 
 ### Rollback
 
-If Phase 2 fails before migration, roll back the app. If migration was applied, restore from `pre_drop_purchases.sql`.
+If the migration fails, roll back the app.
+
+If the migration was applied:
+
+1. Roll back the app.
+2. Restore the tables:
+
+```bash
+mysql -u <user> -p <dbname> < pre_drop_purchases.sql
+```
+
+3. Remove the migration from the EF history. Without this step, EF still treats the table as dropped.
+
+```sql
+DELETE FROM __EFMigrationsHistory WHERE MigrationId = '20261108115107_DropPurchasesTable';
+```
+
+The restore also resets `inventory` to the backup. Batches added after the backup are lost.
 
 ---
 
 ## Success criteria
 
-- No backend endpoints serving `purchases`
-- `purchases` table dropped
-- All inventory rows have `supplier_id` and `purchase_date` populated (where applicable)
-- Orders and dashboard continue to function correctly
+- No backend endpoints serve `purchases`
+- The `purchases` table is dropped
+- All inventory rows have `supplier_id` and `purchase_date`
+- Orders, dashboard and stats work

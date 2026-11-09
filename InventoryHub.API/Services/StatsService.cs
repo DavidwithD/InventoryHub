@@ -454,13 +454,53 @@ public class StatsService : IStatsService
 
     // ── Purchase & Supply ─────────────────────────────────────────────────────
 
+    // Label for batches with no supplier.
+    private const string NoSupplierName = "未指定供应商";
+
     public async Task<StatsPurchasesPageDto> GetPurchasesPageAsync(DateTime start, DateTime end, string granularity, int? productId)
     {
-        var purchases = await _db.Purchases
-            .Include(p => p.Supplier)
-            .Where(p => !p.IsDeleted && p.PurchaseDate >= start && p.PurchaseDate < end)
-            .OrderBy(p => p.PurchaseDate)
+        // price_jpy is a unit price. Spend per batch is price_jpy × purchase_quantity, in JPY.
+        var batches = await _db.Inventory
+            .Where(i => !i.IsDeleted && i.PurchaseDate >= start && i.PurchaseDate < end)
+            .OrderBy(i => i.PurchaseDate)
+            .Select(i => new
+            {
+                i.ProductId,
+                ProductName = i.Product.Name,
+                i.SupplierId,
+                PurchaseDate = i.PurchaseDate!.Value,
+                i.PurchaseNo,
+                i.PurchaseQuantity,
+                i.PriceJpy,
+            })
             .ToListAsync();
+
+        var supplierIds = batches.Where(b => b.SupplierId.HasValue).Select(b => b.SupplierId!.Value).Distinct().ToList();
+        var supplierNameById = await _db.Suppliers
+            .Where(s => supplierIds.Contains(s.Id))
+            .ToDictionaryAsync(s => s.Id, s => s.Name);
+
+        // Charts key series by label. A name shared by two suppliers, or equal to NoSupplierName,
+        // gets the supplier ID added so each supplier keeps its own series.
+        var sharedNames = supplierNameById.Values
+            .GroupBy(n => n)
+            .Where(g => g.Count() > 1 || g.Key == NoSupplierName)
+            .Select(g => g.Key)
+            .ToHashSet();
+        var supplierLabelById = supplierNameById.ToDictionary(
+            kv => kv.Key,
+            kv => sharedNames.Contains(kv.Value) ? $"{kv.Value} (#{kv.Key})" : kv.Value);
+
+        var purchases = batches
+            .Select(b => new
+            {
+                b.PurchaseDate,
+                Spend = b.PriceJpy * b.PurchaseQuantity,
+                Supplier = b.SupplierId.HasValue && supplierLabelById.TryGetValue(b.SupplierId.Value, out var label)
+                    ? label
+                    : NoSupplierName,
+            })
+            .ToList();
 
         // Spending trend by supplier
         var spendGrouped = purchases
@@ -470,78 +510,49 @@ public class StatsService : IStatsService
             {
                 Period = PeriodLabel(g.Key, granularity),
                 BySupplier = g
-                    .GroupBy(p => p.Supplier.Name)
+                    .GroupBy(p => p.Supplier)
                     .Select(sg => new StatsSupplierSpendDto
                     {
                         Supplier = sg.Key,
-                        Amount = sg.Sum(p => p.TotalAmount),
+                        Amount = sg.Sum(p => p.Spend),
                     })
                     .ToList(),
             })
             .ToList();
 
-        var supplierNames = purchases.Select(p => p.Supplier.Name).Distinct().OrderBy(x => x).ToList();
+        var supplierNames = purchases.Select(p => p.Supplier).Distinct().OrderBy(x => x).ToList();
 
-        // Exchange rate history (CNY purchases only)
-        var exchangeRates = purchases
-            .Where(p => p.CurrencyType == "CNY" && p.ExchangeRate > 0)
-            .OrderBy(p => p.PurchaseDate)
-            .Select(p => new StatsExchangeRatePointDto
+        // Unit cost trend per product
+        var unitCostTrend = batches
+            .Where(b => b.PurchaseQuantity > 0 && (!productId.HasValue || b.ProductId == productId.Value))
+            .Select(b => new StatsUnitCostPointDto
             {
-                Date = p.PurchaseDate.ToString("yyyy/MM/dd"),
-                Rate = p.ExchangeRate,
-                Supplier = p.Supplier.Name,
-            })
-            .ToList();
-
-        // Unit cost trend per product (from Inventory table)
-        var inventoryQuery = _db.Inventory
-            .Include(i => i.Product)
-            .Where(i => !i.IsDeleted && i.PurchaseDate >= start && i.PurchaseDate < end && i.PurchaseQuantity > 0);
-
-        if (productId.HasValue)
-            inventoryQuery = inventoryQuery.Where(i => i.ProductId == productId.Value);
-
-        var inventoryLots = await inventoryQuery
-            .OrderBy(i => i.PurchaseDate)
-            .ToListAsync();
-
-        var unitCostTrend = inventoryLots
-            .Select(i => new StatsUnitCostPointDto
-            {
-                PurchaseNo = i.PurchaseNo ?? string.Empty,
-                Date = i.PurchaseDate.HasValue ? i.PurchaseDate.Value.ToString("yyyy/MM/dd") : string.Empty,
-                UnitCost = Math.Round(i.PriceJpy / i.PurchaseQuantity, 2),
+                PurchaseNo = b.PurchaseNo ?? string.Empty,
+                Date = b.PurchaseDate.ToString("yyyy/MM/dd"),
+                UnitCost = Math.Round(b.PriceJpy, 2),
             })
             .ToList();
 
         // Supplier concentration
-        decimal totalSpend = purchases.Sum(p => p.TotalAmount);
+        decimal totalSpend = purchases.Sum(p => p.Spend);
         var concentration = purchases
-            .GroupBy(p => p.Supplier.Name)
+            .GroupBy(p => p.Supplier)
             .Select(g => new StatsSupplierConcentrationDto
             {
                 SupplierName = g.Key,
-                TotalSpend = g.Sum(p => p.TotalAmount),
-                Pct = totalSpend > 0 ? Math.Round((double)(g.Sum(p => p.TotalAmount) / totalSpend) * 100, 1) : 0,
+                TotalSpend = g.Sum(p => p.Spend),
+                Pct = totalSpend > 0 ? Math.Round((double)(g.Sum(p => p.Spend) / totalSpend) * 100, 1) : 0,
             })
             .OrderByDescending(x => x.TotalSpend)
             .ToList();
 
         // Product list for the product selector
-        var products = await _db.Inventory
-            .Include(i => i.Product)
-            .Where(i => !i.IsDeleted && i.PurchaseDate >= start && i.PurchaseDate < end)
-            .Select(i => i.Product.Name)
-            .Distinct()
-            .OrderBy(x => x)
-            .ToListAsync();
+        var products = batches.Select(b => b.ProductName).Distinct().OrderBy(x => x).ToList();
 
         return new StatsPurchasesPageDto
         {
             SpendingTrend = spendGrouped,
             SupplierNames = supplierNames,
-            ExchangeRates = exchangeRates,
             UnitCostTrend = unitCostTrend,
             SupplierConcentration = concentration,
             Products = products,

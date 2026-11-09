@@ -32,8 +32,6 @@ inventory-hub-frontend/
 │   │           └── page.tsx      # Order detail editor
 │   ├── inventory/
 │   │   └── page.tsx              # Inventory management
-│   ├── purchases/
-│   │   └── page.tsx              # Purchase management
 │   ├── products/
 │   │   └── page.tsx              # Product management
 │   ├── categories/
@@ -57,7 +55,6 @@ inventory-hub-frontend/
 │   └── hooks/                    # Custom React hooks
 │       ├── useOrders.ts
 │       ├── useInventory.ts
-│       ├── usePurchases.ts
 │       ├── useProducts.ts
 │       ├── useCategories.ts
 │       └── useSuppliers.ts
@@ -65,7 +62,6 @@ inventory-hub-frontend/
 ├── types/                        # TypeScript interfaces
 │   ├── order.ts
 │   ├── inventory.ts
-│   ├── purchase.ts
 │   ├── product.ts
 │   ├── category.ts
 │   └── supplier.ts
@@ -193,7 +189,6 @@ const menuItems = [
   { text: 'Dashboard', href: '/', icon: <DashboardIcon /> },
   { text: 'Orders', href: '/orders', icon: <OrderIcon /> },
   { text: 'Inventory', href: '/inventory', icon: <InventoryIcon /> },
-  { text: 'Purchases', href: '/purchases', icon: <PurchaseIcon /> },
   { text: 'Products', href: '/products', icon: <ProductIcon /> },
   { text: 'Categories', href: '/categories', icon: <CategoryIcon /> },
   { text: 'Suppliers', href: '/suppliers', icon: <SupplierIcon /> },

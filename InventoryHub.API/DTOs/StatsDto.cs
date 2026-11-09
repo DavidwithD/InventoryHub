@@ -139,13 +139,6 @@ public class StatsSupplierSpendDto
     public decimal Amount { get; set; }
 }
 
-public class StatsExchangeRatePointDto
-{
-    public string Date { get; set; } = string.Empty;
-    public decimal Rate { get; set; }
-    public string Supplier { get; set; } = string.Empty;
-}
-
 public class StatsUnitCostPointDto
 {
     public string PurchaseNo { get; set; } = string.Empty;
@@ -164,7 +157,6 @@ public class StatsPurchasesPageDto
 {
     public List<StatsSpendingPeriodDto> SpendingTrend { get; set; } = new();
     public List<string> SupplierNames { get; set; } = new();
-    public List<StatsExchangeRatePointDto> ExchangeRates { get; set; } = new();
     public List<StatsUnitCostPointDto> UnitCostTrend { get; set; } = new();
     public List<StatsSupplierConcentrationDto> SupplierConcentration { get; set; } = new();
     public List<string> Products { get; set; } = new();

@@ -35,17 +35,6 @@ export interface Product extends BaseEntity {
   imageUrl?: string;
 }
 
-// Purchase
-export interface Purchase extends BaseEntity {
-  supplierId: number;
-  supplierName: string;
-  purchaseDate: string;
-  purchaseNo: string;
-  totalAmount: number;
-  currencyType: string;
-  exchangeRate: number;
-}
-
 // Inventory
 export interface Inventory extends BaseEntity {
   productId: number;

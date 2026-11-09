@@ -314,76 +314,6 @@ namespace InventoryHub.API.Migrations
                     b.ToTable("products", (string)null);
                 });
 
-            modelBuilder.Entity("InventoryHub.API.Models.Purchase", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int")
-                        .HasColumnName("id");
-
-                    MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<int>("Id"));
-
-                    b.Property<DateTime>("CreatedAt")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("datetime")
-                        .HasColumnName("created_at")
-                        .HasDefaultValueSql("CURRENT_TIMESTAMP");
-
-                    b.Property<string>("CurrencyType")
-                        .IsRequired()
-                        .HasMaxLength(10)
-                        .HasColumnType("varchar(10)")
-                        .HasColumnName("currency_type");
-
-                    b.Property<decimal>("ExchangeRate")
-                        .HasColumnType("decimal(10,4)")
-                        .HasColumnName("exchange_rate");
-
-                    b.Property<bool>("IsDeleted")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("tinyint(1)")
-                        .HasDefaultValue(false)
-                        .HasColumnName("is_deleted");
-
-                    b.Property<DateTime>("PurchaseDate")
-                        .HasColumnType("datetime(6)")
-                        .HasColumnName("purchase_date");
-
-                    b.Property<string>("PurchaseNo")
-                        .IsRequired()
-                        .HasMaxLength(100)
-                        .HasColumnType("varchar(100)")
-                        .HasColumnName("purchase_no");
-
-                    b.Property<int>("SupplierId")
-                        .HasColumnType("int")
-                        .HasColumnName("supplier_id");
-
-                    b.Property<decimal>("TotalAmount")
-                        .HasColumnType("decimal(15,2)")
-                        .HasColumnName("total_amount");
-
-                    b.Property<DateTime>("UpdatedAt")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("datetime")
-                        .HasColumnName("updated_at")
-                        .HasDefaultValueSql("CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("PurchaseDate")
-                        .HasDatabaseName("idx_purchase_date");
-
-                    b.HasIndex("PurchaseNo")
-                        .IsUnique()
-                        .HasDatabaseName("unique_purchase_no");
-
-                    b.HasIndex("SupplierId")
-                        .HasDatabaseName("idx_supplier_id");
-
-                    b.ToTable("purchases", (string)null);
-                });
-
             modelBuilder.Entity("InventoryHub.API.Models.Supplier", b =>
                 {
                     b.Property<int>("Id")
@@ -467,17 +397,6 @@ namespace InventoryHub.API.Migrations
                     b.Navigation("Category");
                 });
 
-            modelBuilder.Entity("InventoryHub.API.Models.Purchase", b =>
-                {
-                    b.HasOne("InventoryHub.API.Models.Supplier", "Supplier")
-                        .WithMany("Purchases")
-                        .HasForeignKey("SupplierId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
-                    b.Navigation("Supplier");
-                });
-
             modelBuilder.Entity("InventoryHub.API.Models.Category", b =>
                 {
                     b.Navigation("Products");
@@ -493,11 +412,6 @@ namespace InventoryHub.API.Migrations
                     b.Navigation("Inventories");
 
                     b.Navigation("OrderDetails");
-                });
-
-            modelBuilder.Entity("InventoryHub.API.Models.Supplier", b =>
-                {
-                    b.Navigation("Purchases");
                 });
 #pragma warning restore 612, 618
         }

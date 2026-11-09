@@ -7,7 +7,6 @@ This document describes the database structure, tables, relationships, and const
 ```mermaid
 erDiagram
     categories ||--o{ products : "category_id"
-    suppliers ||--o{ purchases : "supplier_id"
     suppliers |o..o{ inventory : "supplier_id (no FK)"
     products ||--o{ inventory : "product_id"
     products ||--o{ order_details : "product_id"
@@ -26,15 +25,6 @@ erDiagram
         int category_id FK
         varchar name
         longtext ImageUrl "nullable"
-    }
-    purchases {
-        int id PK
-        int supplier_id FK
-        date purchase_date
-        varchar purchase_no UK
-        decimal total_amount
-        varchar currency_type
-        decimal exchange_rate
     }
     inventory {
         int id PK
@@ -136,39 +126,9 @@ Product catalog linked to categories.
 
 ---
 
-### Purchases
-
-Purchase orders from suppliers with currency information.
-
-| Column          | Type          | Constraints                 | Description                    |
-| --------------- | ------------- | --------------------------- | ------------------------------ |
-| `id`            | INT           | PRIMARY KEY, AUTO_INCREMENT | Unique identifier              |
-| `supplier_id`   | INT           | FOREIGN KEY → suppliers.id  | Supplier reference             |
-| `purchase_date` | DATE          | NOT NULL                    | Date of purchase               |
-| `purchase_no`   | VARCHAR(100)  | NOT NULL, UNIQUE            | Purchase order number          |
-| `total_amount`  | DECIMAL(15,2) | NOT NULL                    | Total purchase amount          |
-| `currency_type` | VARCHAR(10)   | NOT NULL                    | Currency code (JPY, CNY, USD)  |
-| `exchange_rate` | DECIMAL(10,4) | NOT NULL                    | Exchange rate to base currency |
-| `created_at`    | DATETIME      | DEFAULT CURRENT_TIMESTAMP   | Creation timestamp             |
-| `updated_at`    | DATETIME      | ON UPDATE CURRENT_TIMESTAMP | Last update timestamp          |
-| `is_deleted`    | BOOLEAN       | DEFAULT FALSE               | Soft delete flag               |
-
-**Indexes:**
-
-- PRIMARY KEY (`id`)
-- UNIQUE (`purchase_no`)
-- INDEX (`supplier_id`)
-- INDEX (`purchase_date`)
-
-**Foreign Keys:**
-
-- `supplier_id` → `suppliers.id` (ON DELETE RESTRICT)
-
----
-
 ### Inventory
 
-Inventory items linked to products. Purchase-level fields are denormalized here (see [production-rollout-checklist.md](production-rollout-checklist.md) for the pending purchases table removal).
+Inventory batches linked to products. Each row also holds the supplier, date and order number of its purchase.
 
 | Column              | Type          | Constraints                 | Description                           |
 | ------------------- | ------------- | --------------------------- | ------------------------------------- |
@@ -178,9 +138,9 @@ Inventory items linked to products. Purchase-level fields are denormalized here 
 | `price_cny`         | DECIMAL(15,2) | NULL                        | Unit price in CNY                     |
 | `purchase_quantity` | INT           | NOT NULL                    | Quantity purchased                    |
 | `initial_stock`     | INT           | NOT NULL                    | Sellable units at purchase            |
-| `supplier_id`       | INT           | NULL                        | Supplier (denormalized from purchase) |
-| `purchase_date`     | DATETIME      | NULL                        | Purchase date (denormalized)          |
-| `purchase_no`       | VARCHAR(100)  | NULL                        | Purchase order number (denormalized)  |
+| `supplier_id`       | INT           | NULL                        | Supplier of this batch               |
+| `purchase_date`     | DATETIME      | NULL                        | Purchase date. Sets the FIFO order.   |
+| `purchase_no`       | VARCHAR(100)  | NULL                        | Order number from the shop            |
 | `created_at`        | DATETIME      | DEFAULT CURRENT_TIMESTAMP   | Creation timestamp                    |
 | `updated_at`        | DATETIME      | ON UPDATE CURRENT_TIMESTAMP | Last update timestamp                 |
 | `is_deleted`        | BOOLEAN       | DEFAULT FALSE               | Soft delete flag                      |
@@ -277,21 +237,14 @@ Benefits:
 
 ### Storage Strategy
 
-1. **Purchase Level**: Exchange rate captured at purchase time
-
-   ```
-   purchases.currency_type = 'CNY'
-   purchases.exchange_rate = 21.5 (CNY to JPY)
-   ```
-
-2. **Inventory Level**: Unit price stored per batch
+1. **Inventory Level**: Unit price stored per batch
 
    ```
    inventory.price_jpy = unit price in JPY
    inventory.price_cny = unit price in CNY (optional)
    ```
 
-3. **Order Detail Level**: Cost is calculated when read. See [FIFO Calculation](architecture.md#6-fifo-calculation).
+2. **Order Detail Level**: Cost is calculated when read. See [FIFO Calculation](architecture.md#6-fifo-calculation).
 
 ### Supported Currencies
 
@@ -316,7 +269,6 @@ Benefits:
 | ---------- | ------------------- | ----------------------------- |
 | categories | name, is_deleted    | Prevent duplicate categories  |
 | suppliers  | name, is_deleted    | Prevent duplicate suppliers   |
-| purchases  | purchase_no         | Unique purchase order numbers |
 | orders     | order_no            | Unique order numbers          |
 
 ### Foreign Key Behavior
@@ -324,7 +276,6 @@ Benefits:
 | Relationship              | ON DELETE | Reason                     |
 | ------------------------- | --------- | -------------------------- |
 | products → categories     | RESTRICT  | Prevent orphaned products  |
-| purchases → suppliers     | RESTRICT  | Preserve purchase history  |
 | inventory → products      | RESTRICT  | Preserve inventory history |
 | order_details → orders    | RESTRICT  | Preserve order history     |
 | order_details → products  | RESTRICT  | Preserve sales history     |
@@ -353,13 +304,6 @@ INSERT INTO products (category_id, name) VALUES
 (1, 'Phone Case'),
 (2, 'T-Shirt'),
 (3, 'Watch Band');
-```
-
-### Purchases
-
-```sql
-INSERT INTO purchases (supplier_id, purchase_date, purchase_no, total_amount, currency_type, exchange_rate)
-VALUES (1, '2024-01-15', 'PO-2024-001', 500.00, 'CNY', 21.50);
 ```
 
 ### Inventory

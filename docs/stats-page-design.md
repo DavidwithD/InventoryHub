@@ -69,9 +69,8 @@ Per-product deep dive with search + filter by category.
 - Unsold products — in inventory but never appeared in an OrderDetail
 
 #### 3. Purchase & Supply
-- Spending over time by supplier — sourced from `Inventory.price_jpy` grouped by `Inventory.supplier_id` (denormalized), or from the `Purchases` table directly for purchase-level totals
-- Exchange rate history — from `Purchases.exchange_rate` over `Purchases.purchase_date`
-- Average unit cost trend per product — `price_jpy / purchase_quantity` over `Inventory.purchase_date`, grouped by product
+- Spending over time by supplier — `price_jpy × purchase_quantity` from `Inventory`, grouped by `Inventory.supplier_id`
+- Average unit cost trend per product — `price_jpy` (a unit price) over `Inventory.purchase_date`, grouped by product
 - Supplier concentration — % of total spend per supplier
 
 ---
@@ -95,11 +94,12 @@ Per-product deep dive with search + filter by category.
 
 - **Navigation** — Stats is one top-nav item with sub-tabs: Dashboard | Inventory Health | Product Performance | Purchase & Supply
 - **Soft-deleted records** — excluded from all stats calculations
+- **No exchange-rate chart** — its data lived only in the `purchases` table. That table is dropped.
 
 ## Open Questions (to resolve before implementation)
 
 1. **Profit definition** — should shipping fee be split across OrderDetails proportionally, or deducted at order level only?
 2. **Low stock threshold** — fixed quantity, or % of original purchase quantity?
-3. **Exchange rate / profit calculation** — `price_jpy` is the locked-in JPY cost at purchase time; all profit calculations use this. `price_cny` and `exchange_rate` (on Purchases) are available for historical display but not used in profit math. Still confirm this is the intended approach.
+3. **Exchange rate / profit calculation** — `price_jpy` is the locked-in JPY cost at purchase time; all profit calculations use this. `price_cny` is available for historical display. Profit math does not use it. Still confirm this is the intended approach.
 4. **Chart library** — already using one (Recharts, Chart.js, ApexCharts)?
 5. **Priority** — sales insights vs. inventory health as the primary daily-use view?
