@@ -1,6 +1,5 @@
 'use client';
 
-import { useState } from 'react';
 import {
   Box,
   Paper,
@@ -15,73 +14,29 @@ import {
   Typography,
 } from '@mui/material';
 import { Order } from '@/types';
-
-type OrderByType =
-  | 'orderNo'
-  | 'revenue'
-  | 'totalCost'
-  | 'shippingFee'
-  | 'profit'
-  | 'transactionTime';
+import { OrderSort, OrderSortField, nextOrderSort, sortOrders } from '../utils/sortOrders';
 
 interface Props {
   orders: Order[];
+  sort: OrderSort;
+  onSortChange: (sort: OrderSort) => void;
   onEdit: (order: Order) => void;
   onDelete: (id: number) => void;
   onViewDetails: (orderId: number) => void;
 }
 
-export default function OrdersTable({ orders, onEdit, onDelete, onViewDetails }: Props) {
-  const [orderBy, setOrderBy] = useState<OrderByType>('transactionTime');
-  const [order, setOrder] = useState<'asc' | 'desc'>('desc');
-
-  const handleRequestSort = (property: OrderByType) => {
-    const isAsc = orderBy === property && order === 'asc';
-    setOrder(isAsc ? 'desc' : 'asc');
-    setOrderBy(property);
-  };
-
-  const getSortedOrders = () => {
-    const sorted = [...orders];
-
-    sorted.sort((a, b) => {
-      let aValue: any;
-      let bValue: any;
-
-      if (orderBy === 'profit') {
-        aValue = a.revenue - (a.totalCost || 0);
-        bValue = b.revenue - (b.totalCost || 0);
-      } else if (orderBy === 'totalCost') {
-        if (a.totalCost === null || a.totalCost === 0) {
-          return order === 'asc' ? -1 : 1;
-        }
-        if (b.totalCost === null || b.totalCost === 0) {
-          return order === 'asc' ? 1 : -1;
-        }
-        aValue = a.totalCost;
-        bValue = b.totalCost;
-      } else {
-        aValue = a[orderBy];
-        bValue = b[orderBy];
-      }
-
-      if (typeof aValue === 'string' && typeof bValue === 'string') {
-        return order === 'asc' ? aValue.localeCompare(bValue) : bValue.localeCompare(aValue);
-      }
-
-      if (orderBy === 'transactionTime') {
-        const aTime = new Date(aValue).getTime();
-        const bTime = new Date(bValue).getTime();
-        return order === 'asc' ? aTime - bTime : bTime - aTime;
-      }
-
-      return order === 'asc' ? aValue - bValue : bValue - aValue;
-    });
-
-    return sorted;
-  };
-
-  const sortedOrders = getSortedOrders();
+export default function OrdersTable({
+  orders,
+  sort,
+  onSortChange,
+  onEdit,
+  onDelete,
+  onViewDetails,
+}: Props) {
+  const orderBy = sort.field;
+  const order = sort.direction;
+  const handleRequestSort = (field: OrderSortField) => onSortChange(nextOrderSort(sort, field));
+  const sortedOrders = sortOrders(orders, sort);
 
   return (
     <Paper>
@@ -184,7 +139,9 @@ export default function OrdersTable({ orders, onEdit, onDelete, onViewDetails }:
                 </TableCell>
                 <TableCell>{order.shippingFee.toFixed(2)}</TableCell>
                 <TableCell>
-                  {order.hasUnknownCost ? '未知' : (order.revenue - (order.totalCost || 0)).toFixed(2)}
+                  {order.hasUnknownCost
+                    ? '未知'
+                    : (order.revenue - (order.totalCost || 0)).toFixed(2)}
                 </TableCell>
                 <TableCell>{new Date(order.transactionTime).toLocaleDateString('zh-CN')}</TableCell>
                 <TableCell align="center">

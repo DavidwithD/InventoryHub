@@ -112,6 +112,8 @@ The orders page displays:
 - Profit (revenue - cost)
 - Transaction date
 
+Click the view icon next to **批量导入订单** to switch between table view and card view. In card view, pick the sort field and direction above the list. The page keeps your choice the next time you open it.
+
 ### Filtering and Search
 
 | Filter      | Description                          |
@@ -222,6 +224,8 @@ After import, you'll see:
 ---
 
 ## Product Management
+
+Click the view icon next to **新增商品** to switch between table view and card view. The page keeps your choice the next time you open it.
 
 ### Creating Products
 

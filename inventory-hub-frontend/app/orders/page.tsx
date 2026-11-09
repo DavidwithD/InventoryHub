@@ -13,6 +13,10 @@ import OrderFormDialog from './components/OrderFormDialog';
 import OrderDetailsDialog from './components/OrderDetailsDialog';
 import ImportDialog from './components/ImportDialog';
 import { useOrderFilterStore } from '@/lib/stores/filterStore';
+import OrdersCardList from './components/OrdersCardList';
+import ViewModeToggle from '@/components/ViewModeToggle';
+import { useViewMode } from '@/lib/stores/viewModeStore';
+import { DEFAULT_ORDER_SORT, OrderSort } from './utils/sortOrders';
 
 export default function OrdersPage() {
   const { orders, loadOrders, createOrder, updateOrder, deleteOrder, importFromCurl } = useOrders();
@@ -26,6 +30,8 @@ export default function OrdersPage() {
   const [openImportDialog, setOpenImportDialog] = useState(false);
   const [editingOrder, setEditingOrder] = useState<Order | null>(null);
   const [viewingOrderId, setViewingOrderId] = useState<number | null>(null);
+  const [sort, setSort] = useState<OrderSort>(DEFAULT_ORDER_SORT);
+  const [viewMode, setViewMode] = useViewMode('orders');
 
   // 筛选状态 — persisted across visits via localStorage (zustand persist).
   const {
@@ -184,7 +190,8 @@ export default function OrdersPage() {
   return (
     <>
       <Box sx={{ display: 'flex', justifyContent: 'flex-end', mb: 3 }}>
-        <Box sx={{ display: 'flex', gap: 2 }}>
+        <Box sx={{ display: 'flex', gap: 2, alignItems: 'center' }}>
+          <ViewModeToggle mode={viewMode} onChange={setViewMode} />
           <Button variant="outlined" onClick={handleOpenImportDialog}>
             批量导入订单
           </Button>
@@ -219,12 +226,23 @@ export default function OrdersPage() {
         onExport={handleExportJSON}
       />
 
-      <OrdersTable
-        orders={filteredOrders}
-        onViewDetails={handleViewDetails}
-        onEdit={handleOpenDialog}
-        onDelete={handleDeleteOrder}
-      />
+      {viewMode === 'card' ? (
+        <OrdersCardList
+          orders={filteredOrders}
+          sort={sort}
+          onSortChange={setSort}
+          onViewDetails={handleViewDetails}
+        />
+      ) : (
+        <OrdersTable
+          orders={filteredOrders}
+          sort={sort}
+          onSortChange={setSort}
+          onViewDetails={handleViewDetails}
+          onEdit={handleOpenDialog}
+          onDelete={handleDeleteOrder}
+        />
+      )}
 
       <OrderFormDialog
         open={openDialog}

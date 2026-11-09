@@ -3,7 +3,10 @@ import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 import CategoryDialog from '@/app/categories/components/CategoryDialog';
 import OrdersTable from '@/app/orders/components/OrdersTable';
+import OrdersCardList from '@/app/orders/components/OrdersCardList';
+import ViewModeToggle from '@/components/ViewModeToggle';
 import type { Order } from '@/types';
+import { DEFAULT_ORDER_SORT, sortOrders } from '@/app/orders/utils/sortOrders';
 
 describe('CategoryDialog', () => {
   it('saves the trimmed name and closes', async () => {
@@ -55,10 +58,20 @@ describe('OrdersTable', () => {
     ...overrides,
   });
 
+  const sortProps = { sort: DEFAULT_ORDER_SORT, onSortChange: vi.fn() };
+
   const rowFor = (orderNo: string) => screen.getByText(orderNo).closest('tr')!;
 
   it('shows cost and profit for a fully matched order', () => {
-    render(<OrdersTable orders={[order({})]} onEdit={vi.fn()} onDelete={vi.fn()} onViewDetails={vi.fn()} />);
+    render(
+      <OrdersTable
+        orders={[order({})]}
+        {...sortProps}
+        onEdit={vi.fn()}
+        onDelete={vi.fn()}
+        onViewDetails={vi.fn()}
+      />
+    );
 
     const row = within(rowFor('m1'));
     expect(row.getByText('350.00')).toBeInTheDocument();
@@ -70,6 +83,7 @@ describe('OrdersTable', () => {
     render(
       <OrdersTable
         orders={[order({ hasUnknownCost: true, hasDetails: false })]}
+        {...sortProps}
         onEdit={vi.fn()}
         onDelete={vi.fn()}
         onViewDetails={vi.fn()}
@@ -83,10 +97,102 @@ describe('OrdersTable', () => {
 
   it('opens the details of the clicked order', async () => {
     const onViewDetails = vi.fn();
-    render(<OrdersTable orders={[order({ id: 42 })]} onEdit={vi.fn()} onDelete={vi.fn()} onViewDetails={onViewDetails} />);
+    render(
+      <OrdersTable
+        orders={[order({ id: 42 })]}
+        {...sortProps}
+        onEdit={vi.fn()}
+        onDelete={vi.fn()}
+        onViewDetails={onViewDetails}
+      />
+    );
 
     await userEvent.click(screen.getByText('查看'));
 
     expect(onViewDetails).toHaveBeenCalledWith(42);
+  });
+});
+
+describe('OrdersCardList', () => {
+  const order = (overrides: Partial<Order>): Order => ({
+    id: 1,
+    orderNo: 'm1',
+    name: 'Card',
+    revenue: 1000,
+    totalCost: 350,
+    shippingFee: 200,
+    transactionTime: '2026-02-01T00:00:00',
+    hasDetails: true,
+    hasUnknownCost: false,
+    createdAt: '',
+    updatedAt: '',
+    isDeleted: false,
+    ...overrides,
+  });
+
+  it('shows the same numbers as the table and opens details', async () => {
+    const onViewDetails = vi.fn();
+    render(
+      <OrdersCardList
+        orders={[order({ id: 7 })]}
+        sort={DEFAULT_ORDER_SORT}
+        onSortChange={vi.fn()}
+        onViewDetails={onViewDetails}
+      />
+    );
+
+    const card = within(screen.getByTestId('order-card'));
+    expect(card.getByText('350.00')).toBeInTheDocument();
+    expect(card.getByText('650.00')).toBeInTheDocument();
+    await userEvent.click(card.getByRole('button', { name: '查看' }));
+    expect(onViewDetails).toHaveBeenCalledWith(7);
+  });
+
+  it('flips the sort direction', async () => {
+    const onSortChange = vi.fn();
+    render(
+      <OrdersCardList
+        orders={[order({})]}
+        sort={DEFAULT_ORDER_SORT}
+        onSortChange={onSortChange}
+        onViewDetails={vi.fn()}
+      />
+    );
+
+    await userEvent.click(screen.getByRole('button', { name: '切换排序方向' }));
+    expect(onSortChange).toHaveBeenCalledWith({ field: 'transactionTime', direction: 'asc' });
+  });
+});
+
+describe('sortOrders', () => {
+  it('sorts by profit descending', () => {
+    const base = {
+      orderNo: '',
+      name: '',
+      shippingFee: 0,
+      transactionTime: '',
+      hasDetails: true,
+      hasUnknownCost: false,
+      createdAt: '',
+      updatedAt: '',
+      isDeleted: false,
+    };
+    const orders = [
+      { ...base, id: 1, revenue: 100, totalCost: 90 },
+      { ...base, id: 2, revenue: 100, totalCost: 10 },
+    ];
+    expect(sortOrders(orders, { field: 'profit', direction: 'desc' }).map((o) => o.id)).toEqual([
+      2, 1,
+    ]);
+  });
+});
+
+describe('ViewModeToggle', () => {
+  it('switches from table to card', async () => {
+    const onChange = vi.fn();
+    render(<ViewModeToggle mode="table" onChange={onChange} />);
+
+    await userEvent.click(screen.getByRole('button', { name: '切换到卡片视图' }));
+    expect(onChange).toHaveBeenCalledWith('card');
   });
 });
