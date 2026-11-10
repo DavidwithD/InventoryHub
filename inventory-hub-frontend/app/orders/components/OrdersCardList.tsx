@@ -3,6 +3,8 @@
 import { Box, Button, Card, Chip, Paper, Stack, Typography } from '@mui/material';
 import { Order } from '@/types';
 import { OrderSort, sortOrders } from '../utils/sortOrders';
+import { orderProfit } from '../utils/orderProfit';
+import OrderThumbnail from './OrderThumbnail';
 
 interface Props {
   orders: Order[];
@@ -35,7 +37,7 @@ export default function OrdersCardList({ orders, sort, onViewDetails }: Props) {
       ) : (
         <Stack spacing={1.5}>
           {sortedOrders.map((order) => {
-            const profit = order.revenue - (order.totalCost || 0);
+            const profit = orderProfit(order);
             return (
               <Card
                 key={order.id}
@@ -50,33 +52,7 @@ export default function OrdersCardList({ orders, sort, onViewDetails }: Props) {
                   '&:hover': { boxShadow: 2 },
                 }}
               >
-                {order.imageUrl ? (
-                  <a
-                    href={`https://jp.mercari.com/item/${order.orderNo}`}
-                    style={{ flexShrink: 0, lineHeight: 0 }}
-                  >
-                    <img
-                      src={order.imageUrl}
-                      alt={order.name}
-                      style={{
-                        width: IMAGE_SIZE,
-                        height: IMAGE_SIZE,
-                        objectFit: 'cover',
-                        borderRadius: 6,
-                      }}
-                    />
-                  </a>
-                ) : (
-                  <Box
-                    sx={{
-                      width: IMAGE_SIZE,
-                      height: IMAGE_SIZE,
-                      flexShrink: 0,
-                      bgcolor: 'grey.200',
-                      borderRadius: 1.5,
-                    }}
-                  />
-                )}
+                <OrderThumbnail order={order} size={IMAGE_SIZE} radius={6} />
 
                 <Box sx={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column' }}>
                   <Typography
@@ -137,14 +113,15 @@ export default function OrdersCardList({ orders, sort, onViewDetails }: Props) {
                       sx={{
                         fontWeight: 600,
                         fontVariantNumeric: 'tabular-nums',
-                        color: order.hasUnknownCost
+                        color:
+                          profit === null
                           ? 'text.secondary'
                           : profit >= 0
                             ? 'success.main'
                             : 'error.main',
                       }}
                     >
-                      {order.hasUnknownCost ? '未知' : profit.toFixed(2)}
+                      {profit === null ? '未知' : profit.toFixed(2)}
                     </Typography>
                   </Box>
                   <Button

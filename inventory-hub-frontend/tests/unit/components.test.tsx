@@ -7,7 +7,7 @@ import OrdersCardList from '@/app/orders/components/OrdersCardList';
 import OrdersListToolbar from '@/app/orders/components/OrdersListToolbar';
 import ViewModeToggle from '@/components/ViewModeToggle';
 import type { Order } from '@/types';
-import { DEFAULT_ORDER_SORT, sortOrders } from '@/app/orders/utils/sortOrders';
+import { DEFAULT_ORDER_SORT, nextOrderSort, sortOrders } from '@/app/orders/utils/sortOrders';
 
 describe('CategoryDialog', () => {
   it('saves the trimmed name and closes', async () => {
@@ -175,25 +175,76 @@ describe('OrdersListToolbar', () => {
 });
 
 describe('sortOrders', () => {
+  const base = {
+    orderNo: '',
+    name: '',
+    revenue: 100,
+    totalCost: 0,
+    shippingFee: 0,
+    transactionTime: '',
+    hasDetails: true,
+    hasUnknownCost: false,
+    createdAt: '',
+    updatedAt: '',
+    isDeleted: false,
+  };
+  const ids = (orders: Order[]) => orders.map((o) => o.id);
+
   it('sorts by profit descending', () => {
-    const base = {
-      orderNo: '',
-      name: '',
-      shippingFee: 0,
-      transactionTime: '',
-      hasDetails: true,
-      hasUnknownCost: false,
-      createdAt: '',
-      updatedAt: '',
-      isDeleted: false,
-    };
     const orders = [
       { ...base, id: 1, revenue: 100, totalCost: 90 },
       { ...base, id: 2, revenue: 100, totalCost: 10 },
     ];
-    expect(sortOrders(orders, { field: 'profit', direction: 'desc' }).map((o) => o.id)).toEqual([
-      2, 1,
+    expect(ids(sortOrders(orders, { field: 'profit', direction: 'desc' }))).toEqual([2, 1]);
+  });
+
+  it('puts unknown-cost orders last in a profit sort, in both directions', () => {
+    const orders = [
+      { ...base, id: 1, totalCost: 0, hasUnknownCost: true },
+      { ...base, id: 2, totalCost: 90 },
+      { ...base, id: 3, totalCost: 10 },
+    ];
+    expect(ids(sortOrders(orders, { field: 'profit', direction: 'desc' }))).toEqual([3, 2, 1]);
+    expect(ids(sortOrders(orders, { field: 'profit', direction: 'asc' }))).toEqual([2, 3, 1]);
+  });
+
+  it('keeps zero-cost orders together in a cost sort', () => {
+    const orders = [
+      { ...base, id: 1, totalCost: 0 },
+      { ...base, id: 2, totalCost: 50 },
+      { ...base, id: 3, totalCost: 0 },
+      { ...base, id: 4, totalCost: 20 },
+    ];
+    expect(ids(sortOrders(orders, { field: 'totalCost', direction: 'asc' }))).toEqual([1, 3, 4, 2]);
+    expect(ids(sortOrders(orders, { field: 'totalCost', direction: 'desc' }))).toEqual([
+      2, 4, 1, 3,
     ]);
+  });
+
+  it('sorts by transaction time in both directions', () => {
+    const orders = [
+      { ...base, id: 1, transactionTime: '2026-02-01T00:00:00' },
+      { ...base, id: 2, transactionTime: '2026-01-01T00:00:00' },
+    ];
+    expect(ids(sortOrders(orders, { field: 'transactionTime', direction: 'asc' }))).toEqual([2, 1]);
+    expect(ids(sortOrders(orders, { field: 'transactionTime', direction: 'desc' }))).toEqual([1, 2]);
+  });
+});
+
+describe('nextOrderSort', () => {
+  it('flips the direction of the active field', () => {
+    expect(nextOrderSort({ field: 'revenue', direction: 'asc' }, 'revenue')).toEqual({
+      field: 'revenue',
+      direction: 'desc',
+    });
+    expect(nextOrderSort({ field: 'revenue', direction: 'desc' }, 'revenue')).toEqual({
+      field: 'revenue',
+      direction: 'asc',
+    });
+  });
+
+  it('sorts a new field ascending', () => {
+    expect(nextOrderSort(DEFAULT_ORDER_SORT, 'profit')).toEqual({ field: 'profit', direction: 'asc' });
   });
 });
 

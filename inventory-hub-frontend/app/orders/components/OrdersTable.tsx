@@ -1,7 +1,6 @@
 'use client';
 
 import {
-  Box,
   Paper,
   Table,
   TableBody,
@@ -11,10 +10,11 @@ import {
   TableRow,
   IconButton,
   TableSortLabel,
-  Typography,
 } from '@mui/material';
 import { Order } from '@/types';
 import { OrderSort, OrderSortField, nextOrderSort, sortOrders } from '../utils/sortOrders';
+import { orderProfit } from '../utils/orderProfit';
+import OrderThumbnail from './OrderThumbnail';
 
 interface Props {
   orders: Order[];
@@ -109,17 +109,7 @@ export default function OrdersTable({
             {sortedOrders.map((order) => (
               <TableRow key={order.id}>
                 <TableCell>
-                  {order.imageUrl ? (
-                    <a href={`https://jp.mercari.com/item/${order.orderNo}`}>
-                      <img
-                        src={order.imageUrl}
-                        alt={order.name}
-                        style={{ width: 60, height: 60, objectFit: 'cover', borderRadius: 4 }}
-                      />
-                    </a>
-                  ) : (
-                    <Box sx={{ width: 60, height: 60, bgcolor: 'grey.200', borderRadius: 1 }} />
-                  )}
+                  <OrderThumbnail order={order} size={60} radius={4} />
                 </TableCell>
                 <TableCell
                   sx={{
@@ -139,9 +129,7 @@ export default function OrdersTable({
                 </TableCell>
                 <TableCell>{order.shippingFee.toFixed(2)}</TableCell>
                 <TableCell>
-                  {order.hasUnknownCost
-                    ? '未知'
-                    : (order.revenue - (order.totalCost || 0)).toFixed(2)}
+                  {orderProfit(order)?.toFixed(2) ?? '未知'}
                 </TableCell>
                 <TableCell>{new Date(order.transactionTime).toLocaleDateString('zh-CN')}</TableCell>
                 <TableCell align="center">

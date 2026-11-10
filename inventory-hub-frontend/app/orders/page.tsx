@@ -31,7 +31,7 @@ export default function OrdersPage() {
   const [editingOrder, setEditingOrder] = useState<Order | null>(null);
   const [viewingOrderId, setViewingOrderId] = useState<number | null>(null);
   const [sort, setSort] = useState<OrderSort>(DEFAULT_ORDER_SORT);
-  const [viewMode, setViewMode] = useViewMode('orders');
+  const [viewMode, setViewMode, viewModeHydrated] = useViewMode('orders');
 
   // 筛选状态 — persisted across visits via localStorage (zustand persist).
   const {
@@ -225,15 +225,17 @@ export default function OrdersPage() {
         onExport={handleExportJSON}
       />
 
-      <OrdersListToolbar
-        count={filteredOrders.length}
-        sort={sort}
-        onSortChange={setSort}
-        viewMode={viewMode}
-        onViewModeChange={setViewMode}
-      />
+      {viewModeHydrated && (
+        <OrdersListToolbar
+          count={filteredOrders.length}
+          sort={sort}
+          onSortChange={setSort}
+          viewMode={viewMode}
+          onViewModeChange={setViewMode}
+        />
+      )}
 
-      {viewMode === 'card' ? (
+      {!viewModeHydrated ? null : viewMode === 'card' ? (
         <OrdersCardList
           orders={filteredOrders}
           sort={sort}

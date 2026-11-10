@@ -20,7 +20,7 @@ interface ProductFormData {
 export default function ProductsPage() {
   const { products, loading, loadProducts, createProduct, updateProduct, deleteProduct } = useProducts();
   const { categories, loadCategories } = useCategories();
-  const [viewMode, setViewMode] = useViewMode('products');
+  const [viewMode, setViewMode, viewModeHydrated] = useViewMode('products');
   const [openDialog, setOpenDialog] = useState(false);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'success' as 'success' | 'error' });
@@ -90,7 +90,7 @@ export default function ProductsPage() {
         </Button>
       </Box>
 
-      {viewMode === 'card' ? (
+      {!viewModeHydrated ? null : viewMode === 'card' ? (
         <ProductsCardList
           products={products}
           loading={loading}

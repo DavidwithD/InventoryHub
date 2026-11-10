@@ -1,4 +1,5 @@
 import { Order } from '@/types';
+import { orderProfit } from './orderProfit';
 
 export type OrderSortField =
   | 'orderNo'
@@ -40,14 +41,21 @@ export function sortOrders(orders: Order[], { field, direction }: OrderSort): Or
     let bValue: number | string;
 
     if (field === 'profit') {
-      aValue = a.revenue - (a.totalCost || 0);
-      bValue = b.revenue - (b.totalCost || 0);
-    } else if (field === 'totalCost') {
-      if (a.totalCost === null || a.totalCost === 0) {
-        return direction === 'asc' ? -1 : 1;
+      const aProfit = orderProfit(a);
+      const bProfit = orderProfit(b);
+      // Orders with an unknown profit go last in both directions.
+      if (aProfit === null || bProfit === null) {
+        return (aProfit === null ? 1 : 0) - (bProfit === null ? 1 : 0);
       }
-      if (b.totalCost === null || b.totalCost === 0) {
-        return direction === 'asc' ? 1 : -1;
+      aValue = aProfit;
+      bValue = bProfit;
+    } else if (field === 'totalCost') {
+      // A null or zero cost goes first in ascending order and last in descending order.
+      const aMissing = a.totalCost === null || a.totalCost === 0;
+      const bMissing = b.totalCost === null || b.totalCost === 0;
+      if (aMissing || bMissing) {
+        const diff = (bMissing ? 1 : 0) - (aMissing ? 1 : 0);
+        return direction === 'asc' ? diff : -diff;
       }
       aValue = a.totalCost;
       bValue = b.totalCost;
