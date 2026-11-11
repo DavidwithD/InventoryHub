@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { Box, Button, Alert } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
 import { Order } from '@/types';
@@ -57,7 +57,8 @@ export default function OrdersPage() {
     loadCategories().catch(() => setError('加载分类列表失败'));
   }, [loadOrders, loadAllInventories, loadCategories]);
 
-  const getFilteredOrders = () => {
+  // Memoized so the lists below can memoize their sort on this array.
+  const filteredOrders = useMemo(() => {
     let filtered = [...orders];
 
     if (searchOrderNo.trim()) {
@@ -79,11 +80,10 @@ export default function OrdersPage() {
     }
 
     return filtered;
-  };
+  }, [orders, searchOrderNo, costStatus]);
 
   const handleExportJSON = () => {
-    const filtered = getFilteredOrders();
-    const exportData = filtered.map((order) => ({
+    const exportData = filteredOrders.map((order) => ({
       订单号: order.orderNo,
       订单名: order.name,
       图片URL: order.imageUrl || '',
@@ -185,7 +185,6 @@ export default function OrdersPage() {
     setOpenImportDialog(false);
   };
 
-  const filteredOrders = getFilteredOrders();
 
   return (
     <>

@@ -2,8 +2,8 @@
 
 import { Box, Card, Chip, IconButton, Paper, Stack, Typography } from '@mui/material';
 import { Edit as EditIcon, Delete as DeleteIcon } from '@mui/icons-material';
-import Image from 'next/image';
 import { Product } from '@/types';
+import ProductThumbnail from './ProductThumbnail';
 
 interface Props {
   products: Product[];
@@ -40,34 +40,7 @@ export default function ProductsCardList({ products, loading, onEdit, onDelete }
             '&:hover': { boxShadow: 2 },
           }}
         >
-          <Box
-            sx={{
-              width: IMAGE_SIZE,
-              height: IMAGE_SIZE,
-              position: 'relative',
-              flexShrink: 0,
-              borderRadius: 1.5,
-              overflow: 'hidden',
-              bgcolor: 'grey.200',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              color: 'text.disabled',
-              fontSize: 12,
-            }}
-          >
-            {product.imageUrl ? (
-              <Image
-                src={product.imageUrl}
-                alt={product.name}
-                fill
-                style={{ objectFit: 'cover' }}
-                unoptimized
-              />
-            ) : (
-              '无图'
-            )}
-          </Box>
+          <ProductThumbnail product={product} size={IMAGE_SIZE} radius={6} />
 
           <Box sx={{ flex: 1, minWidth: 0 }}>
             <Stack direction="row" spacing={1} sx={{ alignItems: 'center', mb: 0.5, minWidth: 0 }}>

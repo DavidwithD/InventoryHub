@@ -35,9 +35,15 @@ export function useViewMode(page: ViewModePage) {
   const [hydrated, setHydrated] = useState(false);
 
   useEffect(() => {
-    const unsubscribe = useViewModeStore.persist.onFinishHydration(() => setHydrated(true));
-    useViewModeStore.persist.rehydrate();
-    return unsubscribe;
+    let active = true;
+    // `persist` is missing when localStorage is unavailable. The defaults then stay in use.
+    // rehydrate() also resolves after a failed load. A bad saved value then keeps the defaults.
+    Promise.resolve(useViewModeStore.persist?.rehydrate()).finally(() => {
+      if (active) setHydrated(true);
+    });
+    return () => {
+      active = false;
+    };
   }, []);
 
   return [mode, (next: ViewMode) => setMode(page, next), hydrated] as const;

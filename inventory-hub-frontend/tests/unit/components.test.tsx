@@ -221,6 +221,16 @@ describe('sortOrders', () => {
     ]);
   });
 
+  it('sorts an unknown cost with the missing costs in a cost sort', () => {
+    const orders = [
+      { ...base, id: 1, totalCost: 50 },
+      { ...base, id: 2, totalCost: 30, hasUnknownCost: true },
+      { ...base, id: 3, totalCost: 20 },
+    ];
+    expect(ids(sortOrders(orders, { field: 'totalCost', direction: 'asc' }))).toEqual([2, 3, 1]);
+    expect(ids(sortOrders(orders, { field: 'totalCost', direction: 'desc' }))).toEqual([1, 3, 2]);
+  });
+
   it('sorts by transaction time in both directions', () => {
     const orders = [
       { ...base, id: 1, transactionTime: '2026-02-01T00:00:00' },

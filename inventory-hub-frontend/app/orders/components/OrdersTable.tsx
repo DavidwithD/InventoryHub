@@ -1,5 +1,6 @@
 'use client';
 
+import { useMemo } from 'react';
 import {
   Paper,
   Table,
@@ -33,10 +34,8 @@ export default function OrdersTable({
   onDelete,
   onViewDetails,
 }: Props) {
-  const orderBy = sort.field;
-  const order = sort.direction;
   const handleRequestSort = (field: OrderSortField) => onSortChange(nextOrderSort(sort, field));
-  const sortedOrders = sortOrders(orders, sort);
+  const sortedOrders = useMemo(() => sortOrders(orders, sort), [orders, sort]);
 
   return (
     <Paper>
@@ -48,8 +47,8 @@ export default function OrdersTable({
               <TableCell sx={{ width: 250, maxWidth: 250 }}>订单名</TableCell>
               <TableCell sx={{ width: 140 }}>
                 <TableSortLabel
-                  active={orderBy === 'orderNo'}
-                  direction={orderBy === 'orderNo' ? order : 'asc'}
+                  active={sort.field === 'orderNo'}
+                  direction={sort.field === 'orderNo' ? sort.direction : 'asc'}
                   onClick={() => handleRequestSort('orderNo')}
                 >
                   订单号
@@ -57,8 +56,8 @@ export default function OrdersTable({
               </TableCell>
               <TableCell sx={{ width: 110 }}>
                 <TableSortLabel
-                  active={orderBy === 'revenue'}
-                  direction={orderBy === 'revenue' ? order : 'asc'}
+                  active={sort.field === 'revenue'}
+                  direction={sort.field === 'revenue' ? sort.direction : 'asc'}
                   onClick={() => handleRequestSort('revenue')}
                 >
                   营业额
@@ -66,8 +65,8 @@ export default function OrdersTable({
               </TableCell>
               <TableCell sx={{ width: 110 }}>
                 <TableSortLabel
-                  active={orderBy === 'totalCost'}
-                  direction={orderBy === 'totalCost' ? order : 'asc'}
+                  active={sort.field === 'totalCost'}
+                  direction={sort.field === 'totalCost' ? sort.direction : 'asc'}
                   onClick={() => handleRequestSort('totalCost')}
                 >
                   总成本
@@ -75,8 +74,8 @@ export default function OrdersTable({
               </TableCell>
               <TableCell sx={{ width: 110 }}>
                 <TableSortLabel
-                  active={orderBy === 'shippingFee'}
-                  direction={orderBy === 'shippingFee' ? order : 'asc'}
+                  active={sort.field === 'shippingFee'}
+                  direction={sort.field === 'shippingFee' ? sort.direction : 'asc'}
                   onClick={() => handleRequestSort('shippingFee')}
                 >
                   运费
@@ -84,8 +83,8 @@ export default function OrdersTable({
               </TableCell>
               <TableCell sx={{ width: 110 }}>
                 <TableSortLabel
-                  active={orderBy === 'profit'}
-                  direction={orderBy === 'profit' ? order : 'asc'}
+                  active={sort.field === 'profit'}
+                  direction={sort.field === 'profit' ? sort.direction : 'asc'}
                   onClick={() => handleRequestSort('profit')}
                 >
                   利润
@@ -93,8 +92,8 @@ export default function OrdersTable({
               </TableCell>
               <TableCell sx={{ width: 120 }}>
                 <TableSortLabel
-                  active={orderBy === 'transactionTime'}
-                  direction={orderBy === 'transactionTime' ? order : 'asc'}
+                  active={sort.field === 'transactionTime'}
+                  direction={sort.field === 'transactionTime' ? sort.direction : 'asc'}
                   onClick={() => handleRequestSort('transactionTime')}
                 >
                   交易时间

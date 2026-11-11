@@ -84,7 +84,7 @@ export default function ProductsPage() {
       <Box
         sx={{ mb: 3, display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: 1 }}
       >
-        <ViewModeToggle mode={viewMode} onChange={setViewMode} />
+        {viewModeHydrated && <ViewModeToggle mode={viewMode} onChange={setViewMode} />}
         <Button variant="contained" startIcon={<AddIcon />} onClick={handleAdd}>
           新增商品
         </Button>

@@ -33,6 +33,10 @@ export function nextOrderSort(current: OrderSort, field: OrderSortField): OrderS
   return { field, direction: isAsc ? 'desc' : 'asc' };
 }
 
+function isCostMissing(order: Order): boolean {
+  return order.hasUnknownCost || order.totalCost === null || order.totalCost === 0;
+}
+
 export function sortOrders(orders: Order[], { field, direction }: OrderSort): Order[] {
   const sorted = [...orders];
 
@@ -50,15 +54,19 @@ export function sortOrders(orders: Order[], { field, direction }: OrderSort): Or
       aValue = aProfit;
       bValue = bProfit;
     } else if (field === 'totalCost') {
-      // A null or zero cost goes first in ascending order and last in descending order.
-      const aMissing = a.totalCost === null || a.totalCost === 0;
-      const bMissing = b.totalCost === null || b.totalCost === 0;
+      // An unknown, null or zero cost goes first in ascending order and last in descending order.
+      // The views show an unknown cost as 未知, so it sorts with the missing costs.
+      const aMissing = isCostMissing(a);
+      const bMissing = isCostMissing(b);
       if (aMissing || bMissing) {
         const diff = (bMissing ? 1 : 0) - (aMissing ? 1 : 0);
         return direction === 'asc' ? diff : -diff;
       }
       aValue = a.totalCost;
       bValue = b.totalCost;
+    } else if (field === 'transactionTime') {
+      aValue = new Date(a.transactionTime).getTime();
+      bValue = new Date(b.transactionTime).getTime();
     } else {
       aValue = a[field];
       bValue = b[field];
@@ -66,12 +74,6 @@ export function sortOrders(orders: Order[], { field, direction }: OrderSort): Or
 
     if (typeof aValue === 'string' && typeof bValue === 'string') {
       return direction === 'asc' ? aValue.localeCompare(bValue) : bValue.localeCompare(aValue);
-    }
-
-    if (field === 'transactionTime') {
-      const aTime = new Date(aValue).getTime();
-      const bTime = new Date(bValue).getTime();
-      return direction === 'asc' ? aTime - bTime : bTime - aTime;
     }
 
     return direction === 'asc'

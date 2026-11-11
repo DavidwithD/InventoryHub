@@ -1,5 +1,6 @@
 'use client';
 
+import { useMemo } from 'react';
 import { Box, Button, Card, Chip, Paper, Stack, Typography } from '@mui/material';
 import { Order } from '@/types';
 import { OrderSort, sortOrders } from '../utils/sortOrders';
@@ -28,7 +29,7 @@ function Metric({ label, value }: { label: string; value: string }) {
 }
 
 export default function OrdersCardList({ orders, sort, onViewDetails }: Props) {
-  const sortedOrders = sortOrders(orders, sort);
+  const sortedOrders = useMemo(() => sortOrders(orders, sort), [orders, sort]);
 
   return (
     <Box>
