@@ -8,6 +8,9 @@ import { useProducts } from './hooks/useProducts';
 import { useCategories } from './hooks/useCategories';
 import ProductsTable from './components/ProductsTable';
 import ProductDialog from './components/ProductDialog';
+import ProductsCardList from './components/ProductsCardList';
+import ViewModeToggle from '@/components/ViewModeToggle';
+import { useViewMode } from '@/lib/stores/viewModeStore';
 
 interface ProductFormData {
   categoryId: number;
@@ -17,6 +20,7 @@ interface ProductFormData {
 export default function ProductsPage() {
   const { products, loading, loadProducts, createProduct, updateProduct, deleteProduct } = useProducts();
   const { categories, loadCategories } = useCategories();
+  const [viewMode, setViewMode, viewModeHydrated] = useViewMode('products');
   const [openDialog, setOpenDialog] = useState(false);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'success' as 'success' | 'error' });
@@ -77,22 +81,30 @@ export default function ProductsPage() {
 
   return (
     <>
-      <Box sx={{ mb: 3, display: 'flex', justifyContent: 'flex-end' }}>
-        <Button
-          variant="contained"
-          startIcon={<AddIcon />}
-          onClick={handleAdd}
-        >
+      <Box
+        sx={{ mb: 3, display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: 1 }}
+      >
+        {viewModeHydrated && <ViewModeToggle mode={viewMode} onChange={setViewMode} />}
+        <Button variant="contained" startIcon={<AddIcon />} onClick={handleAdd}>
           新增商品
         </Button>
       </Box>
 
-      <ProductsTable
-        products={products}
-        loading={loading}
-        onEdit={handleEdit}
-        onDelete={handleDelete}
-      />
+      {!viewModeHydrated ? null : viewMode === 'card' ? (
+        <ProductsCardList
+          products={products}
+          loading={loading}
+          onEdit={handleEdit}
+          onDelete={handleDelete}
+        />
+      ) : (
+        <ProductsTable
+          products={products}
+          loading={loading}
+          onEdit={handleEdit}
+          onDelete={handleDelete}
+        />
+      )}
 
       <ProductDialog
         open={openDialog}
@@ -119,4 +131,3 @@ export default function ProductsPage() {
     </>
   );
 }
-

@@ -1,8 +1,7 @@
 'use client';
 
-import { useState } from 'react';
+import { useMemo } from 'react';
 import {
-  Box,
   Paper,
   Table,
   TableBody,
@@ -12,76 +11,31 @@ import {
   TableRow,
   IconButton,
   TableSortLabel,
-  Typography,
 } from '@mui/material';
 import { Order } from '@/types';
-
-type OrderByType =
-  | 'orderNo'
-  | 'revenue'
-  | 'totalCost'
-  | 'shippingFee'
-  | 'profit'
-  | 'transactionTime';
+import { OrderSort, OrderSortField, nextOrderSort, sortOrders } from '../utils/sortOrders';
+import { orderProfit } from '../utils/orderProfit';
+import OrderThumbnail from './OrderThumbnail';
 
 interface Props {
   orders: Order[];
+  sort: OrderSort;
+  onSortChange: (sort: OrderSort) => void;
   onEdit: (order: Order) => void;
   onDelete: (id: number) => void;
   onViewDetails: (orderId: number) => void;
 }
 
-export default function OrdersTable({ orders, onEdit, onDelete, onViewDetails }: Props) {
-  const [orderBy, setOrderBy] = useState<OrderByType>('transactionTime');
-  const [order, setOrder] = useState<'asc' | 'desc'>('desc');
-
-  const handleRequestSort = (property: OrderByType) => {
-    const isAsc = orderBy === property && order === 'asc';
-    setOrder(isAsc ? 'desc' : 'asc');
-    setOrderBy(property);
-  };
-
-  const getSortedOrders = () => {
-    const sorted = [...orders];
-
-    sorted.sort((a, b) => {
-      let aValue: any;
-      let bValue: any;
-
-      if (orderBy === 'profit') {
-        aValue = a.revenue - (a.totalCost || 0);
-        bValue = b.revenue - (b.totalCost || 0);
-      } else if (orderBy === 'totalCost') {
-        if (a.totalCost === null || a.totalCost === 0) {
-          return order === 'asc' ? -1 : 1;
-        }
-        if (b.totalCost === null || b.totalCost === 0) {
-          return order === 'asc' ? 1 : -1;
-        }
-        aValue = a.totalCost;
-        bValue = b.totalCost;
-      } else {
-        aValue = a[orderBy];
-        bValue = b[orderBy];
-      }
-
-      if (typeof aValue === 'string' && typeof bValue === 'string') {
-        return order === 'asc' ? aValue.localeCompare(bValue) : bValue.localeCompare(aValue);
-      }
-
-      if (orderBy === 'transactionTime') {
-        const aTime = new Date(aValue).getTime();
-        const bTime = new Date(bValue).getTime();
-        return order === 'asc' ? aTime - bTime : bTime - aTime;
-      }
-
-      return order === 'asc' ? aValue - bValue : bValue - aValue;
-    });
-
-    return sorted;
-  };
-
-  const sortedOrders = getSortedOrders();
+export default function OrdersTable({
+  orders,
+  sort,
+  onSortChange,
+  onEdit,
+  onDelete,
+  onViewDetails,
+}: Props) {
+  const handleRequestSort = (field: OrderSortField) => onSortChange(nextOrderSort(sort, field));
+  const sortedOrders = useMemo(() => sortOrders(orders, sort), [orders, sort]);
 
   return (
     <Paper>
@@ -93,8 +47,8 @@ export default function OrdersTable({ orders, onEdit, onDelete, onViewDetails }:
               <TableCell sx={{ width: 250, maxWidth: 250 }}>订单名</TableCell>
               <TableCell sx={{ width: 140 }}>
                 <TableSortLabel
-                  active={orderBy === 'orderNo'}
-                  direction={orderBy === 'orderNo' ? order : 'asc'}
+                  active={sort.field === 'orderNo'}
+                  direction={sort.field === 'orderNo' ? sort.direction : 'asc'}
                   onClick={() => handleRequestSort('orderNo')}
                 >
                   订单号
@@ -102,8 +56,8 @@ export default function OrdersTable({ orders, onEdit, onDelete, onViewDetails }:
               </TableCell>
               <TableCell sx={{ width: 110 }}>
                 <TableSortLabel
-                  active={orderBy === 'revenue'}
-                  direction={orderBy === 'revenue' ? order : 'asc'}
+                  active={sort.field === 'revenue'}
+                  direction={sort.field === 'revenue' ? sort.direction : 'asc'}
                   onClick={() => handleRequestSort('revenue')}
                 >
                   营业额
@@ -111,8 +65,8 @@ export default function OrdersTable({ orders, onEdit, onDelete, onViewDetails }:
               </TableCell>
               <TableCell sx={{ width: 110 }}>
                 <TableSortLabel
-                  active={orderBy === 'totalCost'}
-                  direction={orderBy === 'totalCost' ? order : 'asc'}
+                  active={sort.field === 'totalCost'}
+                  direction={sort.field === 'totalCost' ? sort.direction : 'asc'}
                   onClick={() => handleRequestSort('totalCost')}
                 >
                   总成本
@@ -120,8 +74,8 @@ export default function OrdersTable({ orders, onEdit, onDelete, onViewDetails }:
               </TableCell>
               <TableCell sx={{ width: 110 }}>
                 <TableSortLabel
-                  active={orderBy === 'shippingFee'}
-                  direction={orderBy === 'shippingFee' ? order : 'asc'}
+                  active={sort.field === 'shippingFee'}
+                  direction={sort.field === 'shippingFee' ? sort.direction : 'asc'}
                   onClick={() => handleRequestSort('shippingFee')}
                 >
                   运费
@@ -129,8 +83,8 @@ export default function OrdersTable({ orders, onEdit, onDelete, onViewDetails }:
               </TableCell>
               <TableCell sx={{ width: 110 }}>
                 <TableSortLabel
-                  active={orderBy === 'profit'}
-                  direction={orderBy === 'profit' ? order : 'asc'}
+                  active={sort.field === 'profit'}
+                  direction={sort.field === 'profit' ? sort.direction : 'asc'}
                   onClick={() => handleRequestSort('profit')}
                 >
                   利润
@@ -138,8 +92,8 @@ export default function OrdersTable({ orders, onEdit, onDelete, onViewDetails }:
               </TableCell>
               <TableCell sx={{ width: 120 }}>
                 <TableSortLabel
-                  active={orderBy === 'transactionTime'}
-                  direction={orderBy === 'transactionTime' ? order : 'asc'}
+                  active={sort.field === 'transactionTime'}
+                  direction={sort.field === 'transactionTime' ? sort.direction : 'asc'}
                   onClick={() => handleRequestSort('transactionTime')}
                 >
                   交易时间
@@ -154,17 +108,7 @@ export default function OrdersTable({ orders, onEdit, onDelete, onViewDetails }:
             {sortedOrders.map((order) => (
               <TableRow key={order.id}>
                 <TableCell>
-                  {order.imageUrl ? (
-                    <a href={`https://jp.mercari.com/item/${order.orderNo}`}>
-                      <img
-                        src={order.imageUrl}
-                        alt={order.name}
-                        style={{ width: 60, height: 60, objectFit: 'cover', borderRadius: 4 }}
-                      />
-                    </a>
-                  ) : (
-                    <Box sx={{ width: 60, height: 60, bgcolor: 'grey.200', borderRadius: 1 }} />
-                  )}
+                  <OrderThumbnail order={order} size={60} radius={4} />
                 </TableCell>
                 <TableCell
                   sx={{
@@ -184,7 +128,7 @@ export default function OrdersTable({ orders, onEdit, onDelete, onViewDetails }:
                 </TableCell>
                 <TableCell>{order.shippingFee.toFixed(2)}</TableCell>
                 <TableCell>
-                  {order.hasUnknownCost ? '未知' : (order.revenue - (order.totalCost || 0)).toFixed(2)}
+                  {orderProfit(order)?.toFixed(2) ?? '未知'}
                 </TableCell>
                 <TableCell>{new Date(order.transactionTime).toLocaleDateString('zh-CN')}</TableCell>
                 <TableCell align="center">
@@ -216,11 +160,6 @@ export default function OrdersTable({ orders, onEdit, onDelete, onViewDetails }:
         </Table>
       </TableContainer>
 
-      <Box sx={{ mt: 2, p: 2 }}>
-        <Typography variant="body2" color="text.secondary">
-          共 {sortedOrders.length} 条订单
-        </Typography>
-      </Box>
     </Paper>
   );
 }

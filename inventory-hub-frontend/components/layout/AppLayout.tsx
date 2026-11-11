@@ -209,6 +209,8 @@ export default function AppLayout({ children }: AppLayoutProps) {
         component="main"
         sx={{
           flexGrow: 1,
+          // Without this, one long no-wrap line makes the page wider than the window.
+          minWidth: 0,
           p: 3,
           minHeight: '100vh',
           backgroundColor: '#f5f5f5',

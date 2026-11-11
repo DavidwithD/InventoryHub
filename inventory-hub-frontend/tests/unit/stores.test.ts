@@ -1,7 +1,9 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { renderHook, waitFor } from '@testing-library/react';
 import { useFactorStore } from '@/lib/stores/factorStore';
 import { useInventoryFilterStore, useOrderFilterStore } from '@/lib/stores/filterStore';
 import { usePickHistoryStore } from '@/lib/stores/pickHistoryStore';
+import { useViewMode, useViewModeStore } from '@/lib/stores/viewModeStore';
 import { getCurrentExchangeRate, getLastExchangeRate, saveExchangeRate } from '@/lib/exchangeRate';
 
 beforeEach(() => {
@@ -88,5 +90,33 @@ describe('exchange rate', () => {
     saveExchangeRate(0.048);
 
     expect(await getCurrentExchangeRate()).toBe(0.048);
+  });
+});
+
+describe('view mode store', () => {
+  beforeEach(() => {
+    useViewModeStore.setState({ modes: { orders: 'table', products: 'table' } });
+    localStorage.removeItem('list-view-modes');
+  });
+
+  it('loads the saved mode and then reports hydrated', async () => {
+    localStorage.setItem(
+      'list-view-modes',
+      JSON.stringify({ state: { modes: { orders: 'card', products: 'table' } }, version: 0 })
+    );
+
+    const { result } = renderHook(() => useViewMode('orders'));
+
+    await waitFor(() => expect(result.current[2]).toBe(true));
+    expect(result.current[0]).toBe('card');
+  });
+
+  it('reports hydrated with the defaults when the saved value is broken', async () => {
+    localStorage.setItem('list-view-modes', '{not json');
+
+    const { result } = renderHook(() => useViewMode('orders'));
+
+    await waitFor(() => expect(result.current[2]).toBe(true));
+    expect(result.current[0]).toBe('table');
   });
 });

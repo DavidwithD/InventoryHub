@@ -9,11 +9,10 @@ import {
   TableHead,
   TableRow,
   IconButton,
-  Box,
 } from '@mui/material';
 import { Edit as EditIcon, Delete as DeleteIcon } from '@mui/icons-material';
-import Image from 'next/image';
 import { Product } from '@/types';
+import ProductThumbnail from './ProductThumbnail';
 
 interface Props {
   products: Product[];
@@ -55,33 +54,7 @@ export default function ProductsTable({ products, loading, onEdit, onDelete }: P
               <TableRow key={product.id} hover>
                 <TableCell>{product.id}</TableCell>
                 <TableCell sx={{ width: 64, p: 1 }}>
-                  {product.imageUrl ? (
-                    <Box sx={{ width: 48, height: 48, position: 'relative', flexShrink: 0 }}>
-                      <Image
-                        src={product.imageUrl}
-                        alt={product.name}
-                        fill
-                        style={{ objectFit: 'cover', borderRadius: 4 }}
-                        unoptimized
-                      />
-                    </Box>
-                  ) : (
-                    <Box
-                      sx={{
-                        width: 48,
-                        height: 48,
-                        bgcolor: 'grey.200',
-                        borderRadius: 1,
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        color: 'text.disabled',
-                        fontSize: 10,
-                      }}
-                    >
-                      无图
-                    </Box>
-                  )}
+                  <ProductThumbnail product={product} size={48} radius={4} />
                 </TableCell>
                 <TableCell>{product.name}</TableCell>
                 <TableCell>{product.categoryName}</TableCell>

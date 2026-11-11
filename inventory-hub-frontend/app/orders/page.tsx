@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { Box, Button, Alert } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
 import { Order } from '@/types';
@@ -13,6 +13,10 @@ import OrderFormDialog from './components/OrderFormDialog';
 import OrderDetailsDialog from './components/OrderDetailsDialog';
 import ImportDialog from './components/ImportDialog';
 import { useOrderFilterStore } from '@/lib/stores/filterStore';
+import OrdersCardList from './components/OrdersCardList';
+import OrdersListToolbar from './components/OrdersListToolbar';
+import { useViewMode } from '@/lib/stores/viewModeStore';
+import { DEFAULT_ORDER_SORT, OrderSort } from './utils/sortOrders';
 
 export default function OrdersPage() {
   const { orders, loadOrders, createOrder, updateOrder, deleteOrder, importFromCurl } = useOrders();
@@ -26,6 +30,8 @@ export default function OrdersPage() {
   const [openImportDialog, setOpenImportDialog] = useState(false);
   const [editingOrder, setEditingOrder] = useState<Order | null>(null);
   const [viewingOrderId, setViewingOrderId] = useState<number | null>(null);
+  const [sort, setSort] = useState<OrderSort>(DEFAULT_ORDER_SORT);
+  const [viewMode, setViewMode, viewModeHydrated] = useViewMode('orders');
 
   // 筛选状态 — persisted across visits via localStorage (zustand persist).
   const {
@@ -51,7 +57,8 @@ export default function OrdersPage() {
     loadCategories().catch(() => setError('加载分类列表失败'));
   }, [loadOrders, loadAllInventories, loadCategories]);
 
-  const getFilteredOrders = () => {
+  // Memoized so the lists below can memoize their sort on this array.
+  const filteredOrders = useMemo(() => {
     let filtered = [...orders];
 
     if (searchOrderNo.trim()) {
@@ -73,11 +80,10 @@ export default function OrdersPage() {
     }
 
     return filtered;
-  };
+  }, [orders, searchOrderNo, costStatus]);
 
   const handleExportJSON = () => {
-    const filtered = getFilteredOrders();
-    const exportData = filtered.map((order) => ({
+    const exportData = filteredOrders.map((order) => ({
       订单号: order.orderNo,
       订单名: order.name,
       图片URL: order.imageUrl || '',
@@ -179,7 +185,6 @@ export default function OrdersPage() {
     setOpenImportDialog(false);
   };
 
-  const filteredOrders = getFilteredOrders();
 
   return (
     <>
@@ -219,12 +224,32 @@ export default function OrdersPage() {
         onExport={handleExportJSON}
       />
 
-      <OrdersTable
-        orders={filteredOrders}
-        onViewDetails={handleViewDetails}
-        onEdit={handleOpenDialog}
-        onDelete={handleDeleteOrder}
-      />
+      {viewModeHydrated && (
+        <OrdersListToolbar
+          count={filteredOrders.length}
+          sort={sort}
+          onSortChange={setSort}
+          viewMode={viewMode}
+          onViewModeChange={setViewMode}
+        />
+      )}
+
+      {!viewModeHydrated ? null : viewMode === 'card' ? (
+        <OrdersCardList
+          orders={filteredOrders}
+          sort={sort}
+          onViewDetails={handleViewDetails}
+        />
+      ) : (
+        <OrdersTable
+          orders={filteredOrders}
+          sort={sort}
+          onSortChange={setSort}
+          onViewDetails={handleViewDetails}
+          onEdit={handleOpenDialog}
+          onDelete={handleDeleteOrder}
+        />
+      )}
 
       <OrderFormDialog
         open={openDialog}
