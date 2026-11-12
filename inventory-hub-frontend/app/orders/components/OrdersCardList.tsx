@@ -1,6 +1,7 @@
 'use client';
 
 import { useMemo } from 'react';
+import Link from 'next/link';
 import { Box, Button, Card, Chip, Paper, Stack, Typography } from '@mui/material';
 import { Order } from '@/types';
 import { OrderSort, sortOrders } from '../utils/sortOrders';
@@ -10,7 +11,6 @@ import OrderThumbnail from './OrderThumbnail';
 interface Props {
   orders: Order[];
   sort: OrderSort;
-  onViewDetails: (orderId: number) => void;
 }
 
 const IMAGE_SIZE = 96;
@@ -28,7 +28,7 @@ function Metric({ label, value }: { label: string; value: string }) {
   );
 }
 
-export default function OrdersCardList({ orders, sort, onViewDetails }: Props) {
+export default function OrdersCardList({ orders, sort }: Props) {
   const sortedOrders = useMemo(() => sortOrders(orders, sort), [orders, sort]);
 
   return (
@@ -128,7 +128,8 @@ export default function OrdersCardList({ orders, sort, onViewDetails }: Props) {
                   <Button
                     size="small"
                     variant={order.hasDetails ? 'outlined' : 'contained'}
-                    onClick={() => onViewDetails(order.id)}
+                    component={Link}
+                    href={`/orders/${order.id}`}
                   >
                     {order.hasDetails ? '查看' : '添加'}
                   </Button>

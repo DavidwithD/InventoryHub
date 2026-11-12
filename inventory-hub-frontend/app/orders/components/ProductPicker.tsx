@@ -13,6 +13,7 @@ import {
   SelectChangeEvent,
   TextField,
   Typography,
+  type Theme,
 } from '@mui/material';
 import Image from 'next/image';
 import api from '@/lib/api';
@@ -28,7 +29,21 @@ interface ProductPickerProps {
   categories: Category[];
   excludeProductIds?: number[];
   onPick: (productId: number) => void;
-  mode?: 'grid' | 'compact';
+}
+
+const CARD_IMAGE_HEIGHT = 96;
+
+/**
+ * Sticky position just under the fixed app bar.
+ * The app bar height changes with screen size, so the offset copies theme.mixins.toolbar.
+ */
+function stickyBelowAppBar(theme: Theme) {
+  const toolbar = theme.mixins.toolbar as Record<string, unknown>;
+  const style: Record<string, unknown> = { position: 'sticky', top: toolbar.minHeight };
+  for (const [key, value] of Object.entries(toolbar)) {
+    if (key.startsWith('@media')) style[key] = { top: (value as { minHeight: number }).minHeight };
+  }
+  return style;
 }
 
 interface PickerItem {
@@ -43,7 +58,6 @@ export default function ProductPicker({
   categories,
   excludeProductIds = [],
   onPick,
-  mode = 'grid',
 }: ProductPickerProps) {
   const [categoryId, setCategoryId] = useState<number>(CATEGORY_HISTORY);
   const [search, setSearch] = useState<string>('');
@@ -114,15 +128,24 @@ export default function ProductPicker({
     setCategoryId(Number(e.target.value));
   };
 
-  const cardSize = mode === 'compact' ? 72 : 96;
-  const gridSize = mode === 'compact'
-    ? { xs: 6, sm: 4, md: 3 }
-    : { xs: 6, sm: 4, md: 3, lg: 2 };
-  const gridMaxHeight = mode === 'compact' ? 220 : 360;
-
   return (
     <Box>
-      <Box sx={{ display: 'flex', gap: 2, mb: 2, flexWrap: 'wrap' }}>
+      {/* The filter bar stays under the app bar while the page scrolls through the grid. */}
+      <Box
+        sx={(theme) => ({
+          ...stickyBelowAppBar(theme),
+          zIndex: 2,
+          // Same color as the page background in AppLayout, so the grid does not show through.
+          bgcolor: 'grey.100',
+          // The top padding leaves room for the select's floating label.
+          pt: 1.5,
+          pb: 1,
+          mb: 1,
+          display: 'flex',
+          gap: 2,
+          flexWrap: 'wrap',
+        })}
+      >
         <FormControl size="small" sx={{ minWidth: 150 }}>
           <InputLabel>商品分类</InputLabel>
           <Select value={categoryId} label="商品分类" onChange={handleCategoryChange}>
@@ -144,7 +167,7 @@ export default function ProductPicker({
         />
       </Box>
 
-      <Box sx={{ maxHeight: gridMaxHeight, overflowY: 'auto', pr: 1 }}>
+      <Box>
         {items.length === 0 ? (
           <Typography color="text.secondary" sx={{ textAlign: 'center', py: 4 }}>
             {categoryId === CATEGORY_HISTORY ? '暂无选择历史' : '没有可用商品'}
@@ -154,7 +177,7 @@ export default function ProductPicker({
             {items.map((item) => {
               const imageUrl = productImageById.get(item.productId);
               return (
-                <Grid key={item.productId} size={gridSize}>
+                <Grid key={item.productId} size={{ xs: 6, sm: 4, md: 3, lg: 2 }}>
                   <Card variant="outlined">
                     <CardActionArea
                       onClick={() => pick(item.productId)}
@@ -163,7 +186,7 @@ export default function ProductPicker({
                       <Box
                         sx={{
                           width: '100%',
-                          height: cardSize,
+                          height: CARD_IMAGE_HEIGHT,
                           position: 'relative',
                           bgcolor: 'grey.100',
                           borderRadius: 1,

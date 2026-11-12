@@ -10,7 +10,6 @@ import { useCategories } from '../categories/hooks/useCategories';
 import OrdersTable from './components/OrdersTable';
 import OrderFilters from './components/OrderFilters';
 import OrderFormDialog from './components/OrderFormDialog';
-import OrderDetailsDialog from './components/OrderDetailsDialog';
 import ImportDialog from './components/ImportDialog';
 import { useOrderFilterStore } from '@/lib/stores/filterStore';
 import OrdersCardList from './components/OrdersCardList';
@@ -26,10 +25,8 @@ export default function OrdersPage() {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [openDialog, setOpenDialog] = useState(false);
-  const [openDetailsDialog, setOpenDetailsDialog] = useState(false);
   const [openImportDialog, setOpenImportDialog] = useState(false);
   const [editingOrder, setEditingOrder] = useState<Order | null>(null);
-  const [viewingOrderId, setViewingOrderId] = useState<number | null>(null);
   const [sort, setSort] = useState<OrderSort>(DEFAULT_ORDER_SORT);
   const [viewMode, setViewMode, viewModeHydrated] = useViewMode('orders');
 
@@ -141,17 +138,6 @@ export default function OrdersPage() {
     }
   };
 
-  const handleViewDetails = (orderId: number) => {
-    setViewingOrderId(orderId);
-    setOpenDetailsDialog(true);
-  };
-
-  const handleDetailsSaved = async () => {
-    setSuccess('订单详细更新成功');
-    await loadOrders();
-    await loadAllInventories();
-  };
-
   const handleApplyFilter = () => {
     loadOrders({ startDate, endDate }).catch(() => setError('加载订单列表失败'));
   };
@@ -170,11 +156,6 @@ export default function OrdersPage() {
   const handleCloseDialog = () => {
     setOpenDialog(false);
     setEditingOrder(null);
-  };
-
-  const handleCloseDetailsDialog = () => {
-    setOpenDetailsDialog(false);
-    setViewingOrderId(null);
   };
 
   const handleOpenImportDialog = () => {
@@ -235,17 +216,12 @@ export default function OrdersPage() {
       )}
 
       {!viewModeHydrated ? null : viewMode === 'card' ? (
-        <OrdersCardList
-          orders={filteredOrders}
-          sort={sort}
-          onViewDetails={handleViewDetails}
-        />
+        <OrdersCardList orders={filteredOrders} sort={sort} />
       ) : (
         <OrdersTable
           orders={filteredOrders}
           sort={sort}
           onSortChange={setSort}
-          onViewDetails={handleViewDetails}
           onEdit={handleOpenDialog}
           onDelete={handleDeleteOrder}
         />
@@ -258,15 +234,6 @@ export default function OrdersPage() {
         categories={categories}
         onClose={handleCloseDialog}
         onSave={handleSaveOrder}
-      />
-
-      <OrderDetailsDialog
-        open={openDetailsDialog}
-        orderId={viewingOrderId}
-        inventories={inventories}
-        categories={categories}
-        onClose={handleCloseDetailsDialog}
-        onSaved={handleDetailsSaved}
       />
 
       <ImportDialog
