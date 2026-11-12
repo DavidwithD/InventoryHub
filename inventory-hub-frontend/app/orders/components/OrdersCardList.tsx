@@ -1,34 +1,22 @@
 'use client';
 
 import { useMemo } from 'react';
+import Link from 'next/link';
 import { Box, Button, Card, Chip, Paper, Stack, Typography } from '@mui/material';
 import { Order } from '@/types';
 import { OrderSort, sortOrders } from '../utils/sortOrders';
 import { orderProfit } from '../utils/orderProfit';
 import OrderThumbnail from './OrderThumbnail';
+import OrderMetric from './OrderMetric';
 
 interface Props {
   orders: Order[];
   sort: OrderSort;
-  onViewDetails: (orderId: number) => void;
 }
 
 const IMAGE_SIZE = 96;
 
-function Metric({ label, value }: { label: string; value: string }) {
-  return (
-    <Box sx={{ minWidth: 72 }}>
-      <Typography variant="caption" color="text.secondary" component="div">
-        {label}
-      </Typography>
-      <Typography variant="body2" sx={{ fontVariantNumeric: 'tabular-nums' }}>
-        {value}
-      </Typography>
-    </Box>
-  );
-}
-
-export default function OrdersCardList({ orders, sort, onViewDetails }: Props) {
+export default function OrdersCardList({ orders, sort }: Props) {
   const sortedOrders = useMemo(() => sortOrders(orders, sort), [orders, sort]);
 
   return (
@@ -86,12 +74,12 @@ export default function OrdersCardList({ orders, sort, onViewDetails }: Props) {
                     )}
                   </Stack>
                   <Stack direction="row" spacing={2} sx={{ mt: 'auto', pt: 1, flexWrap: 'wrap' }}>
-                    <Metric label="营业额" value={order.revenue.toFixed(2)} />
-                    <Metric
+                    <OrderMetric label="营业额" value={order.revenue.toFixed(2)} />
+                    <OrderMetric
                       label="总成本"
                       value={order.hasUnknownCost ? '未知' : order.totalCost?.toFixed(2) || '0.00'}
                     />
-                    <Metric label="运费" value={order.shippingFee.toFixed(2)} />
+                    <OrderMetric label="运费" value={order.shippingFee.toFixed(2)} />
                   </Stack>
                 </Box>
 
@@ -116,10 +104,10 @@ export default function OrdersCardList({ orders, sort, onViewDetails }: Props) {
                         fontVariantNumeric: 'tabular-nums',
                         color:
                           profit === null
-                          ? 'text.secondary'
-                          : profit >= 0
-                            ? 'success.main'
-                            : 'error.main',
+                            ? 'text.secondary'
+                            : profit >= 0
+                              ? 'success.main'
+                              : 'error.main',
                       }}
                     >
                       {profit === null ? '未知' : profit.toFixed(2)}
@@ -128,7 +116,8 @@ export default function OrdersCardList({ orders, sort, onViewDetails }: Props) {
                   <Button
                     size="small"
                     variant={order.hasDetails ? 'outlined' : 'contained'}
-                    onClick={() => onViewDetails(order.id)}
+                    component={Link}
+                    href={`/orders/${order.id}`}
                   >
                     {order.hasDetails ? '查看' : '添加'}
                   </Button>

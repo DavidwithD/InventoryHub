@@ -153,20 +153,26 @@ Each order can have multiple line items:
 - Batch allocation: the app uses the oldest batches first.
 - Subtotal: batch cost + packaging cost + other cost.
 
-### Order Detail Editor
+### Order Page
 
-The order detail editor provides:
+Click 添加 or 查看 in an order's row to open its page. The page has its own address, so you can bookmark it or open it in a new tab. Click 返回订单列表 to go back. Your filters stay as you left them.
 
-1. Order info card (read-only)
-2. Multi-row editable table
-3. Add/Remove row buttons
-4. Real-time validation
-5. Save all changes at once
+The top of the page shows the order: image, name, order number, time, revenue, shipping fee, total cost and profit.
+
+Under 订单详细 you see the order's lines:
+
+- To change a quantity, type the new number in the line and press Enter or click elsewhere.
+- To remove a line, click its delete button and confirm.
+- To change a line's product, delete the line and add the new product.
+
+Under 添加商品 you add lines:
+
+1. Pick a category, or search, and click a product. It moves to the 已选商品 list.
+2. Set the quantity of each picked product.
+3. Click 保存. Cost and profit at the top update.
 
 **Validation Rules:**
 
-- At least one detail required
-- A product must be selected
 - Quantity must be at least 1
 - Each product can appear in only one line of an order. To sell more units, raise the quantity of the existing line.
 

@@ -70,7 +70,6 @@ describe('OrdersTable', () => {
         {...sortProps}
         onEdit={vi.fn()}
         onDelete={vi.fn()}
-        onViewDetails={vi.fn()}
       />
     );
 
@@ -87,7 +86,6 @@ describe('OrdersTable', () => {
         {...sortProps}
         onEdit={vi.fn()}
         onDelete={vi.fn()}
-        onViewDetails={vi.fn()}
       />
     );
 
@@ -96,21 +94,12 @@ describe('OrdersTable', () => {
     expect(row.getByText('添加')).toBeInTheDocument();
   });
 
-  it('opens the details of the clicked order', async () => {
-    const onViewDetails = vi.fn();
+  it('links each row to its order page', () => {
     render(
-      <OrdersTable
-        orders={[order({ id: 42 })]}
-        {...sortProps}
-        onEdit={vi.fn()}
-        onDelete={vi.fn()}
-        onViewDetails={onViewDetails}
-      />
+      <OrdersTable orders={[order({ id: 42 })]} {...sortProps} onEdit={vi.fn()} onDelete={vi.fn()} />
     );
 
-    await userEvent.click(screen.getByText('查看'));
-
-    expect(onViewDetails).toHaveBeenCalledWith(42);
+    expect(screen.getByRole('link', { name: '查看' })).toHaveAttribute('href', '/orders/42');
   });
 });
 
@@ -131,21 +120,13 @@ describe('OrdersCardList', () => {
     ...overrides,
   });
 
-  it('shows the same numbers as the table and opens details', async () => {
-    const onViewDetails = vi.fn();
-    render(
-      <OrdersCardList
-        orders={[order({ id: 7 })]}
-        sort={DEFAULT_ORDER_SORT}
-        onViewDetails={onViewDetails}
-      />
-    );
+  it('shows the same numbers as the table and links to the order page', () => {
+    render(<OrdersCardList orders={[order({ id: 7 })]} sort={DEFAULT_ORDER_SORT} />);
 
     const card = within(screen.getByTestId('order-card'));
     expect(card.getByText('350.00')).toBeInTheDocument();
     expect(card.getByText('650.00')).toBeInTheDocument();
-    await userEvent.click(card.getByRole('button', { name: '查看' }));
-    expect(onViewDetails).toHaveBeenCalledWith(7);
+    expect(card.getByRole('link', { name: '查看' })).toHaveAttribute('href', '/orders/7');
   });
 });
 

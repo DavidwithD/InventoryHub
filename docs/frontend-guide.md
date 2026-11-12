@@ -27,9 +27,8 @@ inventory-hub-frontend/
 │   ├── page.tsx                  # Dashboard (home page)
 │   ├── orders/
 │   │   ├── page.tsx              # Order list
-│   │   └── [orderId]/
-│   │       └── edit/
-│   │           └── page.tsx      # Order detail editor
+│   │   └── [id]/
+│   │       └── page.tsx          # Order page: summary and lines of one order
 │   ├── inventory/
 │   │   └── page.tsx              # Inventory management
 │   ├── products/
@@ -128,34 +127,19 @@ const columns = [
 ];
 ```
 
-### Order Detail Editor (`/orders/[orderId]/edit`)
+### Order Page (`/orders/[id]`)
 
-Multi-row editor for order details:
+`app/orders/[id]/page.tsx` loads one order, its lines, the inventories and the categories. It reloads the order and its lines after each change. A line change moves the order's cost and profit. An unknown id shows 订单不存在. Any other load error shows a 重试 button. Only the newest reload updates the page.
 
-```tsx
-// app/orders/[orderId]/edit/page.tsx
-export default function OrderEditPage({ params }) {
-  const { orderId } = params;
-  const [order, setOrder] = useState<Order>();
-  const [details, setDetails] = useState<OrderDetail[]>([]);
+The page uses three components from `app/orders/components/`:
 
-  return (
-    <Box>
-      {/* Order Info Card (read-only) */}
-      <OrderInfoCard order={order} />
+| Component               | Role                                                                 |
+| ----------------------- | -------------------------------------------------------------------- |
+| `OrderSummaryCard`      | Image, name, order number, time, revenue, shipping, cost and profit  |
+| `OrderDetailLinesTable` | The saved lines. The quantity input saves on blur or Enter.          |
+| `OrderDetailAddPanel`   | `ProductPicker` plus a list of picked products. One button saves them all. |
 
-      {/* Editable Details Table */}
-      <OrderDetailRows
-        details={details}
-        onAdd={handleAddRow}
-        onUpdate={handleUpdateRow}
-        onDelete={handleDeleteRow}
-        onSave={handleSave}
-      />
-    </Box>
-  );
-}
-```
+The list rows link to this page with `next/link`.
 
 ## Components
 

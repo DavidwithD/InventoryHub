@@ -2,7 +2,7 @@
 
 import { useState, useCallback } from 'react';
 import api from '@/lib/api';
-import { Order, CreateOrderDetail, UpdateOrderDetail } from '@/types';
+import { Order, OrderDetail, CreateOrderDetail, UpdateOrderDetail } from '@/types';
 
 interface CreateOrderData {
   orderNo: string;
@@ -76,9 +76,14 @@ export function useOrders() {
     }
   }, []);
 
+  const getOrder = useCallback(async (id: number) => {
+    const response = await api.get<Order>(`/orders/${id}`);
+    return response.data;
+  }, []);
+
   const getOrderDetails = useCallback(async (orderId: number) => {
     try {
-      const response = await api.get(`/orders/${orderId}/details`);
+      const response = await api.get<OrderDetail[]>(`/orders/${orderId}/details`);
       return response.data;
     } catch (error) {
       console.error('加载订单详情失败:', error);
@@ -119,6 +124,10 @@ export function useOrders() {
     }
   }, []);
 
+  const deleteOrderDetail = useCallback(async (id: number) => {
+    await api.delete(`/orders/details/${id}`);
+  }, []);
+
   return {
     orders,
     loading,
@@ -126,9 +135,11 @@ export function useOrders() {
     createOrder,
     updateOrder,
     deleteOrder,
+    getOrder,
     getOrderDetails,
     importFromCurl,
     createOrderDetail,
     updateOrderDetail,
+    deleteOrderDetail,
   };
 }

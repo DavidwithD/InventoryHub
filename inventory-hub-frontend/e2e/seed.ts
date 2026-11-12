@@ -34,6 +34,10 @@ export class Seed {
       details: [{ productId, quantity }],
     });
   }
+
+  emptyOrder(orderNo: string, transactionTime: string, revenue: number) {
+    return this.post<{ id: number }>('/orders', { orderNo, transactionTime, revenue, details: [] });
+  }
 }
 
 // A suffix that keeps names unique between tests in one run.
