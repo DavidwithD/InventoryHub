@@ -1,9 +1,11 @@
-import { render, screen } from '@testing-library/react';
+import { act, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import OrderSummaryCard from '@/app/orders/components/OrderSummaryCard';
 import OrderDetailLinesTable from '@/app/orders/components/OrderDetailLinesTable';
 import OrderDetailAddPanel from '@/app/orders/components/OrderDetailAddPanel';
+import { toolbarHeightAsTop } from '@/app/orders/components/ProductPicker';
+import { apiErrorMessage } from '@/app/orders/utils/apiErrorMessage';
 import { usePickHistoryStore } from '@/lib/stores/pickHistoryStore';
 import type { Inventory, Order, OrderDetail } from '@/types';
 
@@ -194,5 +196,59 @@ describe('OrderDetailAddPanel', () => {
     expect(screen.getByText('库存不足')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: '保存 1 个商品' })).toBeInTheDocument();
     expect(onSaved).toHaveBeenCalled();
+  });
+
+  it('keeps a saved product out of the picker until the reload ends', async () => {
+    let finishReload = () => {};
+    const onSaved = vi.fn(() => new Promise<void>((resolve) => (finishReload = resolve)));
+    render(
+      <OrderDetailAddPanel
+        orderId={1}
+        inventories={inventories}
+        categories={[]}
+        existingProductIds={[]}
+        createOrderDetail={vi.fn().mockResolvedValue({})}
+        onSaved={onSaved}
+      />
+    );
+
+    await userEvent.click(screen.getByText('Pikachu'));
+    await userEvent.click(screen.getByRole('button', { name: '保存 1 个商品' }));
+
+    // The reload is still running. The row stays, so the picker cannot offer Pikachu again.
+    expect(onSaved).toHaveBeenCalled();
+    expect(screen.getByRole('button', { name: '保存中...' })).toBeDisabled();
+    expect(screen.getByText('已选商品')).toBeInTheDocument();
+
+    await act(async () => finishReload());
+    expect(screen.queryByText('已选商品')).not.toBeInTheDocument();
+  });
+});
+
+describe('apiErrorMessage', () => {
+  it('uses the response body', () => {
+    expect(apiErrorMessage({ response: { data: '库存不足' } }, '保存失败')).toBe('库存不足');
+    expect(apiErrorMessage({ response: { data: { title: 'Bad' } } }, '保存失败')).toBe('Bad');
+  });
+
+  it('adds the error message when there is no body', () => {
+    expect(apiErrorMessage(new Error('Network Error'), '保存失败')).toBe('保存失败：Network Error');
+    expect(apiErrorMessage({}, '保存失败')).toBe('保存失败');
+  });
+});
+
+describe('toolbarHeightAsTop', () => {
+  it('copies nested media queries', () => {
+    const mixin = {
+      minHeight: 56,
+      '@media (min-width:0px)': { '@media (orientation: landscape)': { minHeight: 48 } },
+      '@media (min-width:600px)': { minHeight: 64 },
+    };
+
+    expect(toolbarHeightAsTop(mixin)).toEqual({
+      top: 56,
+      '@media (min-width:0px)': { '@media (orientation: landscape)': { top: 48 } },
+      '@media (min-width:600px)': { top: 64 },
+    });
   });
 });

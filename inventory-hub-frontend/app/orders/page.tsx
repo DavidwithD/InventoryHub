@@ -13,6 +13,7 @@ import OrderFormDialog from './components/OrderFormDialog';
 import ImportDialog from './components/ImportDialog';
 import { useOrderFilterStore } from '@/lib/stores/filterStore';
 import OrdersCardList from './components/OrdersCardList';
+import { apiErrorMessage } from './utils/apiErrorMessage';
 import OrdersListToolbar from './components/OrdersListToolbar';
 import { useViewMode } from '@/lib/stores/viewModeStore';
 import { DEFAULT_ORDER_SORT, OrderSort } from './utils/sortOrders';
@@ -117,9 +118,8 @@ export default function OrdersPage() {
       }
       await loadOrders();
       await loadAllInventories();
-    } catch (err: any) {
-      const message = err.response?.data || err.message || '保存订单失败';
-      setError(typeof message === 'string' ? message : JSON.stringify(message));
+    } catch (err) {
+      setError(apiErrorMessage(err, '保存订单失败'));
       throw err;
     }
   };
@@ -132,9 +132,8 @@ export default function OrdersPage() {
       setSuccess('订单删除成功，库存已恢复');
       await loadOrders();
       await loadAllInventories();
-    } catch (err: any) {
-      const message = err.response?.data || '删除订单失败';
-      setError(typeof message === 'string' ? message : JSON.stringify(message));
+    } catch (err) {
+      setError(apiErrorMessage(err, '删除订单失败'));
     }
   };
 
@@ -165,7 +164,6 @@ export default function OrdersPage() {
   const handleCloseImportDialog = () => {
     setOpenImportDialog(false);
   };
-
 
   return (
     <>

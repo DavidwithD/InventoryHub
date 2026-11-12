@@ -4,25 +4,10 @@ import { Box, Chip, Paper, Stack, Typography } from '@mui/material';
 import { Order } from '@/types';
 import { orderProfit } from '../utils/orderProfit';
 import OrderThumbnail from './OrderThumbnail';
+import OrderMetric from './OrderMetric';
 
 interface Props {
   order: Order;
-}
-
-function Metric({ label, value, color }: { label: string; value: string; color?: string }) {
-  return (
-    <Box sx={{ minWidth: 88 }}>
-      <Typography variant="caption" color="text.secondary" component="div">
-        {label}
-      </Typography>
-      <Typography
-        variant="h6"
-        sx={{ fontWeight: 600, fontVariantNumeric: 'tabular-nums', color }}
-      >
-        {value}
-      </Typography>
-    </Box>
-  );
 }
 
 /** The order's own fields and its totals, shown at the top of the order page. */
@@ -55,13 +40,15 @@ export default function OrderSummaryCard({ order }: Props) {
           )}
         </Stack>
         <Stack direction="row" useFlexGap spacing={3} sx={{ mt: 2, flexWrap: 'wrap', rowGap: 1 }}>
-          <Metric label="营业额" value={order.revenue.toFixed(2)} />
-          <Metric label="运费" value={order.shippingFee.toFixed(2)} />
-          <Metric
+          <OrderMetric size="large" label="营业额" value={order.revenue.toFixed(2)} />
+          <OrderMetric size="large" label="运费" value={order.shippingFee.toFixed(2)} />
+          <OrderMetric
+            size="large"
             label="总成本"
             value={order.hasUnknownCost ? '未知' : order.totalCost?.toFixed(2) || '0.00'}
           />
-          <Metric
+          <OrderMetric
+            size="large"
             label="利润"
             value={profit === null ? '未知' : profit.toFixed(2)}
             color={profitColor}

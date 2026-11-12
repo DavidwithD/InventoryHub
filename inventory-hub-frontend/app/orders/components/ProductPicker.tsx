@@ -38,10 +38,23 @@ const CARD_IMAGE_HEIGHT = 96;
  * The app bar height changes with screen size, so the offset copies theme.mixins.toolbar.
  */
 function stickyBelowAppBar(theme: Theme) {
-  const toolbar = theme.mixins.toolbar as Record<string, unknown>;
-  const style: Record<string, unknown> = { position: 'sticky', top: toolbar.minHeight };
-  for (const [key, value] of Object.entries(toolbar)) {
-    if (key.startsWith('@media')) style[key] = { top: (value as { minHeight: number }).minHeight };
+  return {
+    position: 'sticky',
+    ...toolbarHeightAsTop(theme.mixins.toolbar as Record<string, unknown>),
+  };
+}
+
+/**
+ * Copies each minHeight of the toolbar mixin to `top`.
+ * Media queries can be nested. The default mixin nests a landscape rule in the xs query.
+ */
+export function toolbarHeightAsTop(mixin: Record<string, unknown>): Record<string, unknown> {
+  const style: Record<string, unknown> = {};
+  for (const [key, value] of Object.entries(mixin)) {
+    if (key === 'minHeight') style.top = value;
+    else if (key.startsWith('@media') && value && typeof value === 'object') {
+      style[key] = toolbarHeightAsTop(value as Record<string, unknown>);
+    }
   }
   return style;
 }

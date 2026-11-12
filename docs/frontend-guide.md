@@ -129,7 +129,7 @@ const columns = [
 
 ### Order Page (`/orders/[id]`)
 
-`app/orders/[id]/page.tsx` loads one order, its lines, the inventories and the categories. It reloads the order and its lines after each change. A line change moves the order's cost and profit. An unknown id shows 订单不存在.
+`app/orders/[id]/page.tsx` loads one order, its lines, the inventories and the categories. It reloads the order and its lines after each change. A line change moves the order's cost and profit. An unknown id shows 订单不存在. Any other load error shows a 重试 button. Only the newest reload updates the page.
 
 The page uses three components from `app/orders/components/`:
 

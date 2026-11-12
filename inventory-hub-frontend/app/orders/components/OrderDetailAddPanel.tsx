@@ -32,7 +32,7 @@ interface Props {
   orderId: number;
   inventories: Inventory[];
   categories: Category[];
-  /** Products that already have a line in this order. The picker hides them. */
+  /** Product ids of this order's lines. The picker hides them. */
   existingProductIds: number[];
   createOrderDetail: (data: CreateOrderDetail) => Promise<unknown>;
   /** Runs after at least one line was saved. */
@@ -98,9 +98,8 @@ export default function OrderDetailAddPanel({
     setSaving(true);
     setError('');
 
-    // Save one line at a time. A saved row leaves the list at once,
-    // so a failure leaves only the unsaved rows for a retry.
-    let savedAny = false;
+    // Save one line at a time. Stop at the first failure.
+    const savedIds: number[] = [];
     try {
       for (const row of rows) {
         await createOrderDetail({
@@ -110,15 +109,23 @@ export default function OrderDetailAddPanel({
           packagingCost: 0,
           otherCost: 0,
         });
-        savedAny = true;
-        setRows((prev) => prev.filter((r) => r.productId !== row.productId));
+        savedIds.push(row.productId);
       }
     } catch (err) {
       setError(apiErrorMessage(err, '保存失败'));
+    }
+
+    // Saved rows stay in the list until onSaved has reloaded the order's lines.
+    // Until then the picker keeps hiding them, and the save button stays disabled.
+    // After that only the unsaved rows remain for a retry.
+    try {
+      if (savedIds.length > 0) {
+        await onSaved();
+        setRows((prev) => prev.filter((r) => !savedIds.includes(r.productId)));
+      }
     } finally {
       setSaving(false);
     }
-    if (savedAny) await onSaved();
   };
 
   return (
@@ -166,7 +173,9 @@ export default function OrderDetailAddPanel({
                         type="number"
                         value={row.quantity}
                         disabled={saving}
-                        onChange={(e) => handleQuantityChange(row.productId, Number(e.target.value))}
+                        onChange={(e) =>
+                          handleQuantityChange(row.productId, Number(e.target.value))
+                        }
                         slotProps={{
                           htmlInput: { min: 1, 'aria-label': `${row.productName} 新增数量` },
                         }}

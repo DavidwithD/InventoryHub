@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import { Alert, Box, Button, Paper, Typography } from '@mui/material';
@@ -14,7 +14,7 @@ import OrderSummaryCard from '../components/OrderSummaryCard';
 import OrderDetailLinesTable from '../components/OrderDetailLinesTable';
 import OrderDetailAddPanel from '../components/OrderDetailAddPanel';
 
-type LoadState = 'loading' | 'ready' | 'notFound';
+type LoadState = 'loading' | 'ready' | 'notFound' | 'failed';
 
 function BackLink() {
   return (
@@ -26,7 +26,13 @@ function BackLink() {
 
 export default function OrderPage() {
   const params = useParams<{ id: string }>();
-  const orderId = Number(params.id);
+  // The key gives each order id a fresh component.
+  // Old state and old requests of the previous id cannot reach the new page.
+  return <OrderPageContent key={params.id} idParam={params.id} />;
+}
+
+function OrderPageContent({ idParam }: { idParam: string }) {
+  const orderId = Number(idParam);
   const validId = Number.isInteger(orderId) && orderId > 0;
 
   const { getOrder, getOrderDetails, createOrderDetail, updateOrderDetail, deleteOrderDetail } =
@@ -39,20 +45,30 @@ export default function OrderPage() {
   const [loadState, setLoadState] = useState<LoadState>(validId ? 'loading' : 'notFound');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
+  // Number of the newest reload. An older reload that ends later does not write its data.
+  const latestReload = useRef(0);
 
-  // Reloads the order and its lines. A line change moves the order's cost and profit.
+  // Reloads the order and its lines. A line change changes the order's cost and profit.
   // Stock changes too, so inventories reload as well.
   const reload = useCallback(async () => {
     if (!validId) return;
+    const requestNo = ++latestReload.current;
     try {
       const [o, d] = await Promise.all([getOrder(orderId), getOrderDetails(orderId)]);
+      if (requestNo !== latestReload.current) return;
       setOrder(o);
       setDetails(d);
       setLoadState('ready');
     } catch (err) {
+      if (requestNo !== latestReload.current) return;
       const status = (err as { response?: { status?: number } })?.response?.status;
-      if (status === 404) setLoadState('notFound');
-      else setError(apiErrorMessage(err, '加载订单失败'));
+      if (status === 404) {
+        setLoadState('notFound');
+      } else {
+        setError(apiErrorMessage(err, '加载订单失败'));
+        // Data from an earlier load stays on screen. Without it, the page offers a retry.
+        setLoadState((prev) => (prev === 'ready' ? 'ready' : 'failed'));
+      }
     }
     loadAllInventories().catch(() => setError('加载库存列表失败'));
   }, [validId, orderId, getOrder, getOrderDetails, loadAllInventories]);
@@ -61,6 +77,12 @@ export default function OrderPage() {
     reload();
     loadCategories().catch(() => setError('加载分类列表失败'));
   }, [reload, loadCategories]);
+
+  const handleRetry = () => {
+    setError('');
+    setLoadState('loading');
+    reload();
+  };
 
   const handleQuantityChange = async (detail: OrderDetail, quantity: number) => {
     setBusy(true);
@@ -118,7 +140,14 @@ export default function OrderPage() {
         </Alert>
       )}
 
-      {loadState === 'loading' || !order ? (
+      {loadState === 'failed' ? (
+        <Paper variant="outlined" sx={{ p: 3, textAlign: 'center' }}>
+          <Typography sx={{ mb: 2 }}>订单加载失败</Typography>
+          <Button variant="outlined" onClick={handleRetry}>
+            重试
+          </Button>
+        </Paper>
+      ) : loadState === 'loading' || !order ? (
         <Typography color="text.secondary">加载中...</Typography>
       ) : (
         <>
