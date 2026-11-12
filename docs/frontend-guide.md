@@ -49,6 +49,7 @@ inventory-hub-frontend/
 │
 ├── lib/                          # Utilities and helpers
 │   ├── api.ts                    # Axios instance configuration
+│   ├── apiErrorMessage.ts        # Turns an API error into alert text
 │   ├── theme.ts                  # MUI theme customization
 │   ├── exchangeRate.ts           # Exchange rate utilities
 │   └── hooks/                    # Custom React hooks

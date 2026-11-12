@@ -13,7 +13,7 @@ import OrderFormDialog from './components/OrderFormDialog';
 import ImportDialog from './components/ImportDialog';
 import { useOrderFilterStore } from '@/lib/stores/filterStore';
 import OrdersCardList from './components/OrdersCardList';
-import { apiErrorMessage } from './utils/apiErrorMessage';
+import { apiErrorMessage } from '@/lib/apiErrorMessage';
 import OrdersListToolbar from './components/OrdersListToolbar';
 import { useViewMode } from '@/lib/stores/viewModeStore';
 import { DEFAULT_ORDER_SORT, OrderSort } from './utils/sortOrders';

@@ -128,4 +128,44 @@ describe('Order page', () => {
     expect(screen.getByText('New')).toBeInTheDocument();
     expect(screen.queryByText('Old')).not.toBeInTheDocument();
   });
+
+  it('deletes a line after confirmation and reloads the lines', async () => {
+    vi.spyOn(window, 'confirm').mockReturnValue(true);
+    orderActions.deleteOrderDetail.mockReset().mockResolvedValue(undefined);
+    getOrder.mockResolvedValue(order);
+    render(<OrderPage />);
+    expect(await screen.findByText('Card')).toBeInTheDocument();
+
+    getOrderDetails.mockResolvedValue([]);
+    await userEvent.click(screen.getByRole('button', { name: '删除 Pikachu' }));
+
+    expect(orderActions.deleteOrderDetail).toHaveBeenCalledWith(10);
+    expect(await screen.findByText('暂无订单详细')).toBeInTheDocument();
+  });
+
+  it('does not delete when the confirmation is cancelled', async () => {
+    vi.spyOn(window, 'confirm').mockReturnValue(false);
+    orderActions.deleteOrderDetail.mockReset();
+    getOrder.mockResolvedValue(order);
+    render(<OrderPage />);
+    expect(await screen.findByText('Card')).toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole('button', { name: '删除 Pikachu' }));
+
+    expect(orderActions.deleteOrderDetail).not.toHaveBeenCalled();
+    expect(screen.getByLabelText('Pikachu 数量')).toBeInTheDocument();
+  });
+
+  it('shows the API error when a delete fails and keeps the line', async () => {
+    vi.spyOn(window, 'confirm').mockReturnValue(true);
+    orderActions.deleteOrderDetail.mockReset().mockRejectedValue({ response: { data: '删除被拒绝' } });
+    getOrder.mockResolvedValue(order);
+    render(<OrderPage />);
+    expect(await screen.findByText('Card')).toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole('button', { name: '删除 Pikachu' }));
+
+    expect(await screen.findByText('删除被拒绝')).toBeInTheDocument();
+    expect(screen.getByLabelText('Pikachu 数量')).toBeInTheDocument();
+  });
 });

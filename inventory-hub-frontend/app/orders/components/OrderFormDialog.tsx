@@ -15,7 +15,7 @@ import {
 import AddIcon from '@mui/icons-material/Add';
 import { Order, OrderDetailRow, Inventory, CreateOrderDetail, Category } from '@/types';
 import OrderDetailRows from './OrderDetailRows';
-import { apiErrorMessage } from '../utils/apiErrorMessage';
+import { apiErrorMessage } from '@/lib/apiErrorMessage';
 
 interface Props {
   open: boolean;

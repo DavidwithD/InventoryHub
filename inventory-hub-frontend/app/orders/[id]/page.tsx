@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import { Alert, Box, Button, Paper, Typography } from '@mui/material';
@@ -9,7 +9,7 @@ import { Order, OrderDetail } from '@/types';
 import { useInventory } from '@/app/inventory/hooks/useInventory';
 import { useCategories } from '@/app/categories/hooks/useCategories';
 import { useOrders } from '../hooks/useOrders';
-import { apiErrorMessage } from '../utils/apiErrorMessage';
+import { apiErrorMessage } from '@/lib/apiErrorMessage';
 import OrderSummaryCard from '../components/OrderSummaryCard';
 import OrderDetailLinesTable from '../components/OrderDetailLinesTable';
 import OrderDetailAddPanel from '../components/OrderDetailAddPanel';
@@ -32,8 +32,9 @@ export default function OrderPage() {
 }
 
 function OrderPageContent({ idParam }: { idParam: string }) {
+  // Only the plain form of an id is valid. "1e3", "0x10" or "007" would load another order's URL.
+  const validId = /^[1-9]\d*$/.test(idParam);
   const orderId = Number(idParam);
-  const validId = Number.isInteger(orderId) && orderId > 0;
 
   const { getOrder, getOrderDetails, createOrderDetail, updateOrderDetail, deleteOrderDetail } =
     useOrders();
@@ -43,40 +44,63 @@ function OrderPageContent({ idParam }: { idParam: string }) {
   const [order, setOrder] = useState<Order | null>(null);
   const [details, setDetails] = useState<OrderDetail[]>([]);
   const [loadState, setLoadState] = useState<LoadState>(validId ? 'loading' : 'notFound');
-  const [busy, setBusy] = useState(false);
+  // Ids of the lines with a save or delete running. Only those lines are disabled.
+  // A click on another line still works while a save runs.
+  const [busyIds, setBusyIds] = useState<number[]>([]);
   const [error, setError] = useState('');
   // Number of the newest reload. An older reload that ends later does not write its data.
   const latestReload = useRef(0);
+  // Promise of the newest reload.
+  const latestReloadPromise = useRef<Promise<void>>(Promise.resolve());
+
+  const existingProductIds = useMemo(() => details.map((d) => d.productId), [details]);
+
+  const markBusy = (id: number) => setBusyIds((prev) => [...prev, id]);
+  const unmarkBusy = (id: number) => setBusyIds((prev) => prev.filter((x) => x !== id));
 
   // Reloads the order and its lines. A line change changes the order's cost and profit.
-  // Stock changes too, so inventories reload as well.
-  const reload = useCallback(async () => {
-    if (!validId) return;
+  // The returned promise ends after the newest reload has written its data.
+  // A caller can then rely on the page showing the change it just saved.
+  const reload = useCallback(() => {
+    if (!validId) return Promise.resolve();
     const requestNo = ++latestReload.current;
-    try {
-      const [o, d] = await Promise.all([getOrder(orderId), getOrderDetails(orderId)]);
-      if (requestNo !== latestReload.current) return;
-      setOrder(o);
-      setDetails(d);
-      setLoadState('ready');
-    } catch (err) {
-      if (requestNo !== latestReload.current) return;
-      const status = (err as { response?: { status?: number } })?.response?.status;
-      if (status === 404) {
-        setLoadState('notFound');
-      } else {
-        setError(apiErrorMessage(err, '加载订单失败'));
-        // Data from an earlier load stays on screen. Without it, the page offers a retry.
-        setLoadState((prev) => (prev === 'ready' ? 'ready' : 'failed'));
+    const run = async (): Promise<void> => {
+      try {
+        const [o, d] = await Promise.all([getOrder(orderId), getOrderDetails(orderId)]);
+        // A newer reload started. Wait for it in place of writing old data.
+        if (requestNo !== latestReload.current) return latestReloadPromise.current;
+        setOrder(o);
+        setDetails(d);
+        setLoadState('ready');
+      } catch (err) {
+        if (requestNo !== latestReload.current) return latestReloadPromise.current;
+        const status = (err as { response?: { status?: number } })?.response?.status;
+        if (status === 404) {
+          setLoadState('notFound');
+        } else {
+          setError(apiErrorMessage(err, '加载订单失败'));
+          // Data from an earlier load stays on screen. Without it, the page offers a retry.
+          setLoadState((prev) => (prev === 'ready' ? 'ready' : 'failed'));
+        }
       }
-    }
-    loadAllInventories().catch(() => setError('加载库存列表失败'));
-  }, [validId, orderId, getOrder, getOrderDetails, loadAllInventories]);
+    };
+    const promise = run();
+    latestReloadPromise.current = promise;
+    return promise;
+  }, [validId, orderId, getOrder, getOrderDetails]);
+
+  // The picker shows the stock of products without a line.
+  // Only a delete changes that stock, so inventories load on start and after a delete.
+  const loadInventories = useCallback(
+    () => loadAllInventories().catch(() => setError('加载库存列表失败')),
+    [loadAllInventories]
+  );
 
   useEffect(() => {
     reload();
+    loadInventories();
     loadCategories().catch(() => setError('加载分类列表失败'));
-  }, [reload, loadCategories]);
+  }, [reload, loadInventories, loadCategories]);
 
   const handleRetry = () => {
     setError('');
@@ -85,7 +109,7 @@ function OrderPageContent({ idParam }: { idParam: string }) {
   };
 
   const handleQuantityChange = async (detail: OrderDetail, quantity: number) => {
-    setBusy(true);
+    markBusy(detail.id);
     setError('');
     try {
       await updateOrderDetail(detail.id, {
@@ -95,27 +119,30 @@ function OrderPageContent({ idParam }: { idParam: string }) {
         otherCost: detail.otherCost,
         notes: detail.notes,
       });
-      await reload();
-      return true;
     } catch (err) {
       setError(apiErrorMessage(err, '更新数量失败'));
+      unmarkBusy(detail.id);
       return false;
-    } finally {
-      setBusy(false);
     }
+    // The save worked. The line shows the saved quantity even if the reload below fails.
+    setDetails((prev) => prev.map((d) => (d.id === detail.id ? { ...d, quantity } : d)));
+    await reload();
+    unmarkBusy(detail.id);
+    return true;
   };
 
   const handleDelete = async (detail: OrderDetail) => {
     if (!confirm(`确定要删除商品 "${detail.productName}" 吗？`)) return;
-    setBusy(true);
+    markBusy(detail.id);
     setError('');
     try {
       await deleteOrderDetail(detail.id);
+      loadInventories();
       await reload();
     } catch (err) {
       setError(apiErrorMessage(err, '删除失败'));
     } finally {
-      setBusy(false);
+      unmarkBusy(detail.id);
     }
   };
 
@@ -158,7 +185,7 @@ function OrderPageContent({ idParam }: { idParam: string }) {
           </Typography>
           <OrderDetailLinesTable
             details={details}
-            busy={busy}
+            busyIds={busyIds}
             onQuantityChange={handleQuantityChange}
             onDelete={handleDelete}
           />
@@ -170,7 +197,7 @@ function OrderPageContent({ idParam }: { idParam: string }) {
             orderId={order.id}
             inventories={inventories}
             categories={categories}
-            existingProductIds={details.map((d) => d.productId)}
+            existingProductIds={existingProductIds}
             createOrderDetail={createOrderDetail}
             onSaved={reload}
           />

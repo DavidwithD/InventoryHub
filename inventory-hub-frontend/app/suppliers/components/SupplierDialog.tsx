@@ -10,6 +10,7 @@ import {
   Button,
 } from '@mui/material';
 import { Supplier } from '@/types';
+import { apiErrorMessage } from '@/lib/apiErrorMessage';
 
 interface Props {
   open: boolean;
@@ -43,9 +44,8 @@ export default function SupplierDialog({ open, supplier, onClose, onSave }: Prop
       setError('');
       await onSave({ name: name.trim() });
       handleClose();
-    } catch (err: any) {
-      const message = err.response?.data || '操作失败';
-      setError(typeof message === 'string' ? message : JSON.stringify(message));
+    } catch (err) {
+      setError(apiErrorMessage(err, '操作失败'));
     } finally {
       setSaving(false);
     }

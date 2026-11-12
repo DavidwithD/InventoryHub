@@ -18,7 +18,7 @@ import {
 } from '@mui/material';
 import DeleteIcon from '@mui/icons-material/Delete';
 import { Category, CreateOrderDetail, Inventory } from '@/types';
-import { apiErrorMessage } from '../utils/apiErrorMessage';
+import { apiErrorMessage } from '@/lib/apiErrorMessage';
 import ProductPicker from './ProductPicker';
 
 interface PendingRow {
@@ -35,7 +35,10 @@ interface Props {
   /** Product ids of this order's lines. The picker hides them. */
   existingProductIds: number[];
   createOrderDetail: (data: CreateOrderDetail) => Promise<unknown>;
-  /** Runs after at least one line was saved. */
+  /**
+   * Runs after at least one line was saved.
+   * Its promise must end after the new lines are in existingProductIds.
+   */
   onSaved: () => void | Promise<void>;
 }
 

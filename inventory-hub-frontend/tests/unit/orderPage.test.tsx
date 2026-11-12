@@ -4,8 +4,8 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import OrderSummaryCard from '@/app/orders/components/OrderSummaryCard';
 import OrderDetailLinesTable from '@/app/orders/components/OrderDetailLinesTable';
 import OrderDetailAddPanel from '@/app/orders/components/OrderDetailAddPanel';
-import { toolbarHeightAsTop } from '@/app/orders/components/ProductPicker';
-import { apiErrorMessage } from '@/app/orders/utils/apiErrorMessage';
+import { toolbarHeightAsTop } from '@/components/layout/layoutStyles';
+import { apiErrorMessage } from '@/lib/apiErrorMessage';
 import { usePickHistoryStore } from '@/lib/stores/pickHistoryStore';
 import type { Inventory, Order, OrderDetail } from '@/types';
 
@@ -77,7 +77,7 @@ describe('OrderDetailLinesTable', () => {
     render(
       <OrderDetailLinesTable
         details={[detail()]}
-        busy={false}
+        busyIds={[]}
         onQuantityChange={onQuantityChange}
         onDelete={vi.fn()}
       />

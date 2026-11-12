@@ -18,8 +18,8 @@ import { OrderDetail } from '@/types';
 
 interface Props {
   details: OrderDetail[];
-  /** Disables the inputs while a save runs. */
-  busy: boolean;
+  /** Ids of the lines with a save or delete running. Their inputs are disabled. */
+  busyIds: number[];
   /** Saves a new quantity. Resolves to false when the save failed. */
   onQuantityChange: (detail: OrderDetail, quantity: number) => Promise<boolean>;
   onDelete: (detail: OrderDetail) => void;
@@ -67,7 +67,12 @@ function QuantityInput({
 }
 
 /** The saved lines of one order. The quantity can be edited in the row. */
-export default function OrderDetailLinesTable({ details, busy, onQuantityChange, onDelete }: Props) {
+export default function OrderDetailLinesTable({
+  details,
+  busyIds,
+  onQuantityChange,
+  onDelete,
+}: Props) {
   if (details.length === 0) {
     return (
       <Paper variant="outlined" sx={{ p: 3, textAlign: 'center' }}>
@@ -100,7 +105,7 @@ export default function OrderDetailLinesTable({ details, busy, onQuantityChange,
                 <QuantityInput
                   key={detail.quantity}
                   detail={detail}
-                  disabled={busy}
+                  disabled={busyIds.includes(detail.id)}
                   onCommit={(quantity) => onQuantityChange(detail, quantity)}
                 />
               </TableCell>
@@ -114,7 +119,7 @@ export default function OrderDetailLinesTable({ details, busy, onQuantityChange,
                 <IconButton
                   size="small"
                   color="error"
-                  disabled={busy}
+                  disabled={busyIds.includes(detail.id)}
                   aria-label={`删除 ${detail.productName}`}
                   onClick={() => onDelete(detail)}
                 >
