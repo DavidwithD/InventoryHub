@@ -15,6 +15,7 @@ import {
 import AddIcon from '@mui/icons-material/Add';
 import { Order, OrderDetailRow, Inventory, CreateOrderDetail, Category } from '@/types';
 import OrderDetailRows from './OrderDetailRows';
+import { apiErrorMessage } from '../utils/apiErrorMessage';
 
 interface Props {
   open: boolean;
@@ -157,19 +158,8 @@ export default function OrderFormDialog({
       }
 
       handleClose();
-    } catch (err: any) {
-      if (err.response?.data) {
-        const errorData = err.response.data;
-        if (typeof errorData === 'string') {
-          setError(errorData);
-        } else if (errorData.title || errorData.errors) {
-          setError(errorData.title || JSON.stringify(errorData.errors));
-        } else {
-          setError(JSON.stringify(errorData));
-        }
-      } else {
-        setError(err.message || '保存订单失败');
-      }
+    } catch (err) {
+      setError(apiErrorMessage(err, '保存订单失败'));
     }
   };
 

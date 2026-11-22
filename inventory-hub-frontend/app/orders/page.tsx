@@ -10,10 +10,10 @@ import { useCategories } from '../categories/hooks/useCategories';
 import OrdersTable from './components/OrdersTable';
 import OrderFilters from './components/OrderFilters';
 import OrderFormDialog from './components/OrderFormDialog';
-import OrderDetailsDialog from './components/OrderDetailsDialog';
 import ImportDialog from './components/ImportDialog';
 import { useOrderFilterStore } from '@/lib/stores/filterStore';
 import OrdersCardList from './components/OrdersCardList';
+import { apiErrorMessage } from './utils/apiErrorMessage';
 import OrdersListToolbar from './components/OrdersListToolbar';
 import { useViewMode } from '@/lib/stores/viewModeStore';
 import { DEFAULT_ORDER_SORT, OrderSort } from './utils/sortOrders';
@@ -26,10 +26,8 @@ export default function OrdersPage() {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [openDialog, setOpenDialog] = useState(false);
-  const [openDetailsDialog, setOpenDetailsDialog] = useState(false);
   const [openImportDialog, setOpenImportDialog] = useState(false);
   const [editingOrder, setEditingOrder] = useState<Order | null>(null);
-  const [viewingOrderId, setViewingOrderId] = useState<number | null>(null);
   const [sort, setSort] = useState<OrderSort>(DEFAULT_ORDER_SORT);
   const [viewMode, setViewMode, viewModeHydrated] = useViewMode('orders');
 
@@ -120,9 +118,8 @@ export default function OrdersPage() {
       }
       await loadOrders();
       await loadAllInventories();
-    } catch (err: any) {
-      const message = err.response?.data || err.message || '保存订单失败';
-      setError(typeof message === 'string' ? message : JSON.stringify(message));
+    } catch (err) {
+      setError(apiErrorMessage(err, '保存订单失败'));
       throw err;
     }
   };
@@ -135,21 +132,9 @@ export default function OrdersPage() {
       setSuccess('订单删除成功，库存已恢复');
       await loadOrders();
       await loadAllInventories();
-    } catch (err: any) {
-      const message = err.response?.data || '删除订单失败';
-      setError(typeof message === 'string' ? message : JSON.stringify(message));
+    } catch (err) {
+      setError(apiErrorMessage(err, '删除订单失败'));
     }
-  };
-
-  const handleViewDetails = (orderId: number) => {
-    setViewingOrderId(orderId);
-    setOpenDetailsDialog(true);
-  };
-
-  const handleDetailsSaved = async () => {
-    setSuccess('订单详细更新成功');
-    await loadOrders();
-    await loadAllInventories();
   };
 
   const handleApplyFilter = () => {
@@ -172,11 +157,6 @@ export default function OrdersPage() {
     setEditingOrder(null);
   };
 
-  const handleCloseDetailsDialog = () => {
-    setOpenDetailsDialog(false);
-    setViewingOrderId(null);
-  };
-
   const handleOpenImportDialog = () => {
     setOpenImportDialog(true);
   };
@@ -184,7 +164,6 @@ export default function OrdersPage() {
   const handleCloseImportDialog = () => {
     setOpenImportDialog(false);
   };
-
 
   return (
     <>
@@ -235,17 +214,12 @@ export default function OrdersPage() {
       )}
 
       {!viewModeHydrated ? null : viewMode === 'card' ? (
-        <OrdersCardList
-          orders={filteredOrders}
-          sort={sort}
-          onViewDetails={handleViewDetails}
-        />
+        <OrdersCardList orders={filteredOrders} sort={sort} />
       ) : (
         <OrdersTable
           orders={filteredOrders}
           sort={sort}
           onSortChange={setSort}
-          onViewDetails={handleViewDetails}
           onEdit={handleOpenDialog}
           onDelete={handleDeleteOrder}
         />
@@ -258,15 +232,6 @@ export default function OrdersPage() {
         categories={categories}
         onClose={handleCloseDialog}
         onSave={handleSaveOrder}
-      />
-
-      <OrderDetailsDialog
-        open={openDetailsDialog}
-        orderId={viewingOrderId}
-        inventories={inventories}
-        categories={categories}
-        onClose={handleCloseDetailsDialog}
-        onSaved={handleDetailsSaved}
       />
 
       <ImportDialog

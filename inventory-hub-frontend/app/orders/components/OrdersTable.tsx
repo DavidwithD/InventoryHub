@@ -1,6 +1,7 @@
 'use client';
 
 import { useMemo } from 'react';
+import Link from 'next/link';
 import {
   Paper,
   Table,
@@ -23,17 +24,9 @@ interface Props {
   onSortChange: (sort: OrderSort) => void;
   onEdit: (order: Order) => void;
   onDelete: (id: number) => void;
-  onViewDetails: (orderId: number) => void;
 }
 
-export default function OrdersTable({
-  orders,
-  sort,
-  onSortChange,
-  onEdit,
-  onDelete,
-  onViewDetails,
-}: Props) {
+export default function OrdersTable({ orders, sort, onSortChange, onEdit, onDelete }: Props) {
   const handleRequestSort = (field: OrderSortField) => onSortChange(nextOrderSort(sort, field));
   const sortedOrders = useMemo(() => sortOrders(orders, sort), [orders, sort]);
 
@@ -134,7 +127,8 @@ export default function OrdersTable({
                 <TableCell align="center">
                   <IconButton
                     size="small"
-                    onClick={() => onViewDetails(order.id)}
+                    component={Link}
+                    href={`/orders/${order.id}`}
                     color="info"
                     className=" font-normal"
                   >
