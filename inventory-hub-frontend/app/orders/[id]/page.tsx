@@ -120,6 +120,8 @@ function OrderPageContent({ idParam }: { idParam: string }) {
     setError('');
     setLoadState('loading');
     reload();
+    // The first inventory load can fail too. Retry loads it again.
+    loadInventories();
   };
 
   const handleQuantityChange = async (detail: OrderDetail, quantity: number) => {

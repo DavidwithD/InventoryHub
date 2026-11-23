@@ -28,7 +28,7 @@ const orderActions = {
   updateOrderDetail: vi.fn().mockResolvedValue({}),
   deleteOrderDetail: vi.fn(),
 };
-const loadAllInventories = () => Promise.resolve();
+const loadAllInventories = vi.fn(() => Promise.resolve());
 const loadCategories = () => Promise.resolve();
 
 vi.mock('next/navigation', () => ({ useParams: () => ({ id: '1' }) }));
@@ -88,15 +88,19 @@ describe('Order page', () => {
 
   it('offers a retry when the first load fails', async () => {
     getOrder.mockRejectedValueOnce(new Error('Network Error')).mockResolvedValueOnce(order);
+    loadAllInventories.mockClear();
     render(<OrderPage />);
 
     expect(await screen.findByText('订单加载失败')).toBeInTheDocument();
     expect(screen.getByText('加载订单失败：Network Error')).toBeInTheDocument();
+    expect(loadAllInventories).toHaveBeenCalledTimes(1);
 
     await userEvent.click(screen.getByRole('button', { name: '重试' }));
 
     expect(await screen.findByText('Card')).toBeInTheDocument();
     expect(screen.queryByText('订单加载失败')).not.toBeInTheDocument();
+    // The inventory list loads again too. Its first load may have failed.
+    expect(loadAllInventories).toHaveBeenCalledTimes(2);
   });
 
   it('shows not found for a 404', async () => {
