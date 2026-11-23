@@ -17,9 +17,7 @@ test('the order page adds a line and edits its quantity', async ({ page, request
   await expect(page).toHaveURL(`/orders/${order.id}`);
   await expect(page.getByText('暂无订单详细')).toBeVisible();
 
-  // The picker opens on 选择历史, which is empty in a new browser. Show every product.
-  await page.getByRole('combobox').first().click();
-  await page.getByRole('option', { name: '全部分类' }).click();
+  // A search looks in all products, whatever category the picker shows.
   await page.getByLabel('搜索商品').fill(productName);
   await page.getByText(productName, { exact: true }).click();
   await page.getByLabel(`${productName} 新增数量`).fill('2');
@@ -28,17 +26,17 @@ test('the order page adds a line and edits its quantity', async ({ page, request
   const quantity = page.getByLabel(`${productName} 数量`);
   await expect(quantity).toHaveValue('2');
   const line = page.getByRole('row').filter({ has: quantity });
-  await expect(line.getByRole('cell', { name: '200.00', exact: true })).toBeVisible();
-  await expect(page.getByText('800.00', { exact: true })).toBeVisible();
+  await expect(line.getByRole('cell', { name: '200円', exact: true })).toBeVisible();
+  await expect(page.getByText('800円', { exact: true })).toBeVisible();
 
   await quantity.fill('1');
   await quantity.press('Enter');
-  await expect(line.getByRole('cell', { name: '100.00', exact: true })).toBeVisible();
-  await expect(page.getByText('900.00', { exact: true })).toBeVisible();
+  await expect(line.getByRole('cell', { name: '100円', exact: true })).toBeVisible();
+  await expect(page.getByText('900円', { exact: true })).toBeVisible();
 
   await page.reload();
   await expect(page.getByLabel(`${productName} 数量`)).toHaveValue('1');
-  await expect(page.getByText('900.00', { exact: true })).toBeVisible();
+  await expect(page.getByText('900円', { exact: true })).toBeVisible();
 });
 
 test('an unknown order id shows a not-found message', async ({ page }) => {

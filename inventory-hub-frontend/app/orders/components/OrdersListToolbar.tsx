@@ -18,6 +18,8 @@ import { ORDER_SORT_LABELS, OrderSort, OrderSortField } from '../utils/sortOrder
 
 interface Props {
   count: number;
+  /** True while the orders load. The count shows 加载中 in its place. */
+  loading?: boolean;
   sort: OrderSort;
   onSortChange: (sort: OrderSort) => void;
   viewMode: ViewMode;
@@ -31,6 +33,7 @@ interface Props {
  */
 export default function OrdersListToolbar({
   count,
+  loading = false,
   sort,
   onSortChange,
   viewMode,
@@ -71,7 +74,7 @@ export default function OrdersListToolbar({
       )}
       <Box sx={{ flex: 1 }} />
       <Typography variant="body2" color="text.secondary">
-        共 {count} 条订单
+        {loading && count === 0 ? '加载中…' : `共 ${count} 条订单`}
       </Typography>
       <ViewModeToggle mode={viewMode} onChange={onViewModeChange} />
     </Stack>

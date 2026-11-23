@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import {
   Alert,
   Box,
@@ -18,7 +18,7 @@ import {
 } from '@mui/material';
 import DeleteIcon from '@mui/icons-material/Delete';
 import { Category, CreateOrderDetail, Inventory } from '@/types';
-import { apiErrorMessage } from '../utils/apiErrorMessage';
+import { apiErrorMessage } from '@/lib/apiErrorMessage';
 import ProductPicker from './ProductPicker';
 
 interface PendingRow {
@@ -35,8 +35,13 @@ interface Props {
   /** Product ids of this order's lines. The picker hides them. */
   existingProductIds: number[];
   createOrderDetail: (data: CreateOrderDetail) => Promise<unknown>;
-  /** Runs after at least one line was saved. */
+  /**
+   * Runs after at least one line was saved.
+   * Its promise must end after the new lines are in existingProductIds.
+   */
   onSaved: () => void | Promise<void>;
+  /** Runs when the number of picked rows that are not saved changes. */
+  onPendingChange?: (count: number) => void;
 }
 
 /**
@@ -50,10 +55,26 @@ export default function OrderDetailAddPanel({
   existingProductIds,
   createOrderDetail,
   onSaved,
+  onPendingChange,
 }: Props) {
   const [rows, setRows] = useState<PendingRow[]>([]);
   const [error, setError] = useState('');
   const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    onPendingChange?.(rows.length);
+  }, [rows.length, onPendingChange]);
+
+  // The browser asks before it closes or reloads the tab while rows are not saved.
+  useEffect(() => {
+    if (rows.length === 0) return;
+    const warn = (e: BeforeUnloadEvent) => {
+      e.preventDefault();
+      e.returnValue = '';
+    };
+    window.addEventListener('beforeunload', warn);
+    return () => window.removeEventListener('beforeunload', warn);
+  }, [rows.length]);
 
   const excludeProductIds = useMemo(
     () => [...existingProductIds, ...rows.map((r) => r.productId)],

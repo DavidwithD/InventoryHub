@@ -24,8 +24,8 @@ test('inventory and orders pages show FIFO stock and cost', async ({ page, reque
 
   await page.goto('/orders');
   const orderRow = page.getByRole('row').filter({ hasText: `E2E-${id}` });
-  await expect(orderRow.getByRole('cell', { name: '350.00', exact: true })).toBeVisible();
-  await expect(orderRow.getByRole('cell', { name: '650.00', exact: true })).toBeVisible();
+  await expect(orderRow.getByRole('cell', { name: '350円', exact: true })).toBeVisible();
+  await expect(orderRow.getByRole('cell', { name: '650円', exact: true })).toBeVisible();
 });
 
 test('an order sold before any purchase shows unknown cost', async ({ page, request }) => {

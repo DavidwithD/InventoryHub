@@ -25,6 +25,7 @@ import LabelIcon from '@mui/icons-material/Label';
 import StoreIcon from '@mui/icons-material/Store';
 import InventoryIcon from '@mui/icons-material/Inventory';
 import BarChartIcon from '@mui/icons-material/BarChart';
+import { PAGE_BACKGROUND } from './layoutStyles';
 
 const drawerWidth = 240;
 
@@ -213,7 +214,7 @@ export default function AppLayout({ children }: AppLayoutProps) {
           minWidth: 0,
           p: 3,
           minHeight: '100vh',
-          backgroundColor: '#f5f5f5',
+          backgroundColor: PAGE_BACKGROUND,
           ml: { md: desktopOpen ? 0 : `-${drawerWidth}px` },
           transition: theme.transitions.create('margin', {
             easing: theme.transitions.easing.sharp,

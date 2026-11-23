@@ -13,12 +13,12 @@ import {
   SelectChangeEvent,
   TextField,
   Typography,
-  type Theme,
 } from '@mui/material';
 import Image from 'next/image';
 import api from '@/lib/api';
 import { Category, Inventory, Product } from '@/types';
 import { usePickHistoryStore } from '@/lib/stores/pickHistoryStore';
+import { PAGE_BACKGROUND, stickyBelowAppBar } from '@/components/layout/layoutStyles';
 
 // Sentinel category values. Real category ids are positive.
 const CATEGORY_HISTORY = -1; // 选择历史 — only previously picked products
@@ -33,32 +33,6 @@ interface ProductPickerProps {
 
 const CARD_IMAGE_HEIGHT = 96;
 
-/**
- * Sticky position just under the fixed app bar.
- * The app bar height changes with screen size, so the offset copies theme.mixins.toolbar.
- */
-function stickyBelowAppBar(theme: Theme) {
-  return {
-    position: 'sticky',
-    ...toolbarHeightAsTop(theme.mixins.toolbar as Record<string, unknown>),
-  };
-}
-
-/**
- * Copies each minHeight of the toolbar mixin to `top`.
- * Media queries can be nested. The default mixin nests a landscape rule in the xs query.
- */
-export function toolbarHeightAsTop(mixin: Record<string, unknown>): Record<string, unknown> {
-  const style: Record<string, unknown> = {};
-  for (const [key, value] of Object.entries(mixin)) {
-    if (key === 'minHeight') style.top = value;
-    else if (key.startsWith('@media') && value && typeof value === 'object') {
-      style[key] = toolbarHeightAsTop(value as Record<string, unknown>);
-    }
-  }
-  return style;
-}
-
 interface PickerItem {
   productId: number;
   productName: string;
@@ -72,7 +46,11 @@ export default function ProductPicker({
   excludeProductIds = [],
   onPick,
 }: ProductPickerProps) {
-  const [categoryId, setCategoryId] = useState<number>(CATEGORY_HISTORY);
+  // Start on 选择历史 when it has products. A new browser has none, so it starts on 全部分类.
+  // The start value is read once. A pick during this visit does not switch the view.
+  const [categoryId, setCategoryId] = useState<number>(() =>
+    usePickHistoryStore.getState().history.length > 0 ? CATEGORY_HISTORY : CATEGORY_ALL
+  );
   const [search, setSearch] = useState<string>('');
   const [products, setProducts] = useState<Product[]>([]);
   const fetchedRef = useRef<boolean>(false);
@@ -118,13 +96,15 @@ export default function ProductPicker({
       .filter((it) => !excluded.has(it.productId))
       .filter((it) => term === '' || it.productName.toLowerCase().includes(term))
       .filter((it) => {
+        // A search looks in all products. The category applies only to an empty search.
+        if (term !== '') return true;
         if (categoryId === CATEGORY_HISTORY) return historyRank.has(it.productId);
         if (categoryId === CATEGORY_ALL) return true;
         return it.categoryId === categoryId;
       });
 
-    // History view keeps most-recent-first; other views sort alphabetically.
-    if (categoryId === CATEGORY_HISTORY) {
+    // History view keeps most-recent-first; other views and searches sort alphabetically.
+    if (categoryId === CATEGORY_HISTORY && term === '') {
       result.sort((a, b) => historyRank.get(a.productId)! - historyRank.get(b.productId)!);
     } else {
       result.sort((a, b) => a.productName.localeCompare(b.productName));
@@ -148,8 +128,8 @@ export default function ProductPicker({
         sx={(theme) => ({
           ...stickyBelowAppBar(theme),
           zIndex: 2,
-          // Same color as the page background in AppLayout, so the grid does not show through.
-          bgcolor: 'grey.100',
+          // The page background. The grid does not show through the bar.
+          bgcolor: PAGE_BACKGROUND,
           // The top padding leaves room for the select's floating label.
           pt: 1.5,
           pb: 1,
@@ -174,6 +154,7 @@ export default function ProductPicker({
         <TextField
           size="small"
           label="搜索商品"
+          placeholder="在全部商品中搜索"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           sx={{ flex: 1, minWidth: 200 }}
@@ -183,7 +164,11 @@ export default function ProductPicker({
       <Box>
         {items.length === 0 ? (
           <Typography color="text.secondary" sx={{ textAlign: 'center', py: 4 }}>
-            {categoryId === CATEGORY_HISTORY ? '暂无选择历史' : '没有可用商品'}
+            {search.trim() !== ''
+              ? '没有匹配的商品'
+              : categoryId === CATEGORY_HISTORY
+                ? '暂无选择历史'
+                : '没有可用商品'}
           </Typography>
         ) : (
           <Grid container spacing={1.5}>

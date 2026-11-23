@@ -22,6 +22,7 @@ import {
   Typography,
 } from '@mui/material';
 import { Category, PreviewRow, Product } from '@/types';
+import { formatMoney } from '@/lib/formatMoney';
 
 export interface RegisterInventoryPayload {
   productId: number;
@@ -43,6 +44,8 @@ interface Props {
   onProductSelected: (productName: string, productId: number) => void;
   onProductCreated: (data: { categoryId: number; name: string }) => Promise<Product>;
   onRegister: (payload: RegisterInventoryPayload) => Promise<void>;
+  /** When set, the 登录 button is disabled and shows this reason. */
+  registerBlockedReason?: string;
 }
 
 export default function ExtractedResultRow({
@@ -55,6 +58,7 @@ export default function ExtractedResultRow({
   onProductSelected,
   onProductCreated,
   onRegister,
+  registerBlockedReason,
 }: Props) {
   const [categoryFilter, setCategoryFilter] = useState<number | ''>('');
   const [registering, setRegistering] = useState(false);
@@ -112,7 +116,7 @@ export default function ExtractedResultRow({
   };
 
   const handleRegister = async () => {
-    if (!selectedProductId || !factorValid) return;
+    if (!selectedProductId || !factorValid || registerBlockedReason) return;
     setRegistering(true);
     try {
       await onRegister({
@@ -236,23 +240,34 @@ export default function ExtractedResultRow({
                 sx={{ mt: 1, lineHeight: 1.3 }}
               >
                 {factorValid
-                  ? `入库 ${previewPieces} 件 · 单价 ¥${previewUnitCny.toFixed(2)}`
+                  ? `入库 ${previewPieces} 件 · 单价 ${formatMoney(previewUnitCny, 'CNY')}`
                   : '倍数需大于 0'}
               </Typography>
             </Box>
           </Stack>
         </TableCell>
         <TableCell>
-          <Button
-            size="small"
-            variant={isRegistered ? 'outlined' : 'contained'}
-            color={isRegistered ? 'success' : 'primary'}
-            disabled={!selectedProductId || !factorValid || registering || isRegistered}
-            onClick={handleRegister}
-            sx={{ whiteSpace: 'nowrap' }}
-          >
-            {isRegistered ? '完成' : '登录'}
-          </Button>
+          <Tooltip title={!isRegistered && registerBlockedReason ? registerBlockedReason : ''}>
+            {/* The span lets the tooltip show on a disabled button. */}
+            <span>
+              <Button
+                size="small"
+                variant={isRegistered ? 'outlined' : 'contained'}
+                color={isRegistered ? 'success' : 'primary'}
+                disabled={
+                  !selectedProductId ||
+                  !factorValid ||
+                  registering ||
+                  isRegistered ||
+                  !!registerBlockedReason
+                }
+                onClick={handleRegister}
+                sx={{ whiteSpace: 'nowrap' }}
+              >
+                {isRegistered ? '完成' : '登录'}
+              </Button>
+            </span>
+          </Tooltip>
         </TableCell>
       </TableRow>
 

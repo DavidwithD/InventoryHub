@@ -4,8 +4,9 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import OrderSummaryCard from '@/app/orders/components/OrderSummaryCard';
 import OrderDetailLinesTable from '@/app/orders/components/OrderDetailLinesTable';
 import OrderDetailAddPanel from '@/app/orders/components/OrderDetailAddPanel';
-import { toolbarHeightAsTop } from '@/app/orders/components/ProductPicker';
-import { apiErrorMessage } from '@/app/orders/utils/apiErrorMessage';
+import ProductPicker from '@/app/orders/components/ProductPicker';
+import { toolbarHeightAsTop } from '@/components/layout/layoutStyles';
+import { apiErrorMessage } from '@/lib/apiErrorMessage';
 import { usePickHistoryStore } from '@/lib/stores/pickHistoryStore';
 import type { Inventory, Order, OrderDetail } from '@/types';
 
@@ -58,10 +59,26 @@ describe('OrderSummaryCard', () => {
   it('shows revenue, shipping, cost and profit', () => {
     render(<OrderSummaryCard order={order()} />);
 
-    expect(screen.getByText('1000.00')).toBeInTheDocument();
-    expect(screen.getByText('200.00')).toBeInTheDocument();
-    expect(screen.getByText('350.00')).toBeInTheDocument();
-    expect(screen.getByText('650.00')).toBeInTheDocument();
+    expect(screen.getByText('1,000円')).toBeInTheDocument();
+    expect(screen.getByText('200円')).toBeInTheDocument();
+    expect(screen.getByText('350円')).toBeInTheDocument();
+    expect(screen.getByText('650円')).toBeInTheDocument();
+  });
+
+  it('shows 未输入 for an order without lines', () => {
+    render(<OrderSummaryCard order={order({ hasDetails: false, totalCost: 0 })} />);
+
+    expect(screen.getByText('未输入')).toBeInTheDocument();
+    expect(screen.getByText('—')).toBeInTheDocument();
+    expect(screen.getByText('未输入成本')).toBeInTheDocument();
+  });
+
+  it('opens Mercari in a new tab', () => {
+    render(<OrderSummaryCard order={order()} />);
+
+    const link = screen.getByRole('link', { name: /在 Mercari 查看/ });
+    expect(link).toHaveAttribute('href', 'https://jp.mercari.com/item/m1');
+    expect(link).toHaveAttribute('target', '_blank');
   });
 
   it('shows unknown cost and profit when units are unmatched', () => {
@@ -77,7 +94,7 @@ describe('OrderDetailLinesTable', () => {
     render(
       <OrderDetailLinesTable
         details={[detail()]}
-        busy={false}
+        busyIds={[]}
         onQuantityChange={onQuantityChange}
         onDelete={vi.fn()}
       />
@@ -250,5 +267,68 @@ describe('toolbarHeightAsTop', () => {
       '@media (min-width:0px)': { '@media (orientation: landscape)': { top: 48 } },
       '@media (min-width:600px)': { top: 64 },
     });
+  });
+});
+
+describe('ProductPicker', () => {
+  const inventories = [
+    { ...batch(1, 'Pikachu', 3), categoryId: 5 },
+    { ...batch(2, '袜子', 4), categoryId: 6 },
+  ];
+  const categories = [
+    { ...base, id: 5, name: 'Cards' },
+    { ...base, id: 6, name: 'Clothes' },
+  ];
+
+  beforeEach(() => usePickHistoryStore.setState({ history: [] }));
+
+  it('starts on 全部分类 when the history is empty', () => {
+    render(<ProductPicker inventories={inventories} categories={categories} onPick={vi.fn()} />);
+
+    expect(screen.getByText('全部分类')).toBeInTheDocument();
+    expect(screen.getByText('Pikachu')).toBeInTheDocument();
+    expect(screen.getByText('袜子')).toBeInTheDocument();
+  });
+
+  it('searches all products, not only the history', async () => {
+    usePickHistoryStore.setState({ history: [1] });
+    render(<ProductPicker inventories={inventories} categories={categories} onPick={vi.fn()} />);
+    expect(screen.queryByText('袜子')).not.toBeInTheDocument();
+
+    await userEvent.type(screen.getByLabelText('搜索商品'), '袜');
+
+    expect(screen.getByText('袜子')).toBeInTheDocument();
+    expect(screen.queryByText('Pikachu')).not.toBeInTheDocument();
+  });
+
+  it('says 没有匹配的商品 when a search finds nothing', async () => {
+    usePickHistoryStore.setState({ history: [1] });
+    render(<ProductPicker inventories={inventories} categories={categories} onPick={vi.fn()} />);
+
+    await userEvent.type(screen.getByLabelText('搜索商品'), 'zzz');
+
+    expect(screen.getByText('没有匹配的商品')).toBeInTheDocument();
+  });
+});
+
+describe('OrderDetailAddPanel pending rows', () => {
+  it('reports the number of rows that are not saved', async () => {
+    usePickHistoryStore.setState({ history: [1] });
+    const onPendingChange = vi.fn();
+    render(
+      <OrderDetailAddPanel
+        orderId={1}
+        inventories={[batch(1, 'Pikachu', 3)]}
+        categories={[]}
+        existingProductIds={[]}
+        createOrderDetail={vi.fn()}
+        onSaved={vi.fn()}
+        onPendingChange={onPendingChange}
+      />
+    );
+
+    await userEvent.click(screen.getByText('Pikachu'));
+
+    expect(onPendingChange).toHaveBeenLastCalledWith(1);
   });
 });

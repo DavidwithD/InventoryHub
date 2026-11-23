@@ -9,10 +9,16 @@ interface Props {
   size: number;
   /** Corner radius in px. */
   radius: number;
+  /** When true, the image opens the Mercari item page in a new tab. */
+  linkToMercari?: boolean;
 }
 
-/** The order image. It links to the Mercari item page. A grey box shows when there is no image. */
-export default function OrderThumbnail({ order, size, radius }: Props) {
+export function mercariItemUrl(order: Order): string {
+  return `https://jp.mercari.com/item/${order.orderNo}`;
+}
+
+/** The order image. A grey box shows when there is no image. The image loads when it nears the screen. */
+export default function OrderThumbnail({ order, size, radius, linkToMercari = false }: Props) {
   if (!order.imageUrl) {
     return (
       <Box
@@ -21,16 +27,27 @@ export default function OrderThumbnail({ order, size, radius }: Props) {
     );
   }
 
+  const image = (
+    <img
+      src={order.imageUrl}
+      alt={order.name}
+      loading="lazy"
+      width={size}
+      height={size}
+      style={{ width: size, height: size, objectFit: 'cover', borderRadius: radius, flexShrink: 0, display: 'block' }}
+    />
+  );
+
+  if (!linkToMercari) return image;
+
   return (
     <a
-      href={`https://jp.mercari.com/item/${order.orderNo}`}
+      href={mercariItemUrl(order)}
+      target="_blank"
+      rel="noopener noreferrer"
       style={{ flexShrink: 0, lineHeight: 0 }}
     >
-      <img
-        src={order.imageUrl}
-        alt={order.name}
-        style={{ width: size, height: size, objectFit: 'cover', borderRadius: radius }}
-      />
+      {image}
     </a>
   );
 }

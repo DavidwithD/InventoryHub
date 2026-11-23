@@ -12,7 +12,6 @@ interface Props {
   onCostStatusChange: (value: 'all' | 'null' | 'hasValue') => void;
   onStartDateChange: (value: string) => void;
   onEndDateChange: (value: string) => void;
-  onApplyFilter: () => void;
   onClearFilter: () => void;
   onExport: () => void;
 }
@@ -26,7 +25,6 @@ export default function OrderFilters({
   onCostStatusChange,
   onStartDateChange,
   onEndDateChange,
-  onApplyFilter,
   onClearFilter,
   onExport,
 }: Props) {
@@ -71,7 +69,6 @@ export default function OrderFilters({
         />
       </Box>
       <Box sx={{ display: 'flex', gap: 1 }}>
-        <Button variant="outlined" onClick={onApplyFilter}>应用筛选</Button>
         <Button variant="text" onClick={onClearFilter}>清除筛选</Button>
         <Button
           variant="contained"
@@ -80,7 +77,7 @@ export default function OrderFilters({
           color="success"
           sx={{ ml: 'auto' }}
         >
-          导出JSON
+          导出CSV
         </Button>
       </Box>
     </Paper>

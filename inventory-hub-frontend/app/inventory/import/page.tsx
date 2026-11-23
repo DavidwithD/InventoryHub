@@ -60,6 +60,8 @@ export default function InventoryImportPage() {
   const [rows, setRows] = useState<PreviewRow[]>([]);
   const [productMap, setProductMap] = useState<Record<string, number>>({});
   const [exchangeRate, setExchangeRate] = useState<number>(0);
+  // 'loading' until the rate request ends. 'saved' means the API failed and the last saved rate is used.
+  const [rateSource, setRateSource] = useState<'loading' | 'live' | 'saved'>('loading');
   const [nextOffset, setNextOffset] = useState<string | null>(null);
   const { categories, loadCategories } = useCategories();
   const { products, loadProducts, createProduct, updateProduct } = useProducts();
@@ -136,7 +138,9 @@ export default function InventoryImportPage() {
     const factor = payload.conversionFactor > 0 ? payload.conversionFactor : 1;
     // priceCny on the row is per purchase unit (set); convert to a per-stock-unit price.
     const unitPriceCny = payload.priceCny / factor;
-    const priceJpy = exchangeRate > 0 ? Math.round(unitPriceCny * exchangeRate) : 0;
+    // Without a rate, priceJpy would save as 0 and later profits would be wrong. The buttons are disabled then.
+    if (!(exchangeRate > 0)) throw new Error('没有汇率，无法登记');
+    const priceJpy = Math.round(unitPriceCny * exchangeRate);
     await createInventory({
       productId: payload.productId,
       purchaseQuantity: payload.purchaseQuantity,
@@ -202,9 +206,11 @@ export default function InventoryImportPage() {
       .catch(() => {
         // non-critical, ignore
       });
-    fetchExchangeRate()
-      .then((rate) => setExchangeRate(rate))
-      .catch(() => setError('获取汇率失败'));
+    fetchExchangeRate().then(({ rate, source }) => {
+      setExchangeRate(rate);
+      setRateSource(source);
+      if (rate <= 0) setError('获取汇率失败，且没有保存的汇率。无法登记库存。');
+    });
   }, [loadSuppliers, loadCategories, loadProducts, loadAllInventories]);
 
   const handleSupplierChange = (event: SelectChangeEvent<string>) => {
@@ -315,7 +321,11 @@ export default function InventoryImportPage() {
             : '选择供应商后按下方步骤复制粘贴 fetch 命令，即可解析并提取库存字段。'}
         </Typography>
         <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
-          当前汇率：1 CNY ≈ {exchangeRate > 0 ? exchangeRate.toFixed(2) : '加载中...'} JPY
+          {rateSource === 'loading'
+            ? '当前汇率：加载中...'
+            : exchangeRate > 0
+              ? `当前汇率：1 CNY ≈ ${exchangeRate.toFixed(2)} JPY${rateSource === 'saved' ? '（获取失败，使用上次保存的汇率）' : ''}`
+              : '当前汇率：获取失败'}
         </Typography>
       </Box>
 
@@ -447,6 +457,13 @@ export default function InventoryImportPage() {
           onProductSelected={handleProductSelected}
           onProductCreated={handleProductCreated}
           onRegister={handleRegister}
+          registerBlockedReason={
+            rateSource === 'loading'
+              ? '汇率加载中'
+              : exchangeRate > 0
+                ? undefined
+                : '没有汇率，无法登记'
+          }
           onLoadMore={handleNextPage}
         />
       </Paper>

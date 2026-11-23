@@ -26,6 +26,8 @@ interface Props {
   onProductSelected: (productName: string, productId: number) => void;
   onProductCreated: (data: { categoryId: number; name: string }) => Promise<Product>;
   onRegister: (payload: RegisterInventoryPayload) => Promise<void>;
+  /** When set, every 登录 button is disabled and shows this reason. */
+  registerBlockedReason?: string;
   onLoadMore: () => void;
 }
 
@@ -41,6 +43,7 @@ export default function ExtractedResultTable({
   onProductSelected,
   onProductCreated,
   onRegister,
+  registerBlockedReason,
   onLoadMore,
 }: Props) {
   if (rows.length === 0) {
@@ -79,6 +82,7 @@ export default function ExtractedResultTable({
                 onProductSelected={onProductSelected}
                 onProductCreated={onProductCreated}
                 onRegister={onRegister}
+                registerBlockedReason={registerBlockedReason}
               />
             ))}
           </TableBody>
