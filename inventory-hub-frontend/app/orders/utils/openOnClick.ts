@@ -2,6 +2,12 @@
 interface ClickKeys {
   metaKey: boolean;
   ctrlKey: boolean;
+  shiftKey?: boolean;
+}
+
+/** Returns true when the browser opens a link click in a new tab or window. */
+export function isNewTabClick(e: ClickKeys): boolean {
+  return e.metaKey || e.ctrlKey || Boolean(e.shiftKey);
 }
 
 /**

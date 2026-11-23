@@ -42,8 +42,13 @@ export default function CategoryDialog({ open, onClose, initialCategory, onSave 
     }
   };
 
+  // Escape and a backdrop click do nothing during a save. The error then still has an open dialog to show in.
+  const handleDialogClose = () => {
+    if (!saving) onClose();
+  };
+
   return (
-    <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth>
+    <Dialog open={open} onClose={handleDialogClose} maxWidth="sm" fullWidth>
       <DialogTitle>{initialCategory ? '编辑分类' : '新增分类'}</DialogTitle>
       <DialogContent>
         <TextField

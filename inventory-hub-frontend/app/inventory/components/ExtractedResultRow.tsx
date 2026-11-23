@@ -72,9 +72,11 @@ export default function ExtractedResultRow({
   const [creating, setCreating] = useState(false);
   const [createError, setCreateError] = useState('');
   // A message under the 登录 button: an error when the save failed, a warning when only a later step failed.
+  // `input` records the product and factor of the attempt. An error hides when either one changes.
   const [registerMessage, setRegisterMessage] = useState<{
     text: string;
     severity: 'error' | 'warning';
+    input: string;
   } | null>(null);
   const [factorInput, setFactorInput] = useState('1');
   const [factorTouched, setFactorTouched] = useState(false);
@@ -124,8 +126,17 @@ export default function ExtractedResultRow({
     }
   };
 
+  const registerInput = `${selectedProductId}-${factorInput}`;
+  // A warning belongs to a saved batch, so it stays. An error shows only for the input that failed.
+  const shownRegisterMessage =
+    registerMessage &&
+    (registerMessage.severity === 'warning' || registerMessage.input === registerInput)
+      ? registerMessage
+      : null;
+
   const handleRegister = async () => {
     if (!selectedProductId || !factorValid || registerBlockedReason) return;
+    const attemptInput = registerInput;
     setRegistering(true);
     setRegisterMessage(null);
     try {
@@ -139,9 +150,13 @@ export default function ExtractedResultRow({
         thumbUrl: row.thumbUrl || undefined,
       });
       setRegistered(true);
-      if (warning) setRegisterMessage({ text: warning, severity: 'warning' });
+      if (warning) setRegisterMessage({ text: warning, severity: 'warning', input: attemptInput });
     } catch (err) {
-      setRegisterMessage({ text: apiErrorMessage(err, '登记失败'), severity: 'error' });
+      setRegisterMessage({
+        text: apiErrorMessage(err, '登记失败'),
+        severity: 'error',
+        input: attemptInput,
+      });
     } finally {
       setRegistering(false);
     }
@@ -286,14 +301,14 @@ export default function ExtractedResultRow({
               </Button>
             </span>
           </Tooltip>
-          {registerMessage && (
+          {shownRegisterMessage && (
             <Typography
               variant="caption"
               role="alert"
-              color={registerMessage.severity === 'error' ? 'error' : 'warning.main'}
+              color={shownRegisterMessage.severity === 'error' ? 'error' : 'warning.main'}
               sx={{ display: 'block', mt: 1, maxWidth: 160 }}
             >
-              {registerMessage.text}
+              {shownRegisterMessage.text}
             </Typography>
           )}
         </TableCell>

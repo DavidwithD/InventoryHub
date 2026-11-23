@@ -113,7 +113,7 @@ Features:
 - Batch import from Mercari
 - Export to CSV with `app/orders/utils/ordersCsv.ts`
 - The filters and the sort persist in `useOrderFilterStore` (`lib/stores/filterStore.ts`).
-- `app/orders/utils/listScroll.ts` saves the scroll position in `sessionStorage` when an order opens. The page restores it once, after the orders load.
+- `app/orders/utils/listScroll.ts` saves the scroll position in `sessionStorage` when an order opens. The page restores it once, after the orders load. `AppLayout` clears it when the route leaves `/orders`.
 
 ```tsx
 // Key features

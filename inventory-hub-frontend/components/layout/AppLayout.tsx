@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 import {
   AppBar,
@@ -27,6 +27,7 @@ import InventoryIcon from '@mui/icons-material/Inventory';
 import BarChartIcon from '@mui/icons-material/BarChart';
 import { PAGE_BACKGROUND } from './layoutStyles';
 import { leaveTo } from '@/lib/leaveGuard';
+import { clearOrdersListScroll, isOrdersPath } from '@/app/orders/utils/listScroll';
 
 const drawerWidth = 240;
 
@@ -57,6 +58,12 @@ export default function AppLayout({ children }: AppLayoutProps) {
   const router = useRouter();
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
+
+  // The orders list restores its scroll only when the user comes back from an order.
+  // A page outside the orders section drops the saved position.
+  useEffect(() => {
+    if (!isOrdersPath(pathname)) clearOrdersListScroll();
+  }, [pathname]);
 
   const handleDrawerToggle = () => {
     if (isMobile) setMobileOpen(!mobileOpen);

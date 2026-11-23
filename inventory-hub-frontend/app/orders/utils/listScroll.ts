@@ -1,5 +1,6 @@
 // The orders list saves its scroll position when the user opens an order.
 // The list restores it once on the next visit, after the orders load.
+// AppLayout removes it when the user goes to a page outside the orders section.
 // sessionStorage keeps the value for this browser tab only.
 
 const KEY = 'orders-list-scroll';
@@ -23,4 +24,18 @@ export function takeOrdersListScroll(): number | null {
   } catch {
     return null;
   }
+}
+
+/** Removes the saved position. Call it when the user goes to a page outside the orders section. */
+export function clearOrdersListScroll(): void {
+  try {
+    sessionStorage.removeItem(KEY);
+  } catch {
+    // Storage can be blocked. Nothing is saved then.
+  }
+}
+
+/** Returns true for the orders list and the order pages. The saved position is kept only on these paths. */
+export function isOrdersPath(pathname: string): boolean {
+  return pathname === '/orders' || pathname.startsWith('/orders/');
 }

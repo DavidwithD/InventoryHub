@@ -13,7 +13,7 @@ import {
   orderProfit,
 } from '../utils/orderProfit';
 import { formatMoney } from '@/lib/formatMoney';
-import { openOnClick } from '../utils/openOnClick';
+import { isNewTabClick, openOnClick } from '../utils/openOnClick';
 import OrderThumbnail from './OrderThumbnail';
 import OrderMetric from './OrderMetric';
 import { saveOrdersListScroll } from '../utils/listScroll';
@@ -151,9 +151,15 @@ export default function OrdersCardList({ orders, sort, loading = false }: Props)
                     variant={order.hasDetails ? 'outlined' : 'contained'}
                     component={Link}
                     href={`/orders/${order.id}`}
-                    onClick={(e: { stopPropagation: () => void }) => {
+                    onClick={(e: {
+                      stopPropagation: () => void;
+                      metaKey: boolean;
+                      ctrlKey: boolean;
+                      shiftKey: boolean;
+                    }) => {
                       e.stopPropagation();
-                      saveOrdersListScroll();
+                      // A Cmd, Ctrl or Shift click opens a new tab. The list stays, so it saves nothing.
+                      if (!isNewTabClick(e)) saveOrdersListScroll();
                     }}
                   >
                     {order.hasDetails ? '查看' : '添加'}

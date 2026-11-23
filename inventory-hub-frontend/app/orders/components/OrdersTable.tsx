@@ -20,7 +20,7 @@ import { Order } from '@/types';
 import { OrderSort, OrderSortField, nextOrderSort, sortOrders } from '../utils/sortOrders';
 import { formatOrderCost, formatOrderProfit, orderCostState } from '../utils/orderProfit';
 import { formatMoney } from '@/lib/formatMoney';
-import { openOnClick } from '../utils/openOnClick';
+import { isNewTabClick, openOnClick } from '../utils/openOnClick';
 import OrderThumbnail from './OrderThumbnail';
 import { saveOrdersListScroll } from '../utils/listScroll';
 
@@ -169,9 +169,10 @@ export default function OrdersTable({ orders, sort, onSortChange, loading = fals
                       size="small"
                       component={Link}
                       href={`/orders/${order.id}`}
-                      onClick={(e: { stopPropagation: () => void }) => {
+                      onClick={(e: { stopPropagation: () => void; metaKey: boolean; ctrlKey: boolean; shiftKey: boolean }) => {
                         e.stopPropagation();
-                        saveOrdersListScroll();
+                        // A Cmd, Ctrl or Shift click opens a new tab. The list stays, so it saves nothing.
+                        if (!isNewTabClick(e)) saveOrdersListScroll();
                       }}
                       color="info"
                       className=" font-normal"
