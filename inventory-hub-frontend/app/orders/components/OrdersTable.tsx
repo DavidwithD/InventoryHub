@@ -20,6 +20,7 @@ import { Order } from '@/types';
 import { OrderSort, OrderSortField, nextOrderSort, sortOrders } from '../utils/sortOrders';
 import { formatOrderCost, formatOrderProfit, orderCostState } from '../utils/orderProfit';
 import { formatMoney } from '@/lib/formatMoney';
+import { openOnClick } from '../utils/openOnClick';
 import OrderThumbnail from './OrderThumbnail';
 
 interface Props {
@@ -127,7 +128,7 @@ export default function OrdersTable({ orders, sort, onSortChange, loading = fals
                 <TableRow
                   key={order.id}
                   hover
-                  onClick={() => router.push(`/orders/${order.id}`)}
+                  onClick={(e) => openOnClick(e, `/orders/${order.id}`, (href) => router.push(href))}
                   sx={{ cursor: 'pointer' }}
                 >
                   <TableCell>

@@ -1,11 +1,19 @@
 import { Order } from '@/types';
-import { orderCostState, orderProfit } from './orderProfit';
+import { formatOrderCost, formatOrderProfit, orderCostState, orderProfit } from './orderProfit';
 
 /** Quotes a field when it holds a comma, a double quote or a line break. */
-function csvField(value: string | number): string {
-  const text = String(value);
-  if (/[",\r\n]/.test(text)) return `"${text.replace(/"/g, '""')}"`;
-  return text;
+function csvField(value: string): string {
+  if (/[",\r\n]/.test(value)) return `"${value.replace(/"/g, '""')}"`;
+  return value;
+}
+
+/**
+ * A text field for the file.
+ * A spreadsheet runs a cell that starts with =, +, - or @ as a formula.
+ * A leading single quote makes the spreadsheet show it as text.
+ */
+function csvText(value: string): string {
+  return csvField(/^[=+\-@]/.test(value) ? `'${value}` : value);
 }
 
 /** An amount for the file. It keeps two decimals and has no unit, so a spreadsheet can sum it. */
@@ -28,31 +36,25 @@ const HEADER = [
  * Builds a CSV file from orders, in the given order.
  * The text starts with a UTF-8 BOM. Excel needs it to read the Chinese headers.
  * Lines end with CRLF.
+ * A missing or unknown cost uses the same text as the orders page.
  */
 export function ordersToCsv(orders: Order[]): string {
-  const lines = [HEADER.map(csvField).join(',')];
+  const lines = [HEADER.map(csvText).join(',')];
   for (const order of orders) {
-    const state = orderCostState(order);
-    const cost =
-      state === 'missing'
-        ? '未输入'
-        : state === 'unknown'
-          ? '未知'
-          : csvAmount(order.totalCost || 0);
-    const profit = orderProfit(order);
+    const known = orderCostState(order) === 'known';
+    const cost = known ? csvAmount(order.totalCost || 0) : csvText(formatOrderCost(order));
+    const profit = known ? csvAmount(orderProfit(order) ?? 0) : csvText(formatOrderProfit(order));
     lines.push(
       [
-        order.orderNo,
-        order.name,
-        order.imageUrl || '',
+        csvText(order.orderNo),
+        csvText(order.name),
+        csvText(order.imageUrl || ''),
         csvAmount(order.revenue),
         csvAmount(order.shippingFee),
         cost,
-        profit === null ? cost : csvAmount(profit),
-        new Date(order.transactionTime).toLocaleString('zh-CN'),
-      ]
-        .map(csvField)
-        .join(',')
+        profit,
+        csvText(new Date(order.transactionTime).toLocaleString('zh-CN')),
+      ].join(',')
     );
   }
   return '﻿' + lines.join('\r\n') + '\r\n';

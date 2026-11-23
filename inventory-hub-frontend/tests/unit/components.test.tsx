@@ -1,4 +1,4 @@
-import { render, screen, within } from '@testing-library/react';
+import { fireEvent, render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 
@@ -110,6 +110,33 @@ describe('OrdersTable', () => {
     expect(push).toHaveBeenCalledWith('/orders/42');
   });
 
+  it('does not open the order when the click ends a text selection', async () => {
+    push.mockClear();
+    const getSelection = vi
+      .spyOn(window, 'getSelection')
+      .mockReturnValue({ toString: () => 'Card' } as Selection);
+    render(<OrdersTable orders={[order({ id: 42 })]} {...sortProps} />);
+
+    fireEvent.click(screen.getByText('Card'));
+
+    expect(push).not.toHaveBeenCalled();
+    getSelection.mockRestore();
+  });
+
+  it('opens the order in a new tab on a Cmd or Ctrl click', () => {
+    push.mockClear();
+    const open = vi.spyOn(window, 'open').mockImplementation(() => null);
+    render(<OrdersTable orders={[order({ id: 42 })]} {...sortProps} />);
+
+    fireEvent.click(screen.getByText('Card'), { metaKey: true });
+    fireEvent.click(screen.getByText('Card'), { ctrlKey: true });
+
+    expect(open).toHaveBeenCalledTimes(2);
+    expect(open).toHaveBeenCalledWith('/orders/42', '_blank', 'noopener');
+    expect(push).not.toHaveBeenCalled();
+    open.mockRestore();
+  });
+
   it('shows placeholder rows while loading, without the empty text', () => {
     render(<OrdersTable orders={[]} {...sortProps} loading />);
 
@@ -148,6 +175,20 @@ describe('OrdersCardList', () => {
     expect(card.getByText('350円')).toBeInTheDocument();
     expect(card.getByText('650円')).toBeInTheDocument();
     expect(card.getByRole('link', { name: '查看' })).toHaveAttribute('href', '/orders/7');
+  });
+
+  it('opens the order on a card click, and in a new tab on a Cmd click', () => {
+    push.mockClear();
+    const open = vi.spyOn(window, 'open').mockImplementation(() => null);
+    render(<OrdersCardList orders={[order({ id: 7 })]} sort={DEFAULT_ORDER_SORT} />);
+
+    fireEvent.click(screen.getByTestId('order-card'));
+    expect(push).toHaveBeenCalledWith('/orders/7');
+
+    fireEvent.click(screen.getByTestId('order-card'), { metaKey: true });
+    expect(open).toHaveBeenCalledWith('/orders/7', '_blank', 'noopener');
+    expect(push).toHaveBeenCalledTimes(1);
+    open.mockRestore();
   });
 });
 

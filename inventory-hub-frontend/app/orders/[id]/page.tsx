@@ -10,6 +10,7 @@ import { useInventory } from '@/app/inventory/hooks/useInventory';
 import { useCategories } from '@/app/categories/hooks/useCategories';
 import { useOrders } from '../hooks/useOrders';
 import { apiErrorMessage } from '@/lib/apiErrorMessage';
+import { confirmLeave, useLeaveGuard } from '@/lib/leaveGuard';
 import OrderSummaryCard from '../components/OrderSummaryCard';
 import OrderDetailLinesTable from '../components/OrderDetailLinesTable';
 import OrderDetailAddPanel from '../components/OrderDetailAddPanel';
@@ -17,11 +18,9 @@ import OrderDetailAddPanel from '../components/OrderDetailAddPanel';
 type LoadState = 'loading' | 'ready' | 'notFound' | 'failed';
 
 /** The back link. When picked products are not saved, it asks before it leaves. */
-function BackLink({ pendingCount = 0 }: { pendingCount?: number }) {
+function BackLink() {
   const handleClick = (e: { preventDefault: () => void }) => {
-    if (pendingCount > 0 && !confirm(`有 ${pendingCount} 个已选商品尚未保存。确定离开吗？`)) {
-      e.preventDefault();
-    }
+    if (!confirmLeave()) e.preventDefault();
   };
   return (
     <Button
@@ -62,6 +61,7 @@ function OrderPageContent({ idParam }: { idParam: string }) {
   const [error, setError] = useState('');
   // Number of picked products that are not saved yet.
   const [pendingCount, setPendingCount] = useState(0);
+  useLeaveGuard(pendingCount > 0 ? `有 ${pendingCount} 个已选商品尚未保存。确定离开吗？` : null);
   // Number of the newest reload. An older reload that ends later does not write its data.
   const latestReload = useRef(0);
   // Promise of the newest reload.
@@ -175,7 +175,7 @@ function OrderPageContent({ idParam }: { idParam: string }) {
 
   return (
     <Box>
-      <BackLink pendingCount={pendingCount} />
+      <BackLink />
 
       {error && (
         <Alert severity="error" sx={{ mb: 2 }} onClose={() => setError('')}>

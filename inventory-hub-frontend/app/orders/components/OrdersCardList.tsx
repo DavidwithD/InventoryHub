@@ -13,6 +13,7 @@ import {
   orderProfit,
 } from '../utils/orderProfit';
 import { formatMoney } from '@/lib/formatMoney';
+import { openOnClick } from '../utils/openOnClick';
 import OrderThumbnail from './OrderThumbnail';
 import OrderMetric from './OrderMetric';
 
@@ -55,7 +56,7 @@ export default function OrdersCardList({ orders, sort, loading = false }: Props)
                 key={order.id}
                 variant="outlined"
                 data-testid="order-card"
-                onClick={() => router.push(`/orders/${order.id}`)}
+                onClick={(e) => openOnClick(e, `/orders/${order.id}`, (href) => router.push(href))}
                 sx={{
                   cursor: 'pointer',
                   display: 'flex',

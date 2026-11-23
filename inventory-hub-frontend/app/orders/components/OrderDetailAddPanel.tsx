@@ -40,7 +40,10 @@ interface Props {
    * Its promise must end after the new lines are in existingProductIds.
    */
   onSaved: () => void | Promise<void>;
-  /** Runs when the number of picked rows that are not saved changes. */
+  /**
+   * Runs when the number of picked rows that are not saved changes.
+   * The page uses it to warn before the user leaves.
+   */
   onPendingChange?: (count: number) => void;
 }
 
@@ -64,17 +67,6 @@ export default function OrderDetailAddPanel({
   useEffect(() => {
     onPendingChange?.(rows.length);
   }, [rows.length, onPendingChange]);
-
-  // The browser asks before it closes or reloads the tab while rows are not saved.
-  useEffect(() => {
-    if (rows.length === 0) return;
-    const warn = (e: BeforeUnloadEvent) => {
-      e.preventDefault();
-      e.returnValue = '';
-    };
-    window.addEventListener('beforeunload', warn);
-    return () => window.removeEventListener('beforeunload', warn);
-  }, [rows.length]);
 
   const excludeProductIds = useMemo(
     () => [...existingProductIds, ...rows.map((r) => r.productId)],
