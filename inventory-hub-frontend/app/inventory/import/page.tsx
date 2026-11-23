@@ -134,7 +134,8 @@ export default function InventoryImportPage() {
     return createProduct(data);
   };
 
-  const handleRegister = async (payload: RegisterInventoryPayload) => {
+  // Throws when the batch is not saved. Returns a warning when the batch saved but the product image did not.
+  const handleRegister = async (payload: RegisterInventoryPayload): Promise<string | undefined> => {
     const factor = payload.conversionFactor > 0 ? payload.conversionFactor : 1;
     // priceCny on the row is per purchase unit (set); convert to a per-stock-unit price.
     const unitPriceCny = payload.priceCny / factor;
@@ -151,20 +152,26 @@ export default function InventoryImportPage() {
       purchaseDate: payload.purchaseDate || undefined,
       purchaseNo: payload.purchaseNo || undefined,
     });
-    if (payload.thumbUrl) {
-      const product = products.find((p) => p.id === payload.productId);
-      if (product && !product.imageUrl) {
-        await updateProduct(payload.productId, {
-          categoryId: product.categoryId,
-          name: product.name,
-          imageUrl: payload.thumbUrl,
-        });
-      }
-    }
+    // The batch is saved. Mark it first, so a failed image update cannot lead to a second batch.
     if (payload.purchaseNo) {
       const key = `${payload.purchaseNo}-${payload.productId}`;
       setRegisteredItems((prev) => new Set(prev).add(key));
     }
+    if (payload.thumbUrl) {
+      const product = products.find((p) => p.id === payload.productId);
+      if (product && !product.imageUrl) {
+        try {
+          await updateProduct(payload.productId, {
+            categoryId: product.categoryId,
+            name: product.name,
+            imageUrl: payload.thumbUrl,
+          });
+        } catch {
+          return '已登记，但商品图片未保存';
+        }
+      }
+    }
+    return undefined;
   };
 
   useEffect(() => {

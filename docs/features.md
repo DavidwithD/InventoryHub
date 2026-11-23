@@ -91,6 +91,9 @@ The page converts each CNY price to a JPY unit price with the current CNY → JP
 
 - When the rate does not load, the page uses the last rate that loaded. The rate line says so.
 - When no rate is known, every 登录 button is disabled. Registering then would save a JPY price of 0.
+- When a registration fails, the row shows the error under 登录. Click 登录 again to retry.
+- When the batch saves but the product image does not, the row shows 完成 and a warning.
+- When 新商品 fails, its dialog stays open and shows the error.
 
 ### Batch Creation
 
@@ -130,7 +133,7 @@ Amounts show in yen, for example 1,234円.
 
 Click anywhere on an order's row or card to open the order page. The Mercari item link is on the order page.
 
-Click the view icon at the right end of the row above the list to switch between table view and card view. In card view, pick the sort field and direction in the same row. The page keeps the view you picked the next time you open it. The sort goes back to newest first.
+Click the view icon at the right end of the row above the list to switch between table view and card view. In card view, pick the sort field and direction in the same row. The page keeps the view and the sort you picked the next time you open it.
 
 ### Filtering and Search
 
@@ -140,7 +143,7 @@ Click the view icon at the right end of the row above the list to switch between
 | Search      | Search by order number or order name |
 | Cost Status | 未输入成本 shows orders with no lines or an unknown cost. 已输入成本 shows the rest. |
 
-Each filter applies as soon as you change it. 清除筛选 clears all of them.
+Each filter applies as soon as you change it. The page keeps the filters the next time you open it. 清除筛选 clears all of them. It does not change the sort.
 
 Orders come from the Mercari import. The app has no form to create an order by hand.
 
@@ -161,13 +164,13 @@ Each order can have multiple line items:
 
 ### Order Page
 
-Click an order's row to open its page. The page has its own address, so you can bookmark it or open it in a new tab. Click 返回订单列表 to go back. Your filters stay as you left them. If you picked products and did not save them, the app asks before it leaves the page.
+Click an order's row to open its page. The page has its own address, so you can bookmark it or open it in a new tab. Click 返回订单列表 or the browser's Back button to go back. The list scrolls to where you left it after the orders load. If you picked products and did not save them, the app asks before it leaves the page.
 
 The top of the page shows the order: image, name, order number, time, revenue, shipping fee, total cost and profit. Click the image or 在 Mercari 查看 to open the Mercari item in a new tab.
 
 Under 订单详细 you see the order's lines:
 
-- To change a quantity, type the new number in the line and press Enter or click elsewhere.
+- To change a quantity, type the new number in the line and press Enter or click elsewhere. The field shows 已保存 when the save works. A value that is not a whole number of 1 or more goes back to the saved quantity and shows 请输入正整数.
 - To remove a line, click its delete button and confirm.
 - To change a line's product, delete the line and add the new product.
 
@@ -269,6 +272,8 @@ Click the view icon next to **新增商品** to switch between table view and ca
 | Field | Description            | Required |
 | ----- | ---------------------- | -------- |
 | Name  | Category name (unique) | Yes      |
+
+When a save fails, the dialog stays open with your text and shows the error.
 
 ### Category Usage
 

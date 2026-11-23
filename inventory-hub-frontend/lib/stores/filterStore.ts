@@ -3,6 +3,7 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import type { SortField, SortOrder } from '@/app/inventory/components/InventoryTable';
+import { DEFAULT_ORDER_SORT, type OrderSort } from '@/app/orders/utils/sortOrders';
 
 export type StockFilter = 'all' | 'low' | 'out';
 
@@ -52,10 +53,13 @@ interface OrderFilterState {
   costStatus: CostStatus;
   startDate: string;
   endDate: string;
+  sort: OrderSort;
   setSearchOrderNo: (v: string) => void;
   setCostStatus: (v: CostStatus) => void;
   setStartDate: (v: string) => void;
   setEndDate: (v: string) => void;
+  setSort: (v: OrderSort) => void;
+  /** Clears the filters. The sort stays. */
   reset: () => void;
 }
 
@@ -70,10 +74,12 @@ export const useOrderFilterStore = create<OrderFilterState>()(
   persist(
     (set) => ({
       ...orderDefaults,
+      sort: DEFAULT_ORDER_SORT,
       setSearchOrderNo: (searchOrderNo) => set({ searchOrderNo }),
       setCostStatus: (costStatus) => set({ costStatus }),
       setStartDate: (startDate) => set({ startDate }),
       setEndDate: (endDate) => set({ endDate }),
+      setSort: (sort) => set({ sort }),
       reset: () => set(orderDefaults),
     }),
     { name: 'order-filters', skipHydration: true }

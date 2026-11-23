@@ -16,6 +16,7 @@ import { formatMoney } from '@/lib/formatMoney';
 import { openOnClick } from '../utils/openOnClick';
 import OrderThumbnail from './OrderThumbnail';
 import OrderMetric from './OrderMetric';
+import { saveOrdersListScroll } from '../utils/listScroll';
 
 interface Props {
   orders: Order[];
@@ -56,7 +57,13 @@ export default function OrdersCardList({ orders, sort, loading = false }: Props)
                 key={order.id}
                 variant="outlined"
                 data-testid="order-card"
-                onClick={(e) => openOnClick(e, `/orders/${order.id}`, (href) => router.push(href))}
+                onClick={(e) =>
+                  openOnClick(e, `/orders/${order.id}`, (href) => {
+                    // Save the scroll only when the list leaves. A Cmd or Ctrl click opens a new tab.
+                    saveOrdersListScroll();
+                    router.push(href);
+                  })
+                }
                 sx={{
                   cursor: 'pointer',
                   display: 'flex',
@@ -144,7 +151,10 @@ export default function OrdersCardList({ orders, sort, loading = false }: Props)
                     variant={order.hasDetails ? 'outlined' : 'contained'}
                     component={Link}
                     href={`/orders/${order.id}`}
-                    onClick={(e: { stopPropagation: () => void }) => e.stopPropagation()}
+                    onClick={(e: { stopPropagation: () => void }) => {
+                      e.stopPropagation();
+                      saveOrdersListScroll();
+                    }}
                   >
                     {order.hasDetails ? '查看' : '添加'}
                   </Button>

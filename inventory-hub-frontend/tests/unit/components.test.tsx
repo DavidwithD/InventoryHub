@@ -13,6 +13,7 @@ import ViewModeToggle from '@/components/ViewModeToggle';
 import ExtractedResultRow from '@/app/inventory/components/ExtractedResultRow';
 import type { Order } from '@/types';
 import { DEFAULT_ORDER_SORT, nextOrderSort, sortOrders } from '@/app/orders/utils/sortOrders';
+import { takeOrdersListScroll } from '@/app/orders/utils/listScroll';
 
 describe('CategoryDialog', () => {
   it('saves the trimmed name and closes', async () => {
@@ -27,15 +28,27 @@ describe('CategoryDialog', () => {
     expect(onClose).toHaveBeenCalled();
   });
 
-  it('warns and does not save an empty name', async () => {
-    const alert = vi.spyOn(window, 'alert').mockImplementation(() => {});
+  it('shows a message under the field and does not save an empty name', async () => {
     const onSave = vi.fn();
     render(<CategoryDialog open onClose={vi.fn()} onSave={onSave} />);
 
     await userEvent.click(screen.getByRole('button', { name: '保存' }));
 
-    expect(alert).toHaveBeenCalled();
+    expect(screen.getByText('请输入分类名称')).toBeInTheDocument();
     expect(onSave).not.toHaveBeenCalled();
+  });
+
+  it('stays open and shows the error when the save fails', async () => {
+    const onSave = vi.fn().mockRejectedValue({ response: { data: { title: '名称已存在' } } });
+    const onClose = vi.fn();
+    render(<CategoryDialog open onClose={onClose} onSave={onSave} />);
+
+    await userEvent.type(screen.getByLabelText('分类名称'), 'Cards');
+    await userEvent.click(screen.getByRole('button', { name: '保存' }));
+
+    expect(await screen.findByText('名称已存在')).toBeInTheDocument();
+    expect(onClose).not.toHaveBeenCalled();
+    expect(screen.getByLabelText('分类名称')).toHaveValue('Cards');
   });
 
   it('shows the edit title and current name for an existing category', () => {
@@ -125,6 +138,7 @@ describe('OrdersTable', () => {
 
   it('opens the order in a new tab on a Cmd or Ctrl click', () => {
     push.mockClear();
+    sessionStorage.clear();
     const open = vi.spyOn(window, 'open').mockImplementation(() => null);
     render(<OrdersTable orders={[order({ id: 42 })]} {...sortProps} />);
 
@@ -134,7 +148,19 @@ describe('OrdersTable', () => {
     expect(open).toHaveBeenCalledTimes(2);
     expect(open).toHaveBeenCalledWith('/orders/42', '_blank', 'noopener');
     expect(push).not.toHaveBeenCalled();
+    expect(takeOrdersListScroll()).toBeNull();
     open.mockRestore();
+  });
+
+  it('saves the scroll position when it opens an order', async () => {
+    sessionStorage.clear();
+    window.scrollY = 1234;
+    render(<OrdersTable orders={[order({ id: 42 })]} {...sortProps} />);
+
+    await userEvent.click(screen.getByText('Card'));
+
+    expect(takeOrdersListScroll()).toBe(1234);
+    window.scrollY = 0;
   });
 
   it('shows placeholder rows while loading, without the empty text', () => {
@@ -323,7 +349,7 @@ describe('ExtractedResultRow', () => {
   };
   const product = { id: 3, name: 'Towel', categoryId: 1, categoryName: 'Cloth', createdAt: '', updatedAt: '', isDeleted: false };
 
-  const renderRow = (registerBlockedReason?: string) =>
+  const renderRow = (registerBlockedReason?: string, onRegister = vi.fn().mockResolvedValue(undefined)) =>
     render(
       <table>
         <tbody>
@@ -336,12 +362,30 @@ describe('ExtractedResultRow', () => {
             factorSuggestions={{}}
             onProductSelected={vi.fn()}
             onProductCreated={vi.fn()}
-            onRegister={vi.fn()}
+            onRegister={onRegister}
             registerBlockedReason={registerBlockedReason}
           />
         </tbody>
       </table>
     );
+
+  it('shows the error on the row and keeps 登录 when the registration fails', async () => {
+    renderRow(undefined, vi.fn().mockRejectedValue({ response: { data: '商品不存在' } }));
+
+    await userEvent.click(screen.getByRole('button', { name: '登录' }));
+
+    expect(await screen.findByRole('alert')).toHaveTextContent('商品不存在');
+    expect(screen.getByRole('button', { name: '登录' })).toBeEnabled();
+  });
+
+  it('shows 完成 and the warning when only the image update fails', async () => {
+    renderRow(undefined, vi.fn().mockResolvedValue('已登记，但商品图片未保存'));
+
+    await userEvent.click(screen.getByRole('button', { name: '登录' }));
+
+    expect(await screen.findByRole('alert')).toHaveTextContent('已登记，但商品图片未保存');
+    expect(screen.getByRole('button', { name: '完成' })).toBeDisabled();
+  });
 
   it('enables 登录 when a product is chosen and a rate exists', () => {
     renderRow();

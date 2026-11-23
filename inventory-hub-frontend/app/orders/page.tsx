@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import { Box, Button, Alert } from '@mui/material';
 import { useOrders } from './hooks/useOrders';
 import OrdersTable from './components/OrdersTable';
@@ -10,28 +10,30 @@ import { useOrderFilterStore } from '@/lib/stores/filterStore';
 import OrdersCardList from './components/OrdersCardList';
 import OrdersListToolbar from './components/OrdersListToolbar';
 import { useViewMode } from '@/lib/stores/viewModeStore';
-import { DEFAULT_ORDER_SORT, OrderSort, sortOrders } from './utils/sortOrders';
+import { sortOrders } from './utils/sortOrders';
 import { filterOrders } from './utils/filterOrders';
 import { ordersToCsv } from './utils/ordersCsv';
+import { takeOrdersListScroll } from './utils/listScroll';
 
 export default function OrdersPage() {
   const { orders, loading, loadOrders, importFromCurl } = useOrders();
 
   const [error, setError] = useState('');
   const [openImportDialog, setOpenImportDialog] = useState(false);
-  const [sort, setSort] = useState<OrderSort>(DEFAULT_ORDER_SORT);
   const [viewMode, setViewMode, viewModeHydrated] = useViewMode('orders');
 
-  // 筛选状态 — persisted across visits via localStorage (zustand persist).
+  // Filters and sort persist across visits in localStorage (zustand persist).
   const {
     searchOrderNo,
     costStatus,
     startDate,
     endDate,
+    sort,
     setSearchOrderNo,
     setCostStatus,
     setStartDate,
     setEndDate,
+    setSort,
     reset: resetFilters,
   } = useOrderFilterStore();
 
@@ -40,6 +42,16 @@ export default function OrdersPage() {
     useOrderFilterStore.persist.rehydrate();
     loadOrders().catch(() => setError('加载订单列表失败'));
   }, [loadOrders]);
+
+  // After the user opens an order and comes back, scroll to where the list was.
+  // The rows exist only after the orders load, so this waits for them. It runs once per visit.
+  const scrollRestored = useRef(false);
+  useEffect(() => {
+    if (scrollRestored.current || !viewModeHydrated || loading || orders.length === 0) return;
+    scrollRestored.current = true;
+    const y = takeOrdersListScroll();
+    if (y !== null) window.scrollTo(0, y);
+  }, [viewModeHydrated, loading, orders.length]);
 
   // Memoized so the lists below can memoize their sort on this array.
   const filteredOrders = useMemo(

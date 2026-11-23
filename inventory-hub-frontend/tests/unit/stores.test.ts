@@ -5,6 +5,7 @@ import { useInventoryFilterStore, useOrderFilterStore } from '@/lib/stores/filte
 import { usePickHistoryStore } from '@/lib/stores/pickHistoryStore';
 import { useViewMode, useViewModeStore } from '@/lib/stores/viewModeStore';
 import { fetchExchangeRate } from '@/lib/exchangeRate';
+import { DEFAULT_ORDER_SORT } from '@/app/orders/utils/sortOrders';
 
 beforeEach(() => {
   useFactorStore.setState({ factors: {} });
@@ -72,6 +73,15 @@ describe('filter stores', () => {
     useOrderFilterStore.getState().reset();
 
     expect(useOrderFilterStore.getState()).toMatchObject({ startDate: '', costStatus: 'all' });
+  });
+
+  it('keeps the order sort when the filters reset', () => {
+    useOrderFilterStore.getState().setSort({ field: 'profit', direction: 'asc' });
+
+    useOrderFilterStore.getState().reset();
+
+    expect(useOrderFilterStore.getState().sort).toEqual({ field: 'profit', direction: 'asc' });
+    useOrderFilterStore.getState().setSort(DEFAULT_ORDER_SORT);
   });
 });
 

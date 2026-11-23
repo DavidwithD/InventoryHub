@@ -22,6 +22,7 @@ import { formatOrderCost, formatOrderProfit, orderCostState } from '../utils/ord
 import { formatMoney } from '@/lib/formatMoney';
 import { openOnClick } from '../utils/openOnClick';
 import OrderThumbnail from './OrderThumbnail';
+import { saveOrdersListScroll } from '../utils/listScroll';
 
 interface Props {
   orders: Order[];
@@ -128,7 +129,13 @@ export default function OrdersTable({ orders, sort, onSortChange, loading = fals
                 <TableRow
                   key={order.id}
                   hover
-                  onClick={(e) => openOnClick(e, `/orders/${order.id}`, (href) => router.push(href))}
+                  onClick={(e) =>
+                    openOnClick(e, `/orders/${order.id}`, (href) => {
+                      // Save the scroll only when the list leaves. A Cmd or Ctrl click opens a new tab.
+                      saveOrdersListScroll();
+                      router.push(href);
+                    })
+                  }
                   sx={{ cursor: 'pointer' }}
                 >
                   <TableCell>
@@ -162,7 +169,10 @@ export default function OrdersTable({ orders, sort, onSortChange, loading = fals
                       size="small"
                       component={Link}
                       href={`/orders/${order.id}`}
-                      onClick={(e: { stopPropagation: () => void }) => e.stopPropagation()}
+                      onClick={(e: { stopPropagation: () => void }) => {
+                        e.stopPropagation();
+                        saveOrdersListScroll();
+                      }}
                       color="info"
                       className=" font-normal"
                     >

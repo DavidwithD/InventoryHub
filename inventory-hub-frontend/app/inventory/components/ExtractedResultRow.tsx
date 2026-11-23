@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import {
+  Alert,
   Autocomplete,
   Box,
   Button,
@@ -23,6 +24,7 @@ import {
 } from '@mui/material';
 import { Category, PreviewRow, Product } from '@/types';
 import { formatMoney } from '@/lib/formatMoney';
+import { apiErrorMessage } from '@/lib/apiErrorMessage';
 
 export interface RegisterInventoryPayload {
   productId: number;
@@ -43,7 +45,8 @@ interface Props {
   factorSuggestions: Record<number, number>;
   onProductSelected: (productName: string, productId: number) => void;
   onProductCreated: (data: { categoryId: number; name: string }) => Promise<Product>;
-  onRegister: (payload: RegisterInventoryPayload) => Promise<void>;
+  /** Rejects when the batch is not saved. Resolves with a warning when the batch saved but a later step failed. */
+  onRegister: (payload: RegisterInventoryPayload) => Promise<string | undefined>;
   /** When set, the 登录 button is disabled and shows this reason. */
   registerBlockedReason?: string;
 }
@@ -67,6 +70,12 @@ export default function ExtractedResultRow({
   const [newProductName, setNewProductName] = useState(row.productName);
   const [newProductCategoryId, setNewProductCategoryId] = useState<number>(0);
   const [creating, setCreating] = useState(false);
+  const [createError, setCreateError] = useState('');
+  // A message under the 登录 button: an error when the save failed, a warning when only a later step failed.
+  const [registerMessage, setRegisterMessage] = useState<{
+    text: string;
+    severity: 'error' | 'warning';
+  } | null>(null);
   const [factorInput, setFactorInput] = useState('1');
   const [factorTouched, setFactorTouched] = useState(false);
 
@@ -118,8 +127,9 @@ export default function ExtractedResultRow({
   const handleRegister = async () => {
     if (!selectedProductId || !factorValid || registerBlockedReason) return;
     setRegistering(true);
+    setRegisterMessage(null);
     try {
-      await onRegister({
+      const warning = await onRegister({
         productId: selectedProductId,
         priceCny: row.purchasePriceCny,
         purchaseQuantity: row.purchaseAmount,
@@ -129,6 +139,9 @@ export default function ExtractedResultRow({
         thumbUrl: row.thumbUrl || undefined,
       });
       setRegistered(true);
+      if (warning) setRegisterMessage({ text: warning, severity: 'warning' });
+    } catch (err) {
+      setRegisterMessage({ text: apiErrorMessage(err, '登记失败'), severity: 'error' });
     } finally {
       setRegistering(false);
     }
@@ -137,12 +150,14 @@ export default function ExtractedResultRow({
   const handleOpenCreateDialog = () => {
     setNewProductName(row.productName);
     setNewProductCategoryId(0);
+    setCreateError('');
     setCreateDialogOpen(true);
   };
 
   const handleCreate = async () => {
     if (!newProductName.trim() || !newProductCategoryId) return;
     setCreating(true);
+    setCreateError('');
     try {
       const created = await onProductCreated({
         categoryId: newProductCategoryId,
@@ -150,6 +165,9 @@ export default function ExtractedResultRow({
       });
       onProductSelected(row.productName, created.id);
       setCreateDialogOpen(false);
+    } catch (err) {
+      // The dialog stays open, so the typed name is kept.
+      setCreateError(apiErrorMessage(err, '创建商品失败'));
     } finally {
       setCreating(false);
     }
@@ -268,6 +286,16 @@ export default function ExtractedResultRow({
               </Button>
             </span>
           </Tooltip>
+          {registerMessage && (
+            <Typography
+              variant="caption"
+              role="alert"
+              color={registerMessage.severity === 'error' ? 'error' : 'warning.main'}
+              sx={{ display: 'block', mt: 1, maxWidth: 160 }}
+            >
+              {registerMessage.text}
+            </Typography>
+          )}
         </TableCell>
       </TableRow>
 
@@ -279,6 +307,11 @@ export default function ExtractedResultRow({
       >
         <DialogTitle>创建商品</DialogTitle>
         <DialogContent>
+          {createError && (
+            <Alert severity="error" sx={{ mt: 1 }}>
+              {createError}
+            </Alert>
+          )}
           <Grid container spacing={2} sx={{ mt: 1 }}>
             <Grid size={{ xs: 12 }}>
               <TextField
