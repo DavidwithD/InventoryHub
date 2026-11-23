@@ -7,12 +7,14 @@ import {
   Button,
   Chip,
   FormControl,
+  FormControlLabel,
   InputAdornment,
   InputLabel,
   MenuItem,
   Select,
   Snackbar,
   Stack,
+  Switch,
   TextField,
   ToggleButton,
   ToggleButtonGroup,
@@ -27,6 +29,7 @@ import FactorAdjustDialog from './components/FactorAdjustDialog';
 import ImpactConfirmDialog from './components/ImpactConfirmDialog';
 import { Inventory, CreateInventory, InventoryImpact } from '@/types';
 import { useInventoryFilterStore } from '@/lib/stores/filterStore';
+import { countProductsByStatus, filterByStock, productStockTotals } from './utils/productStock';
 
 export default function InventoryPage() {
   const router = useRouter();
@@ -48,11 +51,13 @@ export default function InventoryPage() {
     search,
     categoryId,
     stockFilter,
+    showEmptyBatches,
     sortField,
     sortOrder,
     setSearch,
     setCategoryId,
     setStockFilter,
+    setShowEmptyBatches,
     setSortField,
     setSortOrder,
   } = useInventoryFilterStore();
@@ -124,6 +129,8 @@ export default function InventoryPage() {
     }
   };
 
+  const productStock = useMemo(() => productStockTotals(inventories), [inventories]);
+
   const filtered = useMemo(() => {
     let result: Inventory[] = inventories;
 
@@ -136,11 +143,7 @@ export default function InventoryPage() {
       result = result.filter((inv) => inv.categoryId === categoryId);
     }
 
-    if (stockFilter === 'out') {
-      result = result.filter((inv) => inv.stockQuantity === 0);
-    } else if (stockFilter === 'low') {
-      result = result.filter((inv) => inv.stockQuantity > 0 && inv.stockQuantity < 5);
-    }
+    result = filterByStock(result, productStock, stockFilter, showEmptyBatches);
 
     result = [...result].sort((a, b) => {
       let aVal: string | number | null | undefined;
@@ -188,16 +191,19 @@ export default function InventoryPage() {
     });
 
     return result;
-  }, [inventories, search, categoryId, stockFilter, sortField, sortOrder]);
+  }, [
+    inventories,
+    productStock,
+    search,
+    categoryId,
+    stockFilter,
+    showEmptyBatches,
+    sortField,
+    sortOrder,
+  ]);
 
-  const outOfStockCount = useMemo(
-    () => inventories.filter((i) => i.stockQuantity === 0).length,
-    [inventories]
-  );
-  const lowStockCount = useMemo(
-    () => inventories.filter((i) => i.stockQuantity > 0 && i.stockQuantity < 5).length,
-    [inventories]
-  );
+  // The header chips count products, not batches.
+  const productCounts = useMemo(() => countProductsByStatus(productStock), [productStock]);
 
   return (
     <Stack spacing={2}>
@@ -207,14 +213,19 @@ export default function InventoryPage() {
           <Typography variant="h5" sx={{ fontWeight: 600 }}>
             库存管理
           </Typography>
-          <Typography variant="body2" color="text.secondary">
+          <Typography variant="body2" color="text.secondary" component="div">
             共 {filtered.length} 条记录
-            {outOfStockCount > 0 && (
-              <Chip label={`缺货 ${outOfStockCount}`} color="error" size="small" sx={{ ml: 1 }} />
-            )}
-            {lowStockCount > 0 && (
+            {productCounts.out > 0 && (
               <Chip
-                label={`低库存 ${lowStockCount}`}
+                label={`缺货商品 ${productCounts.out}`}
+                color="error"
+                size="small"
+                sx={{ ml: 1 }}
+              />
+            )}
+            {productCounts.low > 0 && (
+              <Chip
+                label={`低库存商品 ${productCounts.low}`}
                 color="warning"
                 size="small"
                 sx={{ ml: 0.5 }}
@@ -288,6 +299,18 @@ export default function InventoryPage() {
           </ToggleButton>
         </ToggleButtonGroup>
 
+        <FormControlLabel
+          control={
+            <Switch
+              size="small"
+              checked={showEmptyBatches || stockFilter === 'out'}
+              disabled={stockFilter === 'out'}
+              onChange={(e) => setShowEmptyBatches(e.target.checked)}
+            />
+          }
+          label="显示空批次"
+        />
+
         {(search || categoryId !== '' || stockFilter !== 'all') && (
           <Button
             size="small"
@@ -305,6 +328,7 @@ export default function InventoryPage() {
       {/* Table */}
       <InventoryTable
         inventories={filtered}
+        productStock={productStock}
         loading={loading}
         sortField={sortField}
         sortOrder={sortOrder}

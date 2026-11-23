@@ -54,6 +54,7 @@ describe('filter stores', () => {
     store.setSearch('card');
     store.setStockFilter('low');
     store.setCategoryId(3);
+    store.setShowEmptyBatches(true);
 
     useInventoryFilterStore.getState().reset();
 
@@ -61,6 +62,7 @@ describe('filter stores', () => {
       search: '',
       categoryId: '',
       stockFilter: 'all',
+      showEmptyBatches: false,
       sortField: 'id',
       sortOrder: 'asc',
     });

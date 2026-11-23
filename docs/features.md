@@ -28,7 +28,7 @@ The dashboard provides an at-a-glance view of your business metrics.
 | Monthly Profit        | Profit for current month         | Sum of (revenue - cost) for orders with a known cost |
 | Total Orders          | Total number of orders           | Count of all orders                          |
 | Orders Without Cost   | Orders missing cost data         | Orders with no lines or unknown cost         |
-| Low Stock Products    | Products with low inventory      | Batches with 1 to 4 units in stock           |
+| Low Stock Products    | Products with low inventory      | Products with 1 to 4 units in all batches    |
 | Monthly Orders        | Orders this month                | Count of orders in current month             |
 
 Amounts show in yen, for example 1,234円. The cards show a grey placeholder while the numbers load, and — when the load fails.
@@ -56,15 +56,20 @@ The inventory page displays all inventory items with:
 - Product name and category
 - Purchase information
 - Cost per unit
-- Current stock quantity
+- 批次库存: the units left in this batch. Click it to change the conversion factor.
+- 商品库存: the units left in all batches of the product. It is orange below 5 units and shows 缺货 at 0.
 - Reference status (used in orders)
+
+The header counts the products that are out of stock (缺货商品) and low on stock (低库存商品).
+
+Batches with no units left are hidden. Turn on 显示空批次 to show them.
 
 ### Filtering Options
 
-| Filter       | Description                                 |
-| ------------ | ------------------------------------------- |
-| Category     | Filter products by category                 |
-| Stock Status | Filter by low stock, in stock, out of stock |
+| Filter       | Description                                                       |
+| ------------ | ----------------------------------------------------------------- |
+| Category     | Filter products by category                                       |
+| Stock Status | 低库存 shows products with 1 to 4 units. 缺货 shows products with 0 units. |
 
 ### Creating Inventory Items
 

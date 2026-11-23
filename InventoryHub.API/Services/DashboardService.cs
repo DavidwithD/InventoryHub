@@ -55,7 +55,7 @@ public class DashboardService : IDashboardService
             .Count(ids => ids.Count == 0 || ids.Any(id => fifo.Unmatched(id) > 0));
 
         // 低库存商品数量（库存 < 5）
-        var lowStockProductsCount = fifo.LowStockBatchCount();
+        var lowStockProductsCount = fifo.LowStockProductCount();
 
         return new DashboardStatsDto
         {
