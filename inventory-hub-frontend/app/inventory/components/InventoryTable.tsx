@@ -13,6 +13,7 @@ import {
   Tooltip,
 } from '@mui/material';
 import { Inventory } from '@/types';
+import { formatMoney } from '@/lib/formatMoney';
 
 export type SortField =
   | 'id'
@@ -120,9 +121,9 @@ export default function InventoryTable({
                     </span>
                   </Tooltip>
                 </TableCell>
-                <TableCell align="right">¥{inv.priceJpy.toLocaleString()}</TableCell>
+                <TableCell align="right">{formatMoney(inv.priceJpy, 'JPY')}</TableCell>
                 <TableCell align="right">
-                  {inv.priceCny != null ? `¥${inv.priceCny.toLocaleString()}` : '—'}
+                  {inv.priceCny != null ? formatMoney(inv.priceCny, 'CNY') : '—'}
                 </TableCell>
               </TableRow>
             ))

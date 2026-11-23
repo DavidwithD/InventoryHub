@@ -1,11 +1,16 @@
 import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
+
+// The table and the cards open an order with router.push.
+const push = vi.fn();
+vi.mock('next/navigation', () => ({ useRouter: () => ({ push }) }));
 import CategoryDialog from '@/app/categories/components/CategoryDialog';
 import OrdersTable from '@/app/orders/components/OrdersTable';
 import OrdersCardList from '@/app/orders/components/OrdersCardList';
 import OrdersListToolbar from '@/app/orders/components/OrdersListToolbar';
 import ViewModeToggle from '@/components/ViewModeToggle';
+import ExtractedResultRow from '@/app/inventory/components/ExtractedResultRow';
 import type { Order } from '@/types';
 import { DEFAULT_ORDER_SORT, nextOrderSort, sortOrders } from '@/app/orders/utils/sortOrders';
 
@@ -63,43 +68,59 @@ describe('OrdersTable', () => {
 
   const rowFor = (orderNo: string) => screen.getByText(orderNo).closest('tr')!;
 
-  it('shows cost and profit for a fully matched order', () => {
-    render(
-      <OrdersTable
-        orders={[order({})]}
-        {...sortProps}
-        onEdit={vi.fn()}
-        onDelete={vi.fn()}
-      />
-    );
+  it('shows cost and profit in 円 for a fully matched order', () => {
+    render(<OrdersTable orders={[order({ revenue: 12000 })]} {...sortProps} />);
 
     const row = within(rowFor('m1'));
-    expect(row.getByText('350.00')).toBeInTheDocument();
-    expect(row.getByText('650.00')).toBeInTheDocument();
+    expect(row.getByText('12,000円')).toBeInTheDocument();
+    expect(row.getByText('350円')).toBeInTheDocument();
+    expect(row.getByText('11,650円')).toBeInTheDocument();
     expect(row.getByText('查看')).toBeInTheDocument();
   });
 
   it('shows unknown cost and profit when units are unmatched', () => {
-    render(
-      <OrdersTable
-        orders={[order({ hasUnknownCost: true, hasDetails: false })]}
-        {...sortProps}
-        onEdit={vi.fn()}
-        onDelete={vi.fn()}
-      />
-    );
+    render(<OrdersTable orders={[order({ hasUnknownCost: true })]} {...sortProps} />);
 
     const row = within(rowFor('m1'));
     expect(row.getAllByText('未知')).toHaveLength(2);
+  });
+
+  it('shows 未输入 and no profit for an order without lines', () => {
+    render(<OrdersTable orders={[order({ hasDetails: false, totalCost: 0 })]} {...sortProps} />);
+
+    const row = within(rowFor('m1'));
+    expect(row.getByText('未输入')).toBeInTheDocument();
+    expect(row.getByText('—')).toBeInTheDocument();
+    expect(row.queryByText('1,000円', { selector: 'td' })).toBeInTheDocument();
     expect(row.getByText('添加')).toBeInTheDocument();
   });
 
   it('links each row to its order page', () => {
-    render(
-      <OrdersTable orders={[order({ id: 42 })]} {...sortProps} onEdit={vi.fn()} onDelete={vi.fn()} />
-    );
+    render(<OrdersTable orders={[order({ id: 42 })]} {...sortProps} />);
 
     expect(screen.getByRole('link', { name: '查看' })).toHaveAttribute('href', '/orders/42');
+  });
+
+  it('opens the order on a click anywhere on the row', async () => {
+    push.mockClear();
+    render(<OrdersTable orders={[order({ id: 42 })]} {...sortProps} />);
+
+    await userEvent.click(screen.getByText('Card'));
+
+    expect(push).toHaveBeenCalledWith('/orders/42');
+  });
+
+  it('shows placeholder rows while loading, without the empty text', () => {
+    render(<OrdersTable orders={[]} {...sortProps} loading />);
+
+    expect(screen.getAllByTestId('order-row-skeleton').length).toBeGreaterThan(0);
+    expect(screen.queryByText('暂无订单数据')).not.toBeInTheDocument();
+  });
+
+  it('shows the empty text after loading', () => {
+    render(<OrdersTable orders={[]} {...sortProps} />);
+
+    expect(screen.getByText('暂无订单数据')).toBeInTheDocument();
   });
 });
 
@@ -124,8 +145,8 @@ describe('OrdersCardList', () => {
     render(<OrdersCardList orders={[order({ id: 7 })]} sort={DEFAULT_ORDER_SORT} />);
 
     const card = within(screen.getByTestId('order-card'));
-    expect(card.getByText('350.00')).toBeInTheDocument();
-    expect(card.getByText('650.00')).toBeInTheDocument();
+    expect(card.getByText('350円')).toBeInTheDocument();
+    expect(card.getByText('650円')).toBeInTheDocument();
     expect(card.getByRole('link', { name: '查看' })).toHaveAttribute('href', '/orders/7');
   });
 });
@@ -246,5 +267,48 @@ describe('ViewModeToggle', () => {
 
     await userEvent.click(screen.getByRole('button', { name: '切换到卡片视图' }));
     expect(onChange).toHaveBeenCalledWith('card');
+  });
+});
+
+describe('ExtractedResultRow', () => {
+  const row = {
+    purchaseNo: 'p1',
+    purchaseDate: '2026-03-05',
+    productName: 'Towel',
+    purchasePriceCny: 7,
+    purchaseAmount: 2,
+    thumbUrl: '',
+    offset: '',
+  };
+  const product = { id: 3, name: 'Towel', categoryId: 1, categoryName: 'Cloth', createdAt: '', updatedAt: '', isDeleted: false };
+
+  const renderRow = (registerBlockedReason?: string) =>
+    render(
+      <table>
+        <tbody>
+          <ExtractedResultRow
+            row={row}
+            categories={[]}
+            products={[product]}
+            selectedProductId={3}
+            registeredItems={new Set()}
+            factorSuggestions={{}}
+            onProductSelected={vi.fn()}
+            onProductCreated={vi.fn()}
+            onRegister={vi.fn()}
+            registerBlockedReason={registerBlockedReason}
+          />
+        </tbody>
+      </table>
+    );
+
+  it('enables 登录 when a product is chosen and a rate exists', () => {
+    renderRow();
+    expect(screen.getByRole('button', { name: '登录' })).toBeEnabled();
+  });
+
+  it('disables 登录 when there is no exchange rate', () => {
+    renderRow('没有汇率，无法登记');
+    expect(screen.getByRole('button', { name: '登录' })).toBeDisabled();
   });
 });

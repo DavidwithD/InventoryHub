@@ -19,6 +19,7 @@ import {
   Link,
 } from '@mui/material';
 import { useStats } from '../hooks/useStats';
+import { formatMoney } from '@/lib/formatMoney';
 
 type Window = 30 | 60 | 90;
 
@@ -67,7 +68,7 @@ export default function InventoryHealthTab() {
   const statusLabel = (s: string) =>
     s === 'healthy' ? '健康' : s === 'low' ? '偏低' : '告急';
 
-  const fmt = (n: number) => `¥${n.toLocaleString()}`;
+  const fmt = (n: number) => formatMoney(n, 'JPY');
 
   return (
     <Box>

@@ -43,7 +43,6 @@ inventory-hub-frontend/
 │   ├── Sidebar.tsx               # Side navigation drawer
 │   ├── DataTable.tsx             # Generic data table wrapper
 │   ├── ImportDialog.tsx          # Mercari import dialog
-│   ├── OrderDetailRows.tsx       # Multi-row order detail editor
 │   ├── OrderFiltersDialog.tsx    # Date range filter dialog
 │   └── ProductSelect.tsx         # Category → Product dropdown
 │
@@ -51,7 +50,8 @@ inventory-hub-frontend/
 │   ├── api.ts                    # Axios instance configuration
 │   ├── apiErrorMessage.ts        # Turns an API error into alert text
 │   ├── theme.ts                  # MUI theme customization
-│   ├── exchangeRate.ts           # Exchange rate utilities
+│   ├── exchangeRate.ts           # Loads the CNY → JPY rate and keeps the last one that loaded
+│   ├── formatMoney.ts            # Formats an amount with 円 or 元
 │   └── hooks/                    # Custom React hooks
 │       ├── useOrders.ts
 │       ├── useInventory.ts
@@ -108,10 +108,10 @@ export default function Dashboard() {
 
 Features:
 - DataGrid with sorting and filtering
-- Date range filter
-- Search by order number
+- Date range filter. All filters run on the client in `app/orders/utils/filterOrders.ts`.
+- Search by order number or name
 - Batch import from Mercari
-- Export to Excel/CSV
+- Export to CSV with `app/orders/utils/ordersCsv.ts`
 
 ```tsx
 // Key features
@@ -521,31 +521,7 @@ export function useIsMobile() {
 
 ## Data Export
 
-### Excel Export
-
-```typescript
-// lib/export.ts
-import * as XLSX from 'xlsx';
-
-export function exportToExcel(data: any[], filename: string) {
-  const worksheet = XLSX.utils.json_to_sheet(data);
-  const workbook = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(workbook, worksheet, 'Data');
-  XLSX.writeFile(workbook, `${filename}.xlsx`);
-}
-
-// Usage
-const exportOrders = () => {
-  const exportData = orders.map(order => ({
-    'Order No': order.orderNo,
-    'Revenue': order.revenue,
-    'Cost': order.totalCost,
-    'Profit': order.revenue - order.totalCost,
-    'Date': new Date(order.transactionTime).toLocaleDateString(),
-  }));
-  exportToExcel(exportData, 'orders');
-};
-```
+The order list builds its CSV file in the browser. `ordersToCsv` in `app/orders/utils/ordersCsv.ts` writes the file. The page turns it into a Blob and downloads it.
 
 ## TypeScript Interfaces
 

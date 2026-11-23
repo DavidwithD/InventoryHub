@@ -15,6 +15,7 @@ import {
 } from '@mui/material';
 import DeleteIcon from '@mui/icons-material/Delete';
 import { OrderDetail } from '@/types';
+import { formatMoney } from '@/lib/formatMoney';
 
 interface Props {
   details: OrderDetail[];
@@ -84,15 +85,12 @@ export default function OrderDetailLinesTable({
   return (
     // On a narrow screen the table keeps its width and the container scrolls sideways.
     <TableContainer component={Paper} variant="outlined">
-      <Table size="small" sx={{ minWidth: 640, '& th': { whiteSpace: 'nowrap' } }}>
+      <Table size="small" sx={{ minWidth: 420, '& th': { whiteSpace: 'nowrap' } }}>
         <TableHead>
           <TableRow>
             <TableCell sx={{ minWidth: 180 }}>商品名</TableCell>
             <TableCell sx={{ width: 110 }}>数量</TableCell>
-            <TableCell>包装费（¥）</TableCell>
-            <TableCell>其他费用（¥）</TableCell>
-            <TableCell>小计（¥）</TableCell>
-            <TableCell>备注</TableCell>
+            <TableCell>小计</TableCell>
             <TableCell sx={{ width: 60 }}>删除</TableCell>
           </TableRow>
         </TableHead>
@@ -109,12 +107,9 @@ export default function OrderDetailLinesTable({
                   onCommit={(quantity) => onQuantityChange(detail, quantity)}
                 />
               </TableCell>
-              <TableCell>{detail.packagingCost.toFixed(2)}</TableCell>
-              <TableCell>{detail.otherCost.toFixed(2)}</TableCell>
               <TableCell>
-                {detail.unmatchedQuantity > 0 ? '未知' : detail.subtotalCost.toFixed(2)}
+                {detail.unmatchedQuantity > 0 ? '未知' : formatMoney(detail.subtotalCost, 'JPY')}
               </TableCell>
-              <TableCell>{detail.notes || '-'}</TableCell>
               <TableCell>
                 <IconButton
                   size="small"

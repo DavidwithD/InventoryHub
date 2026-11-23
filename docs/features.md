@@ -9,10 +9,10 @@ InventoryHub provides comprehensive inventory and order management with the foll
 | Feature              | Description                                                      |
 | -------------------- | ---------------------------------------------------------------- |
 | Inventory Management | Track stock levels across multiple products and purchase sources |
-| Order Management     | Create and manage sales orders with cost tracking                |
+| Order Management     | Add cost lines to imported sales orders and track profit         |
 | Batch Import         | Import orders from Mercari marketplace                           |
 | Analytics Dashboard  | View key metrics and statistics                                  |
-| Data Export          | Export data to Excel/CSV formats                                 |
+| Data Export          | Export the order list to CSV                                     |
 
 ---
 
@@ -30,6 +30,10 @@ The dashboard provides an at-a-glance view of your business metrics.
 | Orders Without Cost   | Orders missing cost data         | Orders with no lines or unknown cost         |
 | Low Stock Products    | Products with low inventory      | Batches with 1 to 4 units in stock           |
 | Monthly Orders        | Orders this month                | Count of orders in current month             |
+
+Amounts show in yen, for example 1,234円. The cards show a grey placeholder while the numbers load, and — when the load fails.
+
+Click the 待补成本 card, or 去补成本 in the warning, to open the order list. The list then shows only the orders that need cost, with all other filters cleared.
 
 ### Quick Navigation
 
@@ -79,6 +83,15 @@ When creating inventory, you specify:
 | Currency Type  | Currency code (JPY, CNY, etc.)    | No       |
 | Exchange Rate  | Exchange rate at time of purchase | No       |
 
+The inventory table shows JPY prices with 円 and CNY prices with 元.
+
+### Purchase Import (采购导入)
+
+The page converts each CNY price to a JPY unit price with the current CNY → JPY rate. The rate shows at the top of the page.
+
+- When the rate does not load, the page uses the last rate that loaded. The rate line says so.
+- When no rate is known, every 登录 button is disabled. Registering then would save a JPY price of 0.
+
 ### Batch Creation
 
 For bulk entries with the same purchase details:
@@ -108,9 +121,14 @@ The orders page displays:
 - Order number
 - Item name and image
 - Revenue
-- Total cost: FIFO batch cost plus packaging and other costs
-- Profit (revenue - cost)
+- Shipping fee
+- Total cost: FIFO batch cost. An order with no lines shows 未输入.
+- Profit (revenue - cost). An order with no lines shows —.
 - Transaction date
+
+Amounts show in yen, for example 1,234円.
+
+Click anywhere on an order's row or card to open the order page. The Mercari item link is on the order page.
 
 Click the view icon at the right end of the row above the list to switch between table view and card view. In card view, pick the sort field and direction in the same row. The page keeps the view you picked the next time you open it. The sort goes back to newest first.
 
@@ -118,22 +136,13 @@ Click the view icon at the right end of the row above the list to switch between
 
 | Filter      | Description                          |
 | ----------- | ------------------------------------ |
-| Date Range  | Filter by transaction date           |
-| Search      | Search by order number               |
-| Cost Status | Filter orders with/without cost data |
+| Date Range  | Filter by transaction date. The start day and the end day are included. |
+| Search      | Search by order number or order name |
+| Cost Status | 未输入成本 shows orders with no lines or an unknown cost. 已输入成本 shows the rest. |
 
-### Creating Orders
+Each filter applies as soon as you change it. 清除筛选 clears all of them.
 
-Basic order information:
-
-| Field            | Description         | Required |
-| ---------------- | ------------------- | -------- |
-| Order No         | Unique identifier   | Yes      |
-| Name             | Item/order name     | No       |
-| Image URL        | Product image       | No       |
-| Revenue          | Sales amount        | Yes      |
-| Shipping Fee     | Shipping cost       | No       |
-| Transaction Time | When order occurred | Yes      |
+Orders come from the Mercari import. The app has no form to create an order by hand.
 
 ### Order Details (Line Items)
 
@@ -144,20 +153,17 @@ Each order can have multiple line items:
 | Category       | Filter products by category    |
 | Product        | Select the product             |
 | Quantity       | Number of units                |
-| Packaging Cost | Additional packaging cost      |
-| Other Cost     | Miscellaneous costs            |
-| Notes          | Additional notes               |
 
 **Automatic Values:**
 
 - Batch allocation: the app uses the oldest batches first.
-- Subtotal: batch cost + packaging cost + other cost.
+- Subtotal: the batch cost of the units.
 
 ### Order Page
 
-Click 添加 or 查看 in an order's row to open its page. The page has its own address, so you can bookmark it or open it in a new tab. Click 返回订单列表 to go back. Your filters stay as you left them.
+Click an order's row to open its page. The page has its own address, so you can bookmark it or open it in a new tab. Click 返回订单列表 to go back. Your filters stay as you left them. If you picked products and did not save them, the app asks before it leaves the page.
 
-The top of the page shows the order: image, name, order number, time, revenue, shipping fee, total cost and profit.
+The top of the page shows the order: image, name, order number, time, revenue, shipping fee, total cost and profit. Click the image or 在 Mercari 查看 to open the Mercari item in a new tab.
 
 Under 订单详细 you see the order's lines:
 
@@ -167,7 +173,9 @@ Under 订单详细 you see the order's lines:
 
 Under 添加商品 you add lines:
 
-1. Pick a category, or search, and click a product. It moves to the 已选商品 list.
+1. Search, or pick a category, and click a product. It moves to the 已选商品 list.
+   - A search looks in all products. The category applies only when the search box is empty.
+   - The category list opens on 选择历史 when you have picked products before. Otherwise it opens on 全部分类.
 2. Set the quantity of each picked product.
 3. Click 保存. Cost and profit at the top update.
 
@@ -301,32 +309,15 @@ Suppliers/channels represent:
 
 ## Data Export
 
-### Excel Export
+The order list exports to CSV:
 
-Export data to Excel format (.xlsx):
+1. Set the filters on the order list.
+2. Click 导出CSV.
+3. The file holds the orders the list shows, in the same sort.
 
-1. Go to the desired page (Orders, Inventory, etc.)
-2. Apply any filters
-3. Click "Export to Excel"
-4. File downloads automatically
+**Columns:** 订单号, 订单名, 图片URL, 营业额(円), 运费(円), 总成本(円), 利润(円), 交易时间.
 
-**Exported Fields (Orders):**
-
-- Order No
-- Name
-- Revenue
-- Total Cost
-- Profit
-- Shipping Fee
-- Transaction Date
-
-### CSV Export
-
-Export to CSV format for compatibility:
-
-1. Click "Export" dropdown
-2. Select "CSV"
-3. File downloads with UTF-8 encoding
+Amounts have two decimals and no unit. Cost and profit show 未输入 for an order with no lines and 未知 for an unknown cost. The file is UTF-8 with a byte order mark, so Excel reads the Chinese headers.
 
 ---
 

@@ -46,7 +46,11 @@ export default function ProductPicker({
   excludeProductIds = [],
   onPick,
 }: ProductPickerProps) {
-  const [categoryId, setCategoryId] = useState<number>(CATEGORY_HISTORY);
+  // Start on 选择历史 when it has products. A new browser has none, so it starts on 全部分类.
+  // The start value is read once. A pick during this visit does not switch the view.
+  const [categoryId, setCategoryId] = useState<number>(() =>
+    usePickHistoryStore.getState().history.length > 0 ? CATEGORY_HISTORY : CATEGORY_ALL
+  );
   const [search, setSearch] = useState<string>('');
   const [products, setProducts] = useState<Product[]>([]);
   const fetchedRef = useRef<boolean>(false);
@@ -92,13 +96,15 @@ export default function ProductPicker({
       .filter((it) => !excluded.has(it.productId))
       .filter((it) => term === '' || it.productName.toLowerCase().includes(term))
       .filter((it) => {
+        // A search looks in all products. The category applies only to an empty search.
+        if (term !== '') return true;
         if (categoryId === CATEGORY_HISTORY) return historyRank.has(it.productId);
         if (categoryId === CATEGORY_ALL) return true;
         return it.categoryId === categoryId;
       });
 
-    // History view keeps most-recent-first; other views sort alphabetically.
-    if (categoryId === CATEGORY_HISTORY) {
+    // History view keeps most-recent-first; other views and searches sort alphabetically.
+    if (categoryId === CATEGORY_HISTORY && term === '') {
       result.sort((a, b) => historyRank.get(a.productId)! - historyRank.get(b.productId)!);
     } else {
       result.sort((a, b) => a.productName.localeCompare(b.productName));
@@ -148,6 +154,7 @@ export default function ProductPicker({
         <TextField
           size="small"
           label="搜索商品"
+          placeholder="在全部商品中搜索"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           sx={{ flex: 1, minWidth: 200 }}
@@ -157,7 +164,11 @@ export default function ProductPicker({
       <Box>
         {items.length === 0 ? (
           <Typography color="text.secondary" sx={{ textAlign: 'center', py: 4 }}>
-            {categoryId === CATEGORY_HISTORY ? '暂无选择历史' : '没有可用商品'}
+            {search.trim() !== ''
+              ? '没有匹配的商品'
+              : categoryId === CATEGORY_HISTORY
+                ? '暂无选择历史'
+                : '没有可用商品'}
           </Typography>
         ) : (
           <Grid container spacing={1.5}>

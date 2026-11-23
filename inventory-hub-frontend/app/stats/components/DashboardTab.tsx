@@ -38,6 +38,7 @@ import {
   TopProduct,
   DashboardKpi,
 } from '../hooks/useStats';
+import { formatMoney, formatJpyThousands } from '@/lib/formatMoney';
 
 // ── KPI card ─────────────────────────────────────────────────────────────────
 
@@ -192,8 +193,8 @@ export default function DashboardTab({ onNavigateToProduct }: Props) {
 
   const fmt = (n: number) =>
     n >= 1_000_000
-      ? `¥${(n / 1_000_000).toFixed(1)}M`
-      : `¥${n.toLocaleString()}`;
+      ? `${(n / 1_000_000).toFixed(1)}M円`
+      : formatMoney(n, 'JPY');
 
   return (
     <Box>
@@ -333,8 +334,8 @@ export default function DashboardTab({ onNavigateToProduct }: Props) {
                 <LineChart data={trend} margin={{ top: 4, right: 16, bottom: 0, left: 0 }}>
                   <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
                   <XAxis dataKey="label" tick={{ fontSize: 11 }} />
-                  <YAxis tick={{ fontSize: 11 }} tickFormatter={(v) => `¥${(v / 1000).toFixed(0)}k`} />
-                  <Tooltip formatter={(v) => `¥${Number(v).toLocaleString()}`} />
+                  <YAxis tick={{ fontSize: 11 }} tickFormatter={formatJpyThousands} />
+                  <Tooltip formatter={(v) => formatMoney(Number(v), 'JPY')} />
                   <Legend />
                   <Line
                     type="monotone"
@@ -417,7 +418,7 @@ export default function DashboardTab({ onNavigateToProduct }: Props) {
                         <Cell key={i} fill={CATEGORY_COLORS[i % CATEGORY_COLORS.length]} />
                       ))}
                     </Pie>
-                    <Tooltip formatter={(v) => `¥${Number(v).toLocaleString()}`} />
+                    <Tooltip formatter={(v) => formatMoney(Number(v), 'JPY')} />
                   </PieChart>
                 </ResponsiveContainer>
                 <Box sx={{ flex: 1 }}>
@@ -449,9 +450,9 @@ export default function DashboardTab({ onNavigateToProduct }: Props) {
                   data={categorySales as unknown as Record<string, unknown>[]}
                   margin={{ top: 0, right: 16, bottom: 0, left: 0 }}
                 >
-                  <XAxis type="number" tick={{ fontSize: 11 }} tickFormatter={(v) => `¥${(v / 1000).toFixed(0)}k`} />
+                  <XAxis type="number" tick={{ fontSize: 11 }} tickFormatter={formatJpyThousands} />
                   <YAxis type="category" dataKey="category" tick={{ fontSize: 11 }} width={90} />
-                  <Tooltip formatter={(v) => `¥${Number(v).toLocaleString()}`} />
+                  <Tooltip formatter={(v) => formatMoney(Number(v), 'JPY')} />
                   <Bar dataKey="revenue" name="营收" radius={[0, 4, 4, 0]}>
                     {categorySales.map((_, i) => (
                       <Cell key={i} fill={CATEGORY_COLORS[i % CATEGORY_COLORS.length]} />
@@ -501,9 +502,9 @@ export default function DashboardTab({ onNavigateToProduct }: Props) {
                 if (productId && onNavigateToProduct) onNavigateToProduct(productId);
               }}
             >
-              <XAxis type="number" tick={{ fontSize: 11 }} tickFormatter={(v) => `¥${(v / 1000).toFixed(0)}k`} />
+              <XAxis type="number" tick={{ fontSize: 11 }} tickFormatter={formatJpyThousands} />
               <YAxis type="category" dataKey="name" tick={{ fontSize: 11 }} width={120} />
-              <Tooltip formatter={(v) => `¥${Number(v).toLocaleString()}`} />
+              <Tooltip formatter={(v) => formatMoney(Number(v), 'JPY')} />
               <Bar dataKey="revenue" name="营收" fill="#4f46e5" radius={[0, 4, 4, 0]} cursor="pointer" />
               <Bar dataKey="profit" name="利润" fill="#22c55e" radius={[0, 4, 4, 0]} cursor="pointer" />
             </BarChart>

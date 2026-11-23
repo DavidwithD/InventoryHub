@@ -14,6 +14,7 @@ import {
 } from '@mui/material';
 import { Inventory } from '@/types';
 import { useFactorStore } from '@/lib/stores/factorStore';
+import { formatMoney } from '@/lib/formatMoney';
 
 interface Props {
   open: boolean;
@@ -63,9 +64,9 @@ export default function FactorAdjustDialog({
           <Stack spacing={2} sx={{ mt: 1 }}>
             <Typography variant="subtitle2">{inventory.productName}</Typography>
             <Typography variant="body2" color="text.secondary">
-              进货数量 {inventory.purchaseQuantity} · 当前库存 {inventory.stockQuantity} · 单价 ¥
-              {inventory.priceCny != null ? inventory.priceCny.toLocaleString() : '—'} / ¥
-              {inventory.priceJpy.toLocaleString()}
+              进货数量 {inventory.purchaseQuantity} · 当前库存 {inventory.stockQuantity} · 单价{' '}
+              {inventory.priceCny != null ? formatMoney(inventory.priceCny, 'CNY') : '—'} /{' '}
+              {formatMoney(inventory.priceJpy, 'JPY')}
             </Typography>
 
             <TextField
@@ -84,7 +85,7 @@ export default function FactorAdjustDialog({
             <Box sx={{ p: 1.5, bgcolor: 'action.hover', borderRadius: 1 }}>
               <Typography variant="body2" color={factorValid ? 'text.primary' : 'error'}>
                 {factorValid
-                  ? `入库 ${newStock} 件 · 单价 ¥${newCny != null ? newCny.toFixed(2) : '—'} / ¥${newJpy.toLocaleString()}`
+                  ? `入库 ${newStock} 件 · 单价 ${newCny != null ? formatMoney(newCny, 'CNY') : '—'} / ${formatMoney(newJpy, 'JPY')}`
                   : '请输入有效倍数'}
               </Typography>
               <Typography variant="caption" color="text.secondary">

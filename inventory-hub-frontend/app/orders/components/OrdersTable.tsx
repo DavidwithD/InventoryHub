@@ -2,6 +2,7 @@
 
 import { useMemo } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import {
   Paper,
   Table,
@@ -12,21 +13,28 @@ import {
   TableRow,
   IconButton,
   TableSortLabel,
+  Skeleton,
+  Chip,
 } from '@mui/material';
 import { Order } from '@/types';
 import { OrderSort, OrderSortField, nextOrderSort, sortOrders } from '../utils/sortOrders';
-import { orderProfit } from '../utils/orderProfit';
+import { formatOrderCost, formatOrderProfit, orderCostState } from '../utils/orderProfit';
+import { formatMoney } from '@/lib/formatMoney';
 import OrderThumbnail from './OrderThumbnail';
 
 interface Props {
   orders: Order[];
   sort: OrderSort;
   onSortChange: (sort: OrderSort) => void;
-  onEdit: (order: Order) => void;
-  onDelete: (id: number) => void;
+  /** True while the orders load. The table shows placeholder rows. */
+  loading?: boolean;
 }
 
-export default function OrdersTable({ orders, sort, onSortChange, onEdit, onDelete }: Props) {
+const COLUMN_COUNT = 9;
+const SKELETON_ROWS = 8;
+
+export default function OrdersTable({ orders, sort, onSortChange, loading = false }: Props) {
+  const router = useRouter();
   const handleRequestSort = (field: OrderSortField) => onSortChange(nextOrderSort(sort, field));
   const sortedOrders = useMemo(() => sortOrders(orders, sort), [orders, sort]);
 
@@ -98,54 +106,74 @@ export default function OrdersTable({ orders, sort, onSortChange, onEdit, onDele
             </TableRow>
           </TableHead>
           <TableBody>
-            {sortedOrders.map((order) => (
-              <TableRow key={order.id}>
-                <TableCell>
-                  <OrderThumbnail order={order} size={60} radius={4} />
-                </TableCell>
-                <TableCell
-                  sx={{
-                    maxWidth: 250,
-                    overflow: 'hidden',
-                    textOverflow: 'ellipsis',
-                    whiteSpace: 'nowrap',
-                  }}
-                  title={order.name}
+            {loading &&
+              sortedOrders.length === 0 &&
+              Array.from({ length: SKELETON_ROWS }, (_, i) => (
+                <TableRow key={`skeleton-${i}`} data-testid="order-row-skeleton">
+                  <TableCell>
+                    <Skeleton variant="rounded" width={60} height={60} />
+                  </TableCell>
+                  {Array.from({ length: COLUMN_COUNT - 1 }, (_, j) => (
+                    <TableCell key={j}>
+                      <Skeleton />
+                    </TableCell>
+                  ))}
+                </TableRow>
+              ))}
+            {sortedOrders.map((order) => {
+              const missing = orderCostState(order) === 'missing';
+              return (
+                // A click anywhere on the row opens the order. The link in the last cell is for the keyboard.
+                <TableRow
+                  key={order.id}
+                  hover
+                  onClick={() => router.push(`/orders/${order.id}`)}
+                  sx={{ cursor: 'pointer' }}
                 >
-                  {order.name}
-                </TableCell>
-                <TableCell>{order.orderNo}</TableCell>
-                <TableCell>{order.revenue.toFixed(2)}</TableCell>
-                <TableCell>
-                  {order.hasUnknownCost ? '未知' : order.totalCost?.toFixed(2) || '0.00'}
-                </TableCell>
-                <TableCell>{order.shippingFee.toFixed(2)}</TableCell>
-                <TableCell>
-                  {orderProfit(order)?.toFixed(2) ?? '未知'}
-                </TableCell>
-                <TableCell>{new Date(order.transactionTime).toLocaleDateString('zh-CN')}</TableCell>
-                <TableCell align="center">
-                  <IconButton
-                    size="small"
-                    component={Link}
-                    href={`/orders/${order.id}`}
-                    color="info"
-                    className=" font-normal"
+                  <TableCell>
+                    <OrderThumbnail order={order} size={60} radius={4} />
+                  </TableCell>
+                  <TableCell
+                    sx={{
+                      maxWidth: 250,
+                      overflow: 'hidden',
+                      textOverflow: 'ellipsis',
+                      whiteSpace: 'nowrap',
+                    }}
+                    title={order.name}
                   >
-                    {order.hasDetails ? '查看' : '添加'}
-                  </IconButton>
-                  {/* <IconButton size="small" onClick={() => onEdit(order)} color="primary">
-                    <EditIcon />
-                  </IconButton>
-                  <IconButton size="small" onClick={() => onDelete(order.id)} color="error">
-                    <DeleteIcon />
-                  </IconButton> */}
-                </TableCell>
-              </TableRow>
-            ))}
-            {sortedOrders.length === 0 && (
+                    {order.name}
+                  </TableCell>
+                  <TableCell>{order.orderNo}</TableCell>
+                  <TableCell>{formatMoney(order.revenue, 'JPY')}</TableCell>
+                  <TableCell>
+                    {missing ? (
+                      <Chip label="未输入" size="small" color="default" variant="outlined" />
+                    ) : (
+                      formatOrderCost(order)
+                    )}
+                  </TableCell>
+                  <TableCell>{formatMoney(order.shippingFee, 'JPY')}</TableCell>
+                  <TableCell>{formatOrderProfit(order)}</TableCell>
+                  <TableCell>{new Date(order.transactionTime).toLocaleDateString('zh-CN')}</TableCell>
+                  <TableCell align="center">
+                    <IconButton
+                      size="small"
+                      component={Link}
+                      href={`/orders/${order.id}`}
+                      onClick={(e: { stopPropagation: () => void }) => e.stopPropagation()}
+                      color="info"
+                      className=" font-normal"
+                    >
+                      {order.hasDetails ? '查看' : '添加'}
+                    </IconButton>
+                  </TableCell>
+                </TableRow>
+              );
+            })}
+            {!loading && sortedOrders.length === 0 && (
               <TableRow>
-                <TableCell colSpan={9} align="center">
+                <TableCell colSpan={COLUMN_COUNT} align="center">
                   暂无订单数据
                 </TableCell>
               </TableRow>

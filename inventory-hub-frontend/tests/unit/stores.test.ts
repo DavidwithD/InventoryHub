@@ -4,7 +4,7 @@ import { useFactorStore } from '@/lib/stores/factorStore';
 import { useInventoryFilterStore, useOrderFilterStore } from '@/lib/stores/filterStore';
 import { usePickHistoryStore } from '@/lib/stores/pickHistoryStore';
 import { useViewMode, useViewModeStore } from '@/lib/stores/viewModeStore';
-import { getCurrentExchangeRate, getLastExchangeRate, saveExchangeRate } from '@/lib/exchangeRate';
+import { fetchExchangeRate } from '@/lib/exchangeRate';
 
 beforeEach(() => {
   useFactorStore.setState({ factors: {} });
@@ -76,20 +76,28 @@ describe('filter stores', () => {
 });
 
 describe('exchange rate', () => {
-  it('saves and reads back the last rate', () => {
-    expect(getLastExchangeRate()).toBeNull();
+  beforeEach(() => localStorage.removeItem('cnyJpyRate'));
 
-    saveExchangeRate(20.5);
+  it('returns a live rate and saves it', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ json: async () => ({ rates: { JPY: 20.5 } }) }));
 
-    expect(getLastExchangeRate()).toBe(20.5);
+    expect(await fetchExchangeRate()).toEqual({ rate: 20.5, source: 'live' });
+    expect(localStorage.getItem('cnyJpyRate')).toBe('20.5');
   });
 
   it('falls back to the saved rate when the request fails', async () => {
     vi.spyOn(console, 'error').mockImplementation(() => {});
+    localStorage.setItem('cnyJpyRate', '21.3');
     vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new Error('offline')));
-    saveExchangeRate(0.048);
 
-    expect(await getCurrentExchangeRate()).toBe(0.048);
+    expect(await fetchExchangeRate()).toEqual({ rate: 21.3, source: 'saved' });
+  });
+
+  it('returns rate 0 when the request fails and no rate was saved', async () => {
+    vi.spyOn(console, 'error').mockImplementation(() => {});
+    vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new Error('offline')));
+
+    expect(await fetchExchangeRate()).toEqual({ rate: 0, source: 'saved' });
   });
 });
 

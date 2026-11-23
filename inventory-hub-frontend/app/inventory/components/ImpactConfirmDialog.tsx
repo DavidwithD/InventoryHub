@@ -11,6 +11,7 @@ import {
   Typography,
 } from '@mui/material';
 import { InventoryImpact } from '@/types';
+import { formatMoney } from '@/lib/formatMoney';
 
 interface Props {
   open: boolean;
@@ -33,7 +34,7 @@ export default function ImpactConfirmDialog({
   onConfirm,
 }: Props) {
   const costChange = impact?.costChange ?? 0;
-  const costText = `${costChange > 0 ? '+' : ''}¥${costChange.toLocaleString()}`;
+  const costText = `${costChange > 0 ? '+' : ''}${formatMoney(costChange, 'JPY')}`;
 
   return (
     <Dialog open={open} onClose={onClose} maxWidth="xs" fullWidth>

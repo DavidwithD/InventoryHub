@@ -22,6 +22,7 @@ import {
   Chip,
 } from '@mui/material';
 import { useStats, periodToDates, Period } from '../hooks/useStats';
+import { formatMoney } from '@/lib/formatMoney';
 
 type SortDir = 'asc' | 'desc';
 
@@ -71,7 +72,7 @@ export default function ProductPerformanceTab() {
   const best = productsPage?.products.reduce((a, b) => (a.marginPct > b.marginPct ? a : b), productsPage.products[0]);
   const worst = productsPage?.products.reduce((a, b) => (a.marginPct < b.marginPct ? a : b), productsPage.products[0]);
 
-  const fmt = (n: number) => `¥${n.toLocaleString()}`;
+  const fmt = (n: number) => formatMoney(n, 'JPY');
 
   return (
     <Box>

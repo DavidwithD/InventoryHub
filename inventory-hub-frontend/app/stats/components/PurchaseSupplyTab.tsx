@@ -27,6 +27,7 @@ import {
   Cell,
 } from 'recharts';
 import { useStats, periodToDates, Period } from '../hooks/useStats';
+import { formatMoney, formatJpyThousands } from '@/lib/formatMoney';
 
 const SUPPLIER_COLORS = [
   '#4f46e5', '#7c3aed', '#db2777', '#ea580c', '#16a34a',
@@ -68,7 +69,7 @@ export default function PurchaseSupplyTab() {
     );
   }, [purchasesPage, selectedProduct]);
 
-  const fmt = (n: number) => `¥${n.toLocaleString()}`;
+  const fmt = (n: number) => formatMoney(n, 'JPY');
 
   return (
     <Box>
@@ -121,7 +122,7 @@ export default function PurchaseSupplyTab() {
             <BarChart data={spendingData} margin={{ top: 4, right: 16, bottom: 0, left: 0 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
               <XAxis dataKey="period" tick={{ fontSize: 11 }} />
-              <YAxis tick={{ fontSize: 11 }} tickFormatter={(v) => `¥${(v / 1000).toFixed(0)}k`} />
+              <YAxis tick={{ fontSize: 11 }} tickFormatter={formatJpyThousands} />
               <Tooltip formatter={(v) => fmt(Number(v))} />
               <Legend />
               {(purchasesPage?.supplierNames ?? []).map((s, i) => (

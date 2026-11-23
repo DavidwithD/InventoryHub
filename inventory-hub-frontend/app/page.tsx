@@ -12,6 +12,8 @@ import {
   CardContent,
   CardActionArea,
   Alert,
+  Skeleton,
+  Button,
 } from '@mui/material';
 import {
   Inventory as InventoryIcon,
@@ -22,6 +24,8 @@ import {
   Warning,
 } from '@mui/icons-material';
 import api from '@/lib/api';
+import { formatMoney } from '@/lib/formatMoney';
+import { useOrderFilterStore } from '@/lib/stores/filterStore';
 
 interface DashboardStats {
   totalInventoryValue: number;
@@ -49,6 +53,21 @@ export default function Home() {
     } catch (err) {
       setError('加载统计数据失败');
     }
+  };
+
+  /**
+   * A stat value. It shows a skeleton while the stats load and — after an error.
+   * A zero then means a real zero.
+   */
+  const statValue = (text: (s: DashboardStats) => string) =>
+    stats ? text(stats) : error ? '—' : <Skeleton width={120} />;
+
+  // Opens the order list with only the 未输入成本 filter set. The list count then equals the 待补成本 count.
+  const openOrdersWithoutCost = () => {
+    const filters = useOrderFilterStore.getState();
+    filters.reset();
+    filters.setCostStatus('null');
+    router.push('/orders');
   };
 
   const navigationCards = [
@@ -87,7 +106,7 @@ export default function Home() {
                   总库存价值
                 </Typography>
                 <Typography variant="h5" sx={{ fontWeight: 'bold' }}>
-                  ¥ {stats?.totalInventoryValue.toLocaleString() || '0'}
+                  {statValue((s) => formatMoney(s.totalInventoryValue, 'JPY'))}
                 </Typography>
               </Box>
             </Box>
@@ -103,7 +122,7 @@ export default function Home() {
                   {stats?.currentMonth || '本月'}利润
                 </Typography>
                 <Typography variant="h5" sx={{ fontWeight: 'bold' }}>
-                  ¥ {stats?.monthlyProfit.toLocaleString() || '0'}
+                  {statValue((s) => formatMoney(s.monthlyProfit, 'JPY'))}
                 </Typography>
               </Box>
             </Box>
@@ -119,7 +138,7 @@ export default function Home() {
                   订单总数 / 本月
                 </Typography>
                 <Typography variant="h5" sx={{ fontWeight: 'bold' }}>
-                  {stats?.totalOrders || 0} / {stats?.monthlyOrders || 0}
+                  {statValue((s) => `${s.totalOrders} / ${s.monthlyOrders}`)}
                 </Typography>
               </Box>
             </Box>
@@ -127,18 +146,24 @@ export default function Home() {
         </Grid>
 
         <Grid size={{ xs: 12, sm: 6, md: 3 }}>
-          <Paper sx={{ p: 3, bgcolor: '#ffebee', height: '100%' }}>
-            <Box sx={{ display: 'flex', alignItems: 'center' }}>
-              <Warning sx={{ fontSize: 40, color: '#d32f2f', mr: 2 }} />
-              <Box>
-                <Typography variant="body2" color="text.secondary">
-                  待补成本 / 低库存
-                </Typography>
-                <Typography variant="h5" sx={{ fontWeight: 'bold' }}>
-                  {stats?.ordersWithoutCost || 0} / {stats?.lowStockProductsCount || 0}
-                </Typography>
+          <Paper sx={{ bgcolor: '#ffebee', height: '100%' }}>
+            <CardActionArea
+              onClick={openOrdersWithoutCost}
+              aria-label="查看待补成本的订单"
+              sx={{ p: 3, height: '100%' }}
+            >
+              <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                <Warning sx={{ fontSize: 40, color: '#d32f2f', mr: 2 }} />
+                <Box>
+                  <Typography variant="body2" color="text.secondary">
+                    待补成本 / 低库存
+                  </Typography>
+                  <Typography variant="h5" sx={{ fontWeight: 'bold' }}>
+                    {statValue((s) => `${s.ordersWithoutCost} / ${s.lowStockProductsCount}`)}
+                  </Typography>
+                </Box>
               </Box>
-            </Box>
+            </CardActionArea>
           </Paper>
         </Grid>
       </Grid>
@@ -167,7 +192,15 @@ export default function Home() {
 
       {/* 提示信息 */}
       {stats && stats.ordersWithoutCost > 0 && (
-        <Alert severity="warning" sx={{ mb: 2 }}>
+        <Alert
+          severity="warning"
+          sx={{ mb: 2 }}
+          action={
+            <Button color="inherit" size="small" onClick={openOrdersWithoutCost}>
+              去补成本
+            </Button>
+          }
+        >
           您有 {stats.ordersWithoutCost} 个订单尚未补充成本信息，请及时添加订单详细。
         </Alert>
       )}

@@ -2,37 +2,62 @@
 
 import { useMemo } from 'react';
 import Link from 'next/link';
-import { Box, Button, Card, Chip, Paper, Stack, Typography } from '@mui/material';
+import { useRouter } from 'next/navigation';
+import { Box, Button, Card, Chip, Paper, Skeleton, Stack, Typography } from '@mui/material';
 import { Order } from '@/types';
 import { OrderSort, sortOrders } from '../utils/sortOrders';
-import { orderProfit } from '../utils/orderProfit';
+import {
+  formatOrderCost,
+  formatOrderProfit,
+  orderCostState,
+  orderProfit,
+} from '../utils/orderProfit';
+import { formatMoney } from '@/lib/formatMoney';
 import OrderThumbnail from './OrderThumbnail';
 import OrderMetric from './OrderMetric';
 
 interface Props {
   orders: Order[];
   sort: OrderSort;
+  /** True while the orders load. The list shows placeholder cards. */
+  loading?: boolean;
 }
 
 const IMAGE_SIZE = 96;
 
-export default function OrdersCardList({ orders, sort }: Props) {
+export default function OrdersCardList({ orders, sort, loading = false }: Props) {
+  const router = useRouter();
   const sortedOrders = useMemo(() => sortOrders(orders, sort), [orders, sort]);
 
   return (
     <Box>
-      {sortedOrders.length === 0 ? (
+      {loading && sortedOrders.length === 0 ? (
+        <Stack spacing={1.5}>
+          {Array.from({ length: 4 }, (_, i) => (
+            <Skeleton
+              key={i}
+              variant="rounded"
+              height={IMAGE_SIZE + 24}
+              data-testid="order-card-skeleton"
+            />
+          ))}
+        </Stack>
+      ) : sortedOrders.length === 0 ? (
         <Paper sx={{ p: 3, textAlign: 'center', color: 'text.secondary' }}>暂无订单数据</Paper>
       ) : (
         <Stack spacing={1.5}>
           {sortedOrders.map((order) => {
             const profit = orderProfit(order);
+            const costState = orderCostState(order);
             return (
+              // A click anywhere on the card opens the order. The button is for the keyboard.
               <Card
                 key={order.id}
                 variant="outlined"
                 data-testid="order-card"
+                onClick={() => router.push(`/orders/${order.id}`)}
                 sx={{
+                  cursor: 'pointer',
                   display: 'flex',
                   gap: 2,
                   p: 1.5,
@@ -69,17 +94,17 @@ export default function OrdersCardList({ orders, sort }: Props) {
                     <Typography variant="caption" color="text.secondary">
                       · {new Date(order.transactionTime).toLocaleDateString('zh-CN')}
                     </Typography>
-                    {order.hasUnknownCost && (
+                    {costState === 'missing' && (
+                      <Chip label="未输入成本" size="small" variant="outlined" />
+                    )}
+                    {costState === 'unknown' && (
                       <Chip label="成本未知" size="small" color="warning" variant="outlined" />
                     )}
                   </Stack>
                   <Stack direction="row" spacing={2} sx={{ mt: 'auto', pt: 1, flexWrap: 'wrap' }}>
-                    <OrderMetric label="营业额" value={order.revenue.toFixed(2)} />
-                    <OrderMetric
-                      label="总成本"
-                      value={order.hasUnknownCost ? '未知' : order.totalCost?.toFixed(2) || '0.00'}
-                    />
-                    <OrderMetric label="运费" value={order.shippingFee.toFixed(2)} />
+                    <OrderMetric label="营业额" value={formatMoney(order.revenue, 'JPY')} />
+                    <OrderMetric label="总成本" value={formatOrderCost(order)} />
+                    <OrderMetric label="运费" value={formatMoney(order.shippingFee, 'JPY')} />
                   </Stack>
                 </Box>
 
@@ -110,7 +135,7 @@ export default function OrdersCardList({ orders, sort }: Props) {
                               : 'error.main',
                       }}
                     >
-                      {profit === null ? '未知' : profit.toFixed(2)}
+                      {formatOrderProfit(order)}
                     </Typography>
                   </Box>
                   <Button
@@ -118,6 +143,7 @@ export default function OrdersCardList({ orders, sort }: Props) {
                     variant={order.hasDetails ? 'outlined' : 'contained'}
                     component={Link}
                     href={`/orders/${order.id}`}
+                    onClick={(e: { stopPropagation: () => void }) => e.stopPropagation()}
                   >
                     {order.hasDetails ? '查看' : '添加'}
                   </Button>

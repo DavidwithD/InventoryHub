@@ -16,9 +16,21 @@ import OrderDetailAddPanel from '../components/OrderDetailAddPanel';
 
 type LoadState = 'loading' | 'ready' | 'notFound' | 'failed';
 
-function BackLink() {
+/** The back link. When picked products are not saved, it asks before it leaves. */
+function BackLink({ pendingCount = 0 }: { pendingCount?: number }) {
+  const handleClick = (e: { preventDefault: () => void }) => {
+    if (pendingCount > 0 && !confirm(`有 ${pendingCount} 个已选商品尚未保存。确定离开吗？`)) {
+      e.preventDefault();
+    }
+  };
   return (
-    <Button component={Link} href="/orders" startIcon={<ArrowBackIcon />} sx={{ mb: 2 }}>
+    <Button
+      component={Link}
+      href="/orders"
+      startIcon={<ArrowBackIcon />}
+      onClick={handleClick}
+      sx={{ mb: 2 }}
+    >
       返回订单列表
     </Button>
   );
@@ -48,6 +60,8 @@ function OrderPageContent({ idParam }: { idParam: string }) {
   // A click on another line still works while a save runs.
   const [busyIds, setBusyIds] = useState<number[]>([]);
   const [error, setError] = useState('');
+  // Number of picked products that are not saved yet.
+  const [pendingCount, setPendingCount] = useState(0);
   // Number of the newest reload. An older reload that ends later does not write its data.
   const latestReload = useRef(0);
   // Promise of the newest reload.
@@ -159,7 +173,7 @@ function OrderPageContent({ idParam }: { idParam: string }) {
 
   return (
     <Box>
-      <BackLink />
+      <BackLink pendingCount={pendingCount} />
 
       {error && (
         <Alert severity="error" sx={{ mb: 2 }} onClose={() => setError('')}>
@@ -200,6 +214,7 @@ function OrderPageContent({ idParam }: { idParam: string }) {
             existingProductIds={existingProductIds}
             createOrderDetail={createOrderDetail}
             onSaved={reload}
+            onPendingChange={setPendingCount}
           />
         </>
       )}
