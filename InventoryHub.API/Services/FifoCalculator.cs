@@ -48,8 +48,10 @@ public class FifoResult
     public decimal StockValue() => Batches.Sum(b => Remaining(b.Id) * b.PriceJpy);
 
     // Remaining units of each product, summed over its batches.
+    // A batch with negative stock adds 0. FIFO takes no units from it.
     public Dictionary<int, int> RemainingByProduct() =>
-        Batches.GroupBy(b => b.ProductId).ToDictionary(g => g.Key, g => g.Sum(b => Remaining(b.Id)));
+        Batches.GroupBy(b => b.ProductId)
+            .ToDictionary(g => g.Key, g => g.Sum(b => Math.Max(0, Remaining(b.Id))));
 
     // Products with 1 to LowStockThreshold - 1 units left. A product with 0 units is out of stock.
     public int LowStockProductCount() =>

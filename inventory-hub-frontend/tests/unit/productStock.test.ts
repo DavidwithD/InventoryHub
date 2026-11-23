@@ -42,6 +42,13 @@ describe('product stock', () => {
     ]);
   });
 
+  it('adds 0 for a batch with negative stock', () => {
+    // Batch 7 has -3 units. Batch 8 has 5 units. The total is 5.
+    const withNegative = productStockTotals([batch(7, 4, -3), batch(8, 4, 5)]);
+    expect(withNegative.get(4)).toBe(5);
+    expect(stockStatus(withNegative.get(4)!)).toBe('ok');
+  });
+
   it('sets the status from the product total', () => {
     expect(stockStatus(0)).toBe('out');
     expect(stockStatus(-1)).toBe('out');

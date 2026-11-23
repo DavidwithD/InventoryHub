@@ -5,11 +5,14 @@ export const LOW_STOCK_THRESHOLD = 5;
 
 export type StockStatus = 'out' | 'low' | 'ok';
 
-/** Sums the remaining stock of each product over its batches. */
+/**
+ * Sums the remaining stock of each product over its batches.
+ * A batch with negative stock adds 0. The API uses the same rule.
+ */
 export function productStockTotals(inventories: Inventory[]): Map<number, number> {
   const totals = new Map<number, number>();
   for (const inv of inventories) {
-    totals.set(inv.productId, (totals.get(inv.productId) ?? 0) + inv.stockQuantity);
+    totals.set(inv.productId, (totals.get(inv.productId) ?? 0) + Math.max(0, inv.stockQuantity));
   }
   return totals;
 }

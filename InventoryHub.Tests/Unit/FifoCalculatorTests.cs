@@ -144,6 +144,18 @@ public class FifoCalculatorTests
     }
 
     [Fact]
+    public void Negative_batch_adds_nothing_to_the_product_total()
+    {
+        // Batch 1 has -3 units. Batch 2 has 5 units. FIFO uses only batch 2.
+        var result = FifoCalculator.Calculate(
+            new[] { Batch(1, Day(1, 1), -3, 100m), Batch(2, Day(1, 2), 5, 200m) },
+            Array.Empty<FifoSale>());
+
+        Assert.Equal(5, result.RemainingByProduct()[1]);
+        Assert.Equal(0, result.LowStockProductCount());
+    }
+
+    [Fact]
     public void Undated_batch_is_used_only_after_dated_batches()
     {
         var result = FifoCalculator.Calculate(
