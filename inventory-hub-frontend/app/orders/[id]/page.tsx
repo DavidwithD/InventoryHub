@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
-import { useParams } from 'next/navigation';
+import { useParams, useRouter } from 'next/navigation';
 import { Alert, Box, Button, Paper, Typography } from '@mui/material';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import { Order, OrderDetail } from '@/types';
@@ -10,7 +10,7 @@ import { useInventory } from '@/app/inventory/hooks/useInventory';
 import { useCategories } from '@/app/categories/hooks/useCategories';
 import { useOrders } from '../hooks/useOrders';
 import { apiErrorMessage } from '@/lib/apiErrorMessage';
-import { confirmLeave, useLeaveGuard } from '@/lib/leaveGuard';
+import { leaveTo, useLeaveGuard } from '@/lib/leaveGuard';
 import OrderSummaryCard from '../components/OrderSummaryCard';
 import OrderDetailLinesTable from '../components/OrderDetailLinesTable';
 import OrderDetailAddPanel from '../components/OrderDetailAddPanel';
@@ -19,8 +19,12 @@ type LoadState = 'loading' | 'ready' | 'notFound' | 'failed';
 
 /** The back link. When picked products are not saved, it asks before it leaves. */
 function BackLink() {
-  const handleClick = (e: { preventDefault: () => void }) => {
-    if (!confirmLeave()) e.preventDefault();
+  const router = useRouter();
+  const handleClick = (e: React.MouseEvent) => {
+    // A Cmd, Ctrl or Shift click opens a new tab or window. This page stays open.
+    if (e.metaKey || e.ctrlKey || e.shiftKey || e.button !== 0) return;
+    e.preventDefault();
+    leaveTo('/orders', router);
   };
   return (
     <Button

@@ -31,7 +31,10 @@ const orderActions = {
 const loadAllInventories = vi.fn(() => Promise.resolve());
 const loadCategories = () => Promise.resolve();
 
-vi.mock('next/navigation', () => ({ useParams: () => ({ id: '1' }) }));
+vi.mock('next/navigation', () => ({
+  useParams: () => ({ id: '1' }),
+  useRouter: () => ({ push: vi.fn(), replace: vi.fn() }),
+}));
 vi.mock('@/lib/api', () => ({ default: { get: vi.fn().mockResolvedValue({ data: [] }) } }));
 vi.mock('@/app/orders/hooks/useOrders', () => ({
   useOrders: () => ({
