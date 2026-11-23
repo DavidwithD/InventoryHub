@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
   IconButton,
   Paper,
@@ -26,10 +26,15 @@ interface Props {
   onDelete: (detail: OrderDetail) => void;
 }
 
+/** How long the 已保存 or 请输入正整数 text stays under the input. */
+export const QUANTITY_STATUS_MS = 2500;
+
 /**
  * The quantity input of one line.
  * It saves on blur or Enter. It saves only a whole number of 1 or more that differs from the saved one.
- * Any other value, or a failed save, goes back to the saved quantity.
+ * After a save it shows 已保存 for a short time.
+ * An invalid value goes back to the saved quantity and shows 请输入正整数.
+ * A failed save goes back to the saved quantity. The page shows the error.
  */
 function QuantityInput({
   detail,
@@ -41,11 +46,28 @@ function QuantityInput({
   onCommit: (quantity: number) => Promise<boolean>;
 }) {
   const [draft, setDraft] = useState(String(detail.quantity));
+  const [status, setStatus] = useState<'saved' | 'invalid' | null>(null);
+
+  useEffect(() => {
+    if (!status) return;
+    const timer = setTimeout(() => setStatus(null), QUANTITY_STATUS_MS);
+    return () => clearTimeout(timer);
+  }, [status]);
 
   const commit = async () => {
     const quantity = Number(draft);
-    const valid = Number.isInteger(quantity) && quantity >= 1 && quantity !== detail.quantity;
-    if (!valid || !(await onCommit(quantity))) {
+    if (quantity === detail.quantity) {
+      setDraft(String(detail.quantity));
+      return;
+    }
+    if (!Number.isInteger(quantity) || quantity < 1) {
+      setDraft(String(detail.quantity));
+      setStatus('invalid');
+      return;
+    }
+    if (await onCommit(quantity)) {
+      setStatus('saved');
+    } else {
       setDraft(String(detail.quantity));
     }
   };
@@ -56,12 +78,27 @@ function QuantityInput({
       type="number"
       value={draft}
       disabled={disabled}
-      onChange={(e) => setDraft(e.target.value)}
+      onChange={(e) => {
+        setDraft(e.target.value);
+        setStatus(null);
+      }}
       onBlur={commit}
       onKeyDown={(e) => {
         if (e.key === 'Enter') (e.target as HTMLInputElement).blur();
       }}
-      slotProps={{ htmlInput: { min: 1, 'aria-label': `${detail.productName} 数量` } }}
+      error={status === 'invalid'}
+      helperText={status === 'saved' ? '已保存' : status === 'invalid' ? '请输入正整数' : undefined}
+      slotProps={{
+        htmlInput: { min: 1, 'aria-label': `${detail.productName} 数量` },
+        formHelperText: {
+          role: 'status',
+          sx: {
+            mx: 0,
+            whiteSpace: 'nowrap',
+            color: status === 'saved' ? 'success.main' : undefined,
+          },
+        },
+      }}
       sx={{ width: 90 }}
     />
   );

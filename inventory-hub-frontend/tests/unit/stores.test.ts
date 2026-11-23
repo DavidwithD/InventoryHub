@@ -1,10 +1,11 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { renderHook, waitFor } from '@testing-library/react';
 import { useFactorStore } from '@/lib/stores/factorStore';
-import { useInventoryFilterStore, useOrderFilterStore } from '@/lib/stores/filterStore';
+import { useInventoryFilterStore, useOrderFilterStore, validOrderSort } from '@/lib/stores/filterStore';
 import { usePickHistoryStore } from '@/lib/stores/pickHistoryStore';
 import { useViewMode, useViewModeStore } from '@/lib/stores/viewModeStore';
 import { fetchExchangeRate } from '@/lib/exchangeRate';
+import { DEFAULT_ORDER_SORT } from '@/app/orders/utils/sortOrders';
 
 beforeEach(() => {
   useFactorStore.setState({ factors: {} });
@@ -72,6 +73,34 @@ describe('filter stores', () => {
     useOrderFilterStore.getState().reset();
 
     expect(useOrderFilterStore.getState()).toMatchObject({ startDate: '', costStatus: 'all' });
+  });
+
+  it('falls back to the default sort for an unknown saved sort', async () => {
+    localStorage.setItem(
+      'order-filters',
+      JSON.stringify({ state: { costStatus: 'hasValue', sort: { field: 'gone', direction: 'asc' } }, version: 0 })
+    );
+
+    await useOrderFilterStore.persist.rehydrate();
+
+    expect(useOrderFilterStore.getState()).toMatchObject({ costStatus: 'hasValue', sort: DEFAULT_ORDER_SORT });
+    localStorage.removeItem('order-filters');
+    useOrderFilterStore.getState().reset();
+  });
+
+  it('keeps a valid saved sort', () => {
+    expect(validOrderSort({ field: 'profit', direction: 'asc' })).toEqual({ field: 'profit', direction: 'asc' });
+    expect(validOrderSort({ field: 'profit', direction: 'up' })).toEqual(DEFAULT_ORDER_SORT);
+    expect(validOrderSort(undefined)).toEqual(DEFAULT_ORDER_SORT);
+  });
+
+  it('keeps the order sort when the filters reset', () => {
+    useOrderFilterStore.getState().setSort({ field: 'profit', direction: 'asc' });
+
+    useOrderFilterStore.getState().reset();
+
+    expect(useOrderFilterStore.getState().sort).toEqual({ field: 'profit', direction: 'asc' });
+    useOrderFilterStore.getState().setSort(DEFAULT_ORDER_SORT);
   });
 });
 

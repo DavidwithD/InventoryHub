@@ -25,7 +25,7 @@ interface Props {
   hasMore: boolean;
   onProductSelected: (productName: string, productId: number) => void;
   onProductCreated: (data: { categoryId: number; name: string }) => Promise<Product>;
-  onRegister: (payload: RegisterInventoryPayload) => Promise<void>;
+  onRegister: (payload: RegisterInventoryPayload) => Promise<string | undefined>;
   /** When set, every 登录 button is disabled and shows this reason. */
   registerBlockedReason?: string;
   onLoadMore: () => void;

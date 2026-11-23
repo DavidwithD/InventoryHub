@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { apiErrorMessage } from '@/lib/apiErrorMessage';
 import { Box, Button, Alert, Snackbar } from '@mui/material';
 import { Add as AddIcon } from '@mui/icons-material';
 import { Product } from '@/types';
@@ -25,14 +26,14 @@ export default function ProductsPage() {
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'success' as 'success' | 'error' });
 
+  const showSnackbar = (message: string, severity: 'success' | 'error' = 'success') => {
+    setSnackbar({ open: true, message, severity });
+  };
+
   useEffect(() => {
     loadProducts().catch(() => showSnackbar('加载商品列表失败', 'error'));
     loadCategories().catch(() => showSnackbar('加载分类列表失败', 'error'));
   }, [loadProducts, loadCategories]);
-
-  const showSnackbar = (message: string, severity: 'success' | 'error' = 'success') => {
-    setSnackbar({ open: true, message, severity });
-  };
 
   const handleAdd = () => {
     setEditingProduct(null);
@@ -58,8 +59,8 @@ export default function ProductsPage() {
         await createProduct(formData);
         showSnackbar('商品创建成功');
       }
-    } catch (error: any) {
-      const message = error.response?.data || '操作失败';
+    } catch (error) {
+      const message = apiErrorMessage(error, '操作失败');
       showSnackbar(message, 'error');
       throw error;
     }
@@ -73,8 +74,8 @@ export default function ProductsPage() {
     try {
       await deleteProduct(product.id);
       showSnackbar('商品删除成功');
-    } catch (error: any) {
-      const message = error.response?.data || '删除失败';
+    } catch (error) {
+      const message = apiErrorMessage(error, '删除失败');
       showSnackbar(message, 'error');
     }
   };

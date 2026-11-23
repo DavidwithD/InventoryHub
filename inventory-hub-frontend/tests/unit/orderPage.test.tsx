@@ -130,6 +130,37 @@ describe('OrderDetailLinesTable', () => {
     await userEvent.tab();
 
     expect(input).toHaveValue(2);
+    expect(screen.queryByText('已保存')).not.toBeInTheDocument();
+  });
+
+  it('shows 已保存 after a save', async () => {
+    const { input } = renderTable();
+
+    await userEvent.clear(input);
+    await userEvent.type(input, '3');
+    await userEvent.tab();
+
+    expect(await screen.findByText('已保存')).toBeInTheDocument();
+  });
+
+  it('shows 请输入正整数 for an invalid quantity', async () => {
+    const { input } = renderTable();
+
+    await userEvent.clear(input);
+    await userEvent.type(input, '0');
+    await userEvent.tab();
+
+    expect(screen.getByText('请输入正整数')).toBeInTheDocument();
+  });
+
+  it('shows nothing when the quantity did not change', async () => {
+    const { input, onQuantityChange } = renderTable();
+
+    await userEvent.click(input);
+    await userEvent.tab();
+
+    expect(onQuantityChange).not.toHaveBeenCalled();
+    expect(screen.queryByText('请输入正整数')).not.toBeInTheDocument();
   });
 });
 

@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { apiErrorMessage } from '@/lib/apiErrorMessage';
 import { Box, Button, Alert, Snackbar } from '@mui/material';
 import { Add as AddIcon } from '@mui/icons-material';
 import { Supplier } from '@/types';
@@ -14,14 +15,13 @@ export default function SuppliersPage() {
   const [editingSupplier, setEditingSupplier] = useState<Supplier | null>(null);
   const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'success' as 'success' | 'error' });
 
-  useEffect(() => {
-    loadSuppliers().catch(() => showSnackbar('加载供应商列表失败', 'error'));
-  }, [loadSuppliers]);
-
-  // 显示提示消息
   const showSnackbar = (message: string, severity: 'success' | 'error' = 'success') => {
     setSnackbar({ open: true, message, severity });
   };
+
+  useEffect(() => {
+    loadSuppliers().catch(() => showSnackbar('加载供应商列表失败', 'error'));
+  }, [loadSuppliers]);
 
   // 打开新增对话框
   const handleAdd = () => {
@@ -51,9 +51,9 @@ export default function SuppliersPage() {
         showSnackbar('供应商创建成功');
       }
       await loadSuppliers();
-    } catch (error: any) {
-      const message = error.response?.data || '操作失败';
-      showSnackbar(typeof message === 'string' ? message : JSON.stringify(message), 'error');
+    } catch (error) {
+      const message = apiErrorMessage(error, '操作失败');
+      showSnackbar(message, 'error');
       throw error;
     }
   };
@@ -67,9 +67,9 @@ export default function SuppliersPage() {
       await deleteSupplier(supplier.id);
       showSnackbar('供应商删除成功');
       await loadSuppliers();
-    } catch (error: any) {
-      const message = error.response?.data || '删除失败';
-      showSnackbar(typeof message === 'string' ? message : JSON.stringify(message), 'error');
+    } catch (error) {
+      const message = apiErrorMessage(error, '删除失败');
+      showSnackbar(message, 'error');
     }
   };
 

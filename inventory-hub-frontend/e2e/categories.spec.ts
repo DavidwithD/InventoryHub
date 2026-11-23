@@ -25,7 +25,7 @@ test('create, rename and delete a category', async ({ page }) => {
   await expect(renamed).toHaveCount(0);
 });
 
-test('a duplicate category name shows the API error', async ({ page }) => {
+test('a duplicate category name shows the API error in the open dialog', async ({ page }) => {
   const name = `E2E duplicate ${unique()}`;
   await page.goto('/categories');
 
@@ -33,8 +33,12 @@ test('a duplicate category name shows the API error', async ({ page }) => {
     await page.getByRole('button', { name: '新增分类' }).click();
     await page.getByLabel('分类名称').fill(name);
     await page.getByRole('button', { name: '保存' }).click();
+    if (i === 0) await expect(page.getByRole('dialog')).toHaveCount(0);
   }
 
-  await expect(page.getByRole('alert').filter({ hasText: '已存在' })).toBeVisible();
+  const dialog = page.getByRole('dialog');
+  await expect(dialog.getByText(/已存在/)).toBeVisible();
+  await expect(dialog.getByLabel('分类名称')).toHaveValue(name);
+  await dialog.getByRole('button', { name: '取消' }).click();
   await expect(page.getByRole('row').filter({ hasText: name })).toHaveCount(1);
 });

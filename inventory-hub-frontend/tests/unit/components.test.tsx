@@ -13,6 +13,12 @@ import ViewModeToggle from '@/components/ViewModeToggle';
 import ExtractedResultRow from '@/app/inventory/components/ExtractedResultRow';
 import type { Order } from '@/types';
 import { DEFAULT_ORDER_SORT, nextOrderSort, sortOrders } from '@/app/orders/utils/sortOrders';
+import {
+  clearOrdersListScroll,
+  isOrdersPath,
+  saveOrdersListScroll,
+  takeOrdersListScroll,
+} from '@/app/orders/utils/listScroll';
 
 describe('CategoryDialog', () => {
   it('saves the trimmed name and closes', async () => {
@@ -27,15 +33,43 @@ describe('CategoryDialog', () => {
     expect(onClose).toHaveBeenCalled();
   });
 
-  it('warns and does not save an empty name', async () => {
-    const alert = vi.spyOn(window, 'alert').mockImplementation(() => {});
+  it('shows a message under the field and does not save an empty name', async () => {
     const onSave = vi.fn();
     render(<CategoryDialog open onClose={vi.fn()} onSave={onSave} />);
 
     await userEvent.click(screen.getByRole('button', { name: '保存' }));
 
-    expect(alert).toHaveBeenCalled();
+    expect(screen.getByText('请输入分类名称')).toBeInTheDocument();
     expect(onSave).not.toHaveBeenCalled();
+  });
+
+  it('stays open and shows the error when the save fails', async () => {
+    const onSave = vi.fn().mockRejectedValue({ response: { data: { title: '名称已存在' } } });
+    const onClose = vi.fn();
+    render(<CategoryDialog open onClose={onClose} onSave={onSave} />);
+
+    await userEvent.type(screen.getByLabelText('分类名称'), 'Cards');
+    await userEvent.click(screen.getByRole('button', { name: '保存' }));
+
+    expect(await screen.findByText('名称已存在')).toBeInTheDocument();
+    expect(onClose).not.toHaveBeenCalled();
+    expect(screen.getByLabelText('分类名称')).toHaveValue('Cards');
+  });
+
+  it('ignores Escape while the save runs, so the error still shows', async () => {
+    let reject: (err: unknown) => void = () => {};
+    const onSave = vi.fn(() => new Promise<void>((_, r) => (reject = r)));
+    const onClose = vi.fn();
+    render(<CategoryDialog open onClose={onClose} onSave={onSave} />);
+
+    await userEvent.type(screen.getByLabelText('分类名称'), 'Cards');
+    await userEvent.click(screen.getByRole('button', { name: '保存' }));
+    // The disabled 保存 button drops focus, so the key goes straight to the dialog.
+    fireEvent.keyDown(screen.getByRole('dialog'), { key: 'Escape' });
+    expect(onClose).not.toHaveBeenCalled();
+
+    reject({ response: { data: '名称已存在' } });
+    expect(await screen.findByText('名称已存在')).toBeInTheDocument();
   });
 
   it('shows the edit title and current name for an existing category', () => {
@@ -125,6 +159,7 @@ describe('OrdersTable', () => {
 
   it('opens the order in a new tab on a Cmd or Ctrl click', () => {
     push.mockClear();
+    sessionStorage.clear();
     const open = vi.spyOn(window, 'open').mockImplementation(() => null);
     render(<OrdersTable orders={[order({ id: 42 })]} {...sortProps} />);
 
@@ -134,8 +169,34 @@ describe('OrdersTable', () => {
     expect(open).toHaveBeenCalledTimes(2);
     expect(open).toHaveBeenCalledWith('/orders/42', '_blank', 'noopener');
     expect(push).not.toHaveBeenCalled();
+    expect(takeOrdersListScroll()).toBeNull();
     open.mockRestore();
   });
+
+  it('saves the scroll position when it opens an order', async () => {
+    sessionStorage.clear();
+    window.scrollY = 1234;
+    render(<OrdersTable orders={[order({ id: 42 })]} {...sortProps} />);
+
+    await userEvent.click(screen.getByText('Card'));
+
+    expect(takeOrdersListScroll()).toBe(1234);
+    window.scrollY = 0;
+  });
+
+  it.each([{ metaKey: true }, { ctrlKey: true }, { shiftKey: true }])(
+    'does not save the scroll on a new-tab click of the 查看 button (%o)',
+    (keys) => {
+      sessionStorage.clear();
+      window.scrollY = 500;
+      render(<OrdersTable orders={[order({ id: 42, hasDetails: true })]} {...sortProps} />);
+
+      fireEvent.click(screen.getByRole('link', { name: '查看' }), keys);
+
+      expect(takeOrdersListScroll()).toBeNull();
+      window.scrollY = 0;
+    }
+  );
 
   it('shows placeholder rows while loading, without the empty text', () => {
     render(<OrdersTable orders={[]} {...sortProps} loading />);
@@ -190,6 +251,31 @@ describe('OrdersCardList', () => {
     expect(push).toHaveBeenCalledTimes(1);
     open.mockRestore();
   });
+
+  it('saves the scroll on a plain click of the 查看 button', () => {
+    sessionStorage.clear();
+    window.scrollY = 700;
+    render(<OrdersCardList orders={[order({ id: 7 })]} sort={DEFAULT_ORDER_SORT} />);
+
+    fireEvent.click(screen.getByRole('link', { name: '查看' }));
+
+    expect(takeOrdersListScroll()).toBe(700);
+    window.scrollY = 0;
+  });
+
+  it.each([{ metaKey: true }, { ctrlKey: true }, { shiftKey: true }])(
+    'does not save the scroll on a new-tab click of the 查看 button (%o)',
+    (keys) => {
+      sessionStorage.clear();
+      window.scrollY = 700;
+      render(<OrdersCardList orders={[order({ id: 7 })]} sort={DEFAULT_ORDER_SORT} />);
+
+      fireEvent.click(screen.getByRole('link', { name: '查看' }), keys);
+
+      expect(takeOrdersListScroll()).toBeNull();
+      window.scrollY = 0;
+    }
+  );
 });
 
 describe('OrdersListToolbar', () => {
@@ -323,7 +409,67 @@ describe('ExtractedResultRow', () => {
   };
   const product = { id: 3, name: 'Towel', categoryId: 1, categoryName: 'Cloth', createdAt: '', updatedAt: '', isDeleted: false };
 
-  const renderRow = (registerBlockedReason?: string) =>
+  const otherProduct = { ...product, id: 4, name: 'Cup' };
+
+  const rowElement = (
+    registerBlockedReason: string | undefined,
+    onRegister: () => Promise<string | undefined>,
+    selectedProductId = 3
+  ) => (
+    <table>
+      <tbody>
+        <ExtractedResultRow
+          row={row}
+          categories={[]}
+          products={[product, otherProduct]}
+          selectedProductId={selectedProductId}
+          registeredItems={new Set()}
+          factorSuggestions={{}}
+          onProductSelected={vi.fn()}
+          onProductCreated={vi.fn()}
+          onRegister={onRegister}
+          registerBlockedReason={registerBlockedReason}
+        />
+      </tbody>
+    </table>
+  );
+
+  it('hides the error when the product changes', async () => {
+    const onRegister = vi.fn().mockRejectedValue({ response: { data: '商品不存在' } });
+    const { rerender } = render(rowElement(undefined, onRegister));
+
+    await userEvent.click(screen.getByRole('button', { name: '登录' }));
+    expect(await screen.findByRole('alert')).toHaveTextContent('商品不存在');
+
+    rerender(rowElement(undefined, onRegister, 4));
+
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+  });
+
+  it('shows the error again when the product goes back to the failed one', async () => {
+    const onRegister = vi.fn().mockRejectedValue({ response: { data: '商品不存在' } });
+    const { rerender } = render(rowElement(undefined, onRegister));
+
+    await userEvent.click(screen.getByRole('button', { name: '登录' }));
+    await screen.findByRole('alert');
+    rerender(rowElement(undefined, onRegister, 4));
+    rerender(rowElement(undefined, onRegister, 3));
+
+    expect(screen.getByRole('alert')).toHaveTextContent('商品不存在');
+  });
+
+  it('keeps the warning after a saved batch when the product changes', async () => {
+    const onRegister = vi.fn().mockResolvedValue('已登记，但商品图片未保存');
+    const { rerender } = render(rowElement(undefined, onRegister));
+
+    await userEvent.click(screen.getByRole('button', { name: '登录' }));
+    await screen.findByRole('alert');
+    rerender(rowElement(undefined, onRegister, 4));
+
+    expect(screen.getByRole('alert')).toHaveTextContent('已登记，但商品图片未保存');
+  });
+
+  const renderRow = (registerBlockedReason?: string, onRegister = vi.fn().mockResolvedValue(undefined)) =>
     render(
       <table>
         <tbody>
@@ -336,12 +482,41 @@ describe('ExtractedResultRow', () => {
             factorSuggestions={{}}
             onProductSelected={vi.fn()}
             onProductCreated={vi.fn()}
-            onRegister={vi.fn()}
+            onRegister={onRegister}
             registerBlockedReason={registerBlockedReason}
           />
         </tbody>
       </table>
     );
+
+  it('shows the error on the row and keeps 登录 when the registration fails', async () => {
+    renderRow(undefined, vi.fn().mockRejectedValue({ response: { data: '商品不存在' } }));
+
+    await userEvent.click(screen.getByRole('button', { name: '登录' }));
+
+    expect(await screen.findByRole('alert')).toHaveTextContent('商品不存在');
+    expect(screen.getByRole('button', { name: '登录' })).toBeEnabled();
+  });
+
+  it('shows 完成 and the warning when only the image update fails', async () => {
+    renderRow(undefined, vi.fn().mockResolvedValue('已登记，但商品图片未保存'));
+
+    await userEvent.click(screen.getByRole('button', { name: '登录' }));
+
+    expect(await screen.findByRole('alert')).toHaveTextContent('已登记，但商品图片未保存');
+    expect(screen.getByRole('button', { name: '完成' })).toBeDisabled();
+  });
+
+  it('hides the error when the factor changes', async () => {
+    renderRow(undefined, vi.fn().mockRejectedValue({ response: { data: '商品不存在' } }));
+
+    await userEvent.click(screen.getByRole('button', { name: '登录' }));
+    expect(await screen.findByRole('alert')).toHaveTextContent('商品不存在');
+
+    await userEvent.type(screen.getByLabelText('换算倍数(件/组)'), '0');
+
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+  });
 
   it('enables 登录 when a product is chosen and a rate exists', () => {
     renderRow();
@@ -351,5 +526,22 @@ describe('ExtractedResultRow', () => {
   it('disables 登录 when there is no exchange rate', () => {
     renderRow('没有汇率，无法登记');
     expect(screen.getByRole('button', { name: '登录' })).toBeDisabled();
+  });
+});
+
+describe('listScroll', () => {
+  it('clears the saved position', () => {
+    window.scrollY = 300;
+    saveOrdersListScroll();
+    clearOrdersListScroll();
+    expect(takeOrdersListScroll()).toBeNull();
+    window.scrollY = 0;
+  });
+
+  it('treats only the orders list and order pages as orders paths', () => {
+    expect(isOrdersPath('/orders')).toBe(true);
+    expect(isOrdersPath('/orders/42')).toBe(true);
+    expect(isOrdersPath('/products')).toBe(false);
+    expect(isOrdersPath('/ordersx')).toBe(false);
   });
 });
