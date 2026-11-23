@@ -7,7 +7,8 @@ export type Currency = 'JPY' | 'CNY';
  */
 export function formatMoney(value: number, currency: Currency): string {
   if (currency === 'JPY') {
-    return `${Math.round(value).toLocaleString('ja-JP')}円`;
+    // Math.round(-0.4) is -0. It prints as "-0円". `|| 0` turns it into 0.
+    return `${(Math.round(value) || 0).toLocaleString('ja-JP')}円`;
   }
   return `${value.toLocaleString('zh-CN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}元`;
 }

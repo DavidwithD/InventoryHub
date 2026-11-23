@@ -7,7 +7,7 @@ const git = (...args) =>
   execFileSync('git', args, { encoding: 'utf8' }).split('\n').filter(Boolean);
 
 const files = [
-  ...git('diff', '--name-only', '--diff-filter=AM', '--relative', ref, '--', '.'),
+  ...git('diff', '--name-only', '--diff-filter=ACMR', '--relative', ref, '--', '.'),
   ...git('ls-files', '--others', '--exclude-standard'),
 ].filter((f) => /\.(ts|tsx)$/.test(f));
 

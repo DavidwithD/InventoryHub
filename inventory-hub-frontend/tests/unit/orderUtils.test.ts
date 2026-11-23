@@ -26,6 +26,11 @@ describe('formatMoney', () => {
     expect(formatMoney(-50, 'JPY')).toBe('-50円');
   });
 
+  it('shows 0円, not -0円, for a small negative amount', () => {
+    expect(formatMoney(-0.4, 'JPY')).toBe('0円');
+    expect(formatMoney(-0, 'JPY')).toBe('0円');
+  });
+
   it('shows yuan with two decimals and 元', () => {
     expect(formatMoney(12.5, 'CNY')).toBe('12.50元');
   });
@@ -74,12 +79,27 @@ describe('ordersToCsv', () => {
       order({ orderNo: 'c', hasUnknownCost: true }),
     ]).split('\r\n');
     expect(lines[1]).toMatch(/^a,Card,,1000\.00,200\.00,350\.00,650\.00,/);
-    expect(lines[2]).toMatch(/^b,Card,,1000\.00,200\.00,未输入,未输入,/);
+    expect(lines[2]).toMatch(/^b,Card,,1000\.00,200\.00,未输入,—,/);
     expect(lines[3]).toMatch(/^c,Card,,1000\.00,200\.00,未知,未知,/);
   });
 
   it('quotes fields that hold a comma, a quote or a line break', () => {
     const line = ordersToCsv([order({ name: 'Card, "rare"\nset' })]).split('\r\n')[1];
     expect(line).toContain('"Card, ""rare""\nset"');
+  });
+
+  it('makes text that starts like a formula plain text', () => {
+    const line = ordersToCsv([
+      order({ orderNo: '=1+1', name: '+cmd', imageUrl: '@SUM(A1)' }),
+    ]).split('\r\n')[1];
+    expect(line).toMatch(/^'=1\+1,'\+cmd,'@SUM\(A1\),/);
+
+    const dash = ordersToCsv([order({ name: '-2,3' })]).split('\r\n')[1];
+    expect(dash).toContain(`"'-2,3"`);
+  });
+
+  it('leaves a negative profit as a number', () => {
+    const line = ordersToCsv([order({ revenue: 100, totalCost: 350 })]).split('\r\n')[1];
+    expect(line).toMatch(/^m1,Card,,100\.00,200\.00,350\.00,-250\.00,/);
   });
 });

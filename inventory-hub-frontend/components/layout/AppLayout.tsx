@@ -26,6 +26,7 @@ import StoreIcon from '@mui/icons-material/Store';
 import InventoryIcon from '@mui/icons-material/Inventory';
 import BarChartIcon from '@mui/icons-material/BarChart';
 import { PAGE_BACKGROUND } from './layoutStyles';
+import { leaveTo } from '@/lib/leaveGuard';
 
 const drawerWidth = 240;
 
@@ -63,14 +64,15 @@ export default function AppLayout({ children }: AppLayoutProps) {
   };
 
   const handleNavigation = (path: string) => {
-    router.push(path);
+    // The open page can ask first, for example when it has unsaved picks.
+    if (!leaveTo(path, router)) return;
     if (isMobile) {
       setMobileOpen(false);
     }
   };
 
   const handleLogoClick = () => {
-    router.push('/');
+    if (!leaveTo('/', router)) return;
     if (isMobile) {
       setMobileOpen(false);
     }
