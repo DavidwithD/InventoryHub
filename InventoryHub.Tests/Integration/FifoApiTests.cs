@@ -137,6 +137,33 @@ public class FifoApiTests : IClassFixture<ApiFactory>
         Assert.Equal(1, stats.OrdersWithoutCost);
     }
 
+    [Fact]
+    public async Task Dashboard_and_stats_count_low_stock_per_product()
+    {
+        // Many: three batches of 3 units. Each batch is low, but the product has 9 units. Not low.
+        var many = await _api.CreateProductAsync("Many", "Many");
+        await _api.CreateBatchAsync(many.Id, Jan1, 3, 100m);
+        await _api.CreateBatchAsync(many.Id, Jan2, 3, 100m);
+        await _api.CreateBatchAsync(many.Id, Jan2.AddDays(1), 3, 100m);
+        // Low: two batches of 3 units. A sale of 2 leaves 4 units. Low.
+        var low = await _api.CreateProductAsync("Low", "Low");
+        await _api.CreateBatchAsync(low.Id, Jan1, 3, 100m);
+        await _api.CreateBatchAsync(low.Id, Jan2, 3, 100m);
+        await _api.CreateOrderAsync("M1", Feb1, 1000m, low.Id, 2);
+        // Gone: all units sold. Out of stock, not low.
+        var gone = await _api.CreateProductAsync("Gone", "Gone");
+        await _api.CreateBatchAsync(gone.Id, Jan1, 2, 100m);
+        await _api.CreateOrderAsync("M2", Feb1, 1000m, gone.Id, 2);
+
+        var dashboard = await _api.GetAsync<DashboardStatsDto>("/api/dashboard/stats");
+        var kpi = await _api.GetAsync<StatsDashboardKpiDto>(
+            "/api/stats/dashboard/kpi?startDate=2026-01-01&endDate=2026-03-01");
+
+        // A count per batch would be 5: the three batches of Many and the two of Low.
+        Assert.Equal(1, dashboard.LowStockProductsCount);
+        Assert.Equal(1, kpi.LowStockItems);
+    }
+
     [Theory]
     [InlineData("/api/stats/dashboard/kpi?startDate=2026-01-01&endDate=2026-03-01")]
     [InlineData("/api/stats/dashboard/trend?startDate=2026-01-01&endDate=2026-03-01&granularity=week")]

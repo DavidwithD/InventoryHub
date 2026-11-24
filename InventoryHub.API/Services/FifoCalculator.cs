@@ -15,7 +15,7 @@ public class FifoResult
 {
     private static readonly IReadOnlyList<FifoAllocation> NoAllocations = Array.Empty<FifoAllocation>();
 
-    // A batch with fewer units than this counts as low stock.
+    // A product with fewer units than this in all its batches counts as low stock.
     public const int LowStockThreshold = 5;
 
     public FifoResult(IReadOnlyList<FifoBatch> batches, IReadOnlyList<FifoSale> sales)
@@ -47,8 +47,15 @@ public class FifoResult
     // Value of the remaining units at each batch's JPY price.
     public decimal StockValue() => Batches.Sum(b => Remaining(b.Id) * b.PriceJpy);
 
-    public int LowStockBatchCount() =>
-        Batches.Count(b => Remaining(b.Id) > 0 && Remaining(b.Id) < LowStockThreshold);
+    // Remaining units of each product, summed over its batches.
+    // A batch with negative stock adds 0. FIFO takes no units from it.
+    public Dictionary<int, int> RemainingByProduct() =>
+        Batches.GroupBy(b => b.ProductId)
+            .ToDictionary(g => g.Key, g => g.Sum(b => Math.Max(0, Remaining(b.Id))));
+
+    // Products with 1 to LowStockThreshold - 1 units left. A product with 0 units is out of stock.
+    public int LowStockProductCount() =>
+        RemainingByProduct().Values.Count(total => total > 0 && total < LowStockThreshold);
 }
 
 public static class FifoCalculator

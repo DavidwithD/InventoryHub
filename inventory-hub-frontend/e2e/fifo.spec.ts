@@ -5,8 +5,9 @@ import { Seed, unique } from './seed';
 const batchRow = (page: Page, id: number) =>
   page.getByRole('row').filter({ has: page.locator('td:first-child', { hasText: new RegExp(`^${id}$`) }) });
 
-// The stock column shows a chip with the remaining quantity, or 缺货 at zero.
-const stockChip = (row: Locator) => row.locator('.MuiChip-label');
+// 批次库存 shows the units left in one batch. 商品库存 shows the units left in all batches of the product.
+const batchStock = (row: Locator) => row.getByTestId('batch-stock');
+const productStock = (row: Locator) => row.getByTestId('product-stock');
 
 // Two batches: 2 units at ¥100, then 5 units at ¥150. One order sells 3 units.
 // FIFO takes both units of the first batch and 1 unit of the second: cost 350, 4 units left.
@@ -19,8 +20,14 @@ test('inventory and orders pages show FIFO stock and cost', async ({ page, reque
   await seed.order(`E2E-${id}`, '2026-02-01T00:00:00', 1000, product.id, 3);
 
   await page.goto('/inventory');
-  await expect(stockChip(batchRow(page, first.id))).toHaveText('缺货');
-  await expect(stockChip(batchRow(page, second.id))).toHaveText('4');
+  await expect(batchStock(batchRow(page, second.id))).toHaveText('4');
+  // 4 units is under the low-stock limit of 5.
+  await expect(productStock(batchRow(page, second.id))).toHaveText('4');
+  // The first batch is empty. Empty batches are hidden until 显示空批次 is on.
+  await expect(batchRow(page, first.id)).toHaveCount(0);
+  await page.getByLabel('显示空批次').check();
+  await expect(batchStock(batchRow(page, first.id))).toHaveText('0');
+  await expect(productStock(batchRow(page, first.id))).toHaveText('4');
 
   await page.goto('/orders');
   const orderRow = page.getByRole('row').filter({ hasText: `E2E-${id}` });

@@ -15,11 +15,14 @@ interface InventoryFilterState {
   search: string;
   categoryId: number | '';
   stockFilter: StockFilter;
+  /** Show batches with no stock left. The 缺货 filter shows them anyway. */
+  showEmptyBatches: boolean;
   sortField: SortField;
   sortOrder: SortOrder;
   setSearch: (v: string) => void;
   setCategoryId: (v: number | '') => void;
   setStockFilter: (v: StockFilter) => void;
+  setShowEmptyBatches: (v: boolean) => void;
   setSortField: (v: SortField) => void;
   setSortOrder: (v: SortOrder) => void;
   reset: () => void;
@@ -29,6 +32,7 @@ const inventoryDefaults = {
   search: '',
   categoryId: '' as number | '',
   stockFilter: 'all' as StockFilter,
+  showEmptyBatches: false,
   sortField: 'id' as SortField,
   sortOrder: 'asc' as SortOrder,
 };
@@ -40,6 +44,7 @@ export const useInventoryFilterStore = create<InventoryFilterState>()(
       setSearch: (search) => set({ search }),
       setCategoryId: (categoryId) => set({ categoryId }),
       setStockFilter: (stockFilter) => set({ stockFilter }),
+      setShowEmptyBatches: (showEmptyBatches) => set({ showEmptyBatches }),
       setSortField: (sortField) => set({ sortField }),
       setSortOrder: (sortOrder) => set({ sortOrder }),
       reset: () => set(inventoryDefaults),

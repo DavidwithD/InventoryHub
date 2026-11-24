@@ -749,7 +749,7 @@ GET /api/dashboard/stats
 
 - `totalInventoryValue`: Sum of (calculated stock × `priceJpy`) for all batches
 - `monthlyProfit`: Sum of (revenue - calculated cost) for current month orders. Orders with no lines or an unknown cost are skipped.
-- `lowStockProductsCount`: Batches with calculated stock from 1 to 4
+- `lowStockProductsCount`: Products with 1 to 4 units of calculated stock, summed over all their batches. A product with 0 units is out of stock and is not counted. The stats dashboard KPI `lowStockItems` uses the same count.
 
 ---
 

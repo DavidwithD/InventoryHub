@@ -109,7 +109,7 @@ public class FifoCalculatorTests
     }
 
     [Fact]
-    public void Stock_value_and_low_stock_use_remaining_units()
+    public void Stock_value_uses_remaining_units()
     {
         var result = FifoCalculator.Calculate(
             new[] { Batch(1, Day(1, 1), 6, 100m), Batch(2, Day(1, 2), 10, 200m), Batch(3, Day(1, 3), 2, 50m) },
@@ -117,8 +117,42 @@ public class FifoCalculatorTests
 
         // Batch 1 is empty, batch 2 has 7 left and batch 3 has 2 left.
         Assert.Equal(7 * 200m + 2 * 50m, result.StockValue());
-        Assert.Equal(1, result.LowStockBatchCount());
         Assert.Equal(2, result.Sales.Count);
+    }
+
+    [Fact]
+    public void Low_stock_counts_products_by_their_summed_remaining_units()
+    {
+        var result = FifoCalculator.Calculate(
+            new[]
+            {
+                // Product 1: three small batches, 9 units in total. Not low.
+                Batch(1, Day(1, 1), 3, 100m), Batch(2, Day(1, 2), 3, 100m), Batch(3, Day(1, 3), 3, 100m),
+                // Product 2: two batches, 4 units left after the sale. Low.
+                Batch(4, Day(1, 1), 3, 100m, product: 2), Batch(5, Day(1, 2), 3, 100m, product: 2),
+                // Product 3: sold out. Out of stock, not low.
+                Batch(6, Day(1, 1), 2, 100m, product: 3),
+                // Product 4: one batch with 1 unit. Low.
+                Batch(7, Day(1, 1), 1, 100m, product: 4),
+            },
+            new[] { Sale(10, Day(2, 1), 2, product: 2), Sale(11, Day(2, 1), 2, product: 3) });
+
+        Assert.Equal(9, result.RemainingByProduct()[1]);
+        Assert.Equal(4, result.RemainingByProduct()[2]);
+        Assert.Equal(0, result.RemainingByProduct()[3]);
+        Assert.Equal(2, result.LowStockProductCount());
+    }
+
+    [Fact]
+    public void Negative_batch_adds_nothing_to_the_product_total()
+    {
+        // Batch 1 has -3 units. Batch 2 has 5 units. FIFO uses only batch 2.
+        var result = FifoCalculator.Calculate(
+            new[] { Batch(1, Day(1, 1), -3, 100m), Batch(2, Day(1, 2), 5, 200m) },
+            Array.Empty<FifoSale>());
+
+        Assert.Equal(5, result.RemainingByProduct()[1]);
+        Assert.Equal(0, result.LowStockProductCount());
     }
 
     [Fact]

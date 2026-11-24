@@ -121,7 +121,7 @@ public class StatsService : IStatsService
         decimal prevAov = prevCount > 0 ? Math.Round(prevRevenue / prevCount, 0) : 0;
 
         var stockValue = fifo.StockValue();
-        var lowStockItems = fifo.LowStockBatchCount();
+        var lowStockItems = fifo.LowStockProductCount();
 
         return new StatsDashboardKpiDto
         {
